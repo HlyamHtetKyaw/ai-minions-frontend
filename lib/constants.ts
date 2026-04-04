@@ -105,5 +105,5 @@ export type Language = {
 
 export const LANGUAGES: Language[] = [
   { code: 'en', name: 'English' },
-  { code: 'my', name: 'Myanmar' },
+  { code: 'mm', name: 'မြန်မာ' },
 ];

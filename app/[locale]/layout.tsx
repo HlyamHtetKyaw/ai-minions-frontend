@@ -1,0 +1,52 @@
+import type { Metadata } from 'next';
+import { Geist, Geist_Mono } from 'next/font/google';
+import "@/app/globals.css"
+import Header from '@/components/Header';
+import ThemeProvider from '@/components/ThemeProvider';
+import { NextIntlClientProvider } from 'next-intl';
+import { getMessages } from 'next-intl/server';
+
+const geistSans = Geist({
+  variable: '--font-geist-sans',
+  subsets: ['latin'],
+});
+
+const geistMono = Geist_Mono({
+  variable: '--font-geist-mono',
+  subsets: ['latin'],
+});
+
+export const metadata: Metadata = {
+  title: 'AI Minions — AI-powered media tools',
+  description: 'Caption, translate, transcribe, and edit video content with AI.',
+};
+
+export default async function RootLayout({
+  children,
+  params,
+}: {
+  children: React.ReactNode;
+  params: Promise<{ locale: string }>;
+}) {
+  const { locale } = await params;
+  const messages = await getMessages();
+
+  return (
+    <html
+      lang={locale}
+      className={`dark ${geistSans.variable} ${geistMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="min-h-screen text-foreground antialiased">
+        <NextIntlClientProvider locale={locale} messages={messages}>
+          <ThemeProvider>
+            <div className="app-gradient">
+              <Header />
+              <main>{children}</main>
+            </div>
+          </ThemeProvider>
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+}

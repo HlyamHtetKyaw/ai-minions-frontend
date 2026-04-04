@@ -1,0 +1,490 @@
+{
+  "header": {
+    "tools": "Tools",
+    "signIn": "Sign in",
+    "signUp": "Sign up",
+    "languageLabel": "Language",
+    "dashboardLabel": "Dashboard",
+    "brandTitle": "Your AI Minions",
+    "home": "Home",
+    "aiModels": "AI Models",
+    "pointsBadge": "Points 120",
+    "pointsHint": "Reward points balance",
+    "logout": "Logout"
+  },
+  "home": {
+    "heroTitle": "Create viral-ready videos in a modern AI studio.",
+    "heroDescription": "Upload, transcribe, generate, and polish content in one glass-smooth workflow — built for speed and clarity.",
+    "getStarted": "Get started",
+    "browseTools": "Browse tools",
+    "openStudio": "Open Caption Studio",
+    "signedInStatus": "Signed in as Creator",
+    "allTools": "Workspace tools",
+    "available": "Available",
+    "openCardLink": "Open studio",
+    "overview": {
+      "title": "Overview",
+      "subtitle": "Today's workspace",
+      "live": "Live",
+      "items": {
+        "captions": {
+          "kicker": "Captions",
+          "headline": "Viral",
+          "description": "Auto captions tuned for short-form hooks and retention."
+        },
+        "dubbing": {
+          "kicker": "Dubbing",
+          "headline": "Studio",
+          "description": "Voice-over and polish that matches your edit timeline."
+        },
+        "news": {
+          "kicker": "News",
+          "headline": "Auto",
+          "description": "Turn briefs into ready-to-post updates in one pass."
+        }
+      }
+    }
+  },
+  "toolForm": {
+    "uploadFile": "Upload file",
+    "selectFile": "Select file",
+    "clickToUpload": "Click to upload",
+    "selectPlaceholder": "Select…",
+    "inputText": "Input text",
+    "inputTextPlaceholder": "Enter your text here…",
+    "processing": "Processing…",
+    "run": "Run"
+  },
+  "result": {
+    "title": "Result",
+    "fileReady": "Your file is ready to download.",
+    "downloadFile": "Download file",
+    "downloadDisabled": "(Download disabled in mock mode)"
+  },
+  "notFound": {
+    "title": "404 — Page not found",
+    "description": "That tool or page doesn't exist. Check the URL or browse all available tools.",
+    "backToHome": "Back to home"
+  },
+  "themeToggle": {
+    "toggleTheme": "Toggle theme"
+  },
+  "workflow": {
+    "heading": "Workflow",
+    "tipHeading": "Tip",
+    "steps": {
+      "video-upload": {
+        "name": "Video Upload",
+        "description": "Upload your video file"
+      },
+      "transcribe": {
+        "name": "Transcribe",
+        "description": "Convert speech to text"
+      },
+      "transcript": {
+        "name": "Transcript",
+        "description": "Review your transcript"
+      },
+      "content-generation": {
+        "name": "Content Generation",
+        "description": "Generate AI content"
+      },
+      "voice-over": {
+        "name": "Voice Over",
+        "description": "Add AI narration"
+      },
+      "video-edit": {
+        "name": "Video Edit",
+        "description": "Edit and enhance video"
+      },
+      "admin": {
+        "name": "Admin",
+        "description": "Manage settings"
+      }
+    },
+    "tips": {
+      "video-upload": "Upload MP4, MOV, or AVI files. Clear audio gives the best transcription accuracy.",
+      "transcribe": "AI transcription works best with clear audio and minimal background noise.",
+      "transcript": "Review and correct the transcript before generating content for better results.",
+      "content-generation": "Pick a platform and tone to tailor the generated output to your audience.",
+      "voice-over": "Preview voice styles before committing to a full render.",
+      "video-edit": "All edits are non-destructive — you can undo any change at any time.",
+      "admin": "Manage member tiers, pricing, and user permissions from this dashboard."
+    }
+  },
+  "features": {
+    "admin": {
+      "name": "Admin",
+      "description": "Manage users, pricing, and platform settings."
+    },
+    "content-generation": {
+      "name": "Content Generation",
+      "description": "Generate scripts, posts, and marketing content with AI.",
+      "category": "Content studio",
+      "cardLetter": "C"
+    },
+    "transcribe": {
+      "name": "Transcribe",
+      "description": "Convert audio and video speech to accurate text.",
+      "category": "Auto caption",
+      "cardLetter": "T"
+    },
+    "transcript": {
+      "name": "Transcript",
+      "description": "View and manage your generated transcripts.",
+      "category": "Review",
+      "cardLetter": "R"
+    },
+    "video-edit": {
+      "name": "Video Edit",
+      "description": "Edit, trim, and enhance video content with AI.",
+      "category": "Studio editor",
+      "cardLetter": "E"
+    },
+    "video-upload": {
+      "name": "Video Upload",
+      "description": "Upload and manage video files for processing.",
+      "category": "Pipeline",
+      "cardLetter": "V"
+    },
+    "voice-over": {
+      "name": "Voice Over",
+      "description": "Add AI voice-over narration to your videos.",
+      "category": "Dubbing",
+      "cardLetter": "D"
+    },
+    "translate": {
+      "name": "Translate",
+      "description": "Multi-language translation for scripts and captions.",
+      "category": "Language",
+      "cardLetter": "A"
+    }
+  },
+  "voice-over": {
+    "page": {
+      "title": "AI Voice",
+      "subtitle": "Convert text into natural-sounding voice"
+    },
+    "scriptInput": {
+      "kicker": "Script",
+      "placeholder": "Enter your script here…",
+      "example": "Example: Welcome to our channel. Today we will talk about AI tools."
+    },
+    "generateButton": {
+      "label": "Generate Voice",
+      "loading": "Generating…"
+    }
+  },
+  "video-edit": {
+    "page": {
+      "title": "Video Edit",
+      "subtitle": "Upload your video to start editing"
+    },
+    "uploadZone": {
+      "label": "Upload your video to start editing",
+      "kicker": "Upload video"
+    }
+  },
+  "transcript": {
+    "page": {
+      "title": "Review Transcript",
+      "description": "Review and correct the transcript below before moving to content generation."
+    },
+    "scriptInput": {
+      "placeholder": "Paste or type your transcript here to review and edit…"
+    },
+    "saveButton": {
+      "label": "Save Changes"
+    }
+  },
+  "master-editor": {
+    "page": {
+      "title": "Master Editor"
+    },
+    "uploadZone": {
+      "label": "Upload your video to start editing"
+    },
+    "toolbar": {
+      "editingTools": "Editing tools",
+      "playbackSpeedSection": "Playback speed",
+      "addText": "Add text",
+      "speedTabHint": "Playback speed is set with the row above. Press play on the preview to hear it.",
+      "trim": "Trim",
+      "filters": "Filters",
+      "adjust": "Adjust",
+      "speed": "Speed",
+      "text": "Text",
+      "trimStart": "Start time",
+      "trimEnd": "End time",
+      "brightness": "Brightness",
+      "contrast": "Contrast",
+      "saturation": "Saturation",
+      "textPlaceholder": "Overlay text…",
+      "position": "Position",
+      "positionTop": "Top",
+      "positionCenter": "Center",
+      "positionBottom": "Bottom",
+      "filterNone": "None",
+      "filterBw": "B&W",
+      "filterWarm": "Warm",
+      "filterCool": "Cool",
+      "filterVivid": "Vivid"
+    },
+    "exportPanel": {
+      "title": "Export",
+      "format": "Format",
+      "quality": "Quality",
+      "formatSection": "Export format",
+      "qualitySection": "Quality",
+      "mp4": "MP4",
+      "mp4Desc": "Standard video",
+      "webm": "WebM",
+      "webmDesc": "Web optimized",
+      "mov": "MOV",
+      "movDesc": "QuickTime",
+      "res1080Title": "1080p",
+      "res1080Desc": "Full HD",
+      "res720Title": "720p",
+      "res720Desc": "HD",
+      "res480Title": "480p",
+      "res480Desc": "SD",
+      "export": "Export",
+      "exporting": "Exporting…"
+    }
+  },
+  "voice-gen-live": {
+    "page": {
+      "title": "Voice Gen Live"
+    },
+    "scriptInput": {
+      "placeholder": "Type your script here. Each sentence will be played one by one…"
+    },
+    "startButton": {
+      "label": "Start",
+      "playing": "Playing…"
+    },
+    "livePlayer": {
+      "idle": "Idle",
+      "playing": "Playing",
+      "done": "Done"
+    }
+  },
+  "ai-voice": {
+    "page": {
+      "title": "AI Voice Generator"
+    },
+    "scriptInput": {
+      "placeholder": "Type or paste the script you want to convert to voice…"
+    },
+    "generateButton": {
+      "label": "Generate Voice",
+      "loading": "Generating…"
+    }
+  },
+  "transcribe": {
+    "page": {
+      "title": "Transcribe",
+      "subtitle": "Convert audio or video to text",
+      "helpAria": "Help with transcribe"
+    },
+    "uploadZone": {
+      "label": "Upload your audio or video file",
+      "kicker": "Upload audio or video",
+      "instruction": "Click to upload or drag and drop",
+      "formats": "Video: MP4, WebM, OGG, MOV | Audio: MP3, WAV, OGG, M4A"
+    },
+    "transcribeButton": {
+      "label": "Transcribe to Text",
+      "loading": "Transcribing…"
+    },
+    "transcriptResult": {
+      "title": "Transcript",
+      "copy": "Copy",
+      "copied": "Copied!",
+      "download": "Download .txt"
+    }
+  },
+  "contentGeneration": {
+    "page": {
+      "title": "Content Creator",
+      "subtitle": "Write hooks, captions, and social-ready scripts",
+      "helpAria": "Help with content creator"
+    },
+    "contentTypeLabel": "Content type",
+    "contentTypes": {
+      "hook": "Hook",
+      "caption": "Caption",
+      "script": "Script",
+      "hashtags": "Hashtags"
+    },
+    "contentTypeHints": {
+      "hook": "Short hooks for TikTok, Reels, and Shorts.",
+      "caption": "Social captions, CTAs, and on-screen lines.",
+      "script": "Video scripts and narratives.",
+      "hashtags": "Trending hashtag stacks for discovery."
+    },
+    "outputModeLabel": "Output",
+    "outputModes": {
+      "imageAndText": "Image & text",
+      "textOnly": "Text only",
+      "imageOnly": "Image only"
+    },
+    "outputModeHints": {
+      "imageAndText": "Get copy plus a visual you can post together.",
+      "textOnly": "Scripts, captions, and posts without an image.",
+      "imageOnly": "A single image asset from your brief."
+    },
+    "topicLabel": "Topic or description",
+    "topicPlaceholder": "Describe what you want to create content about… Example: A video about AI tools for content creators",
+    "toneLabel": "Tone",
+    "tones": {
+      "engaging": "Engaging",
+      "professional": "Professional",
+      "casual": "Casual",
+      "funny": "Funny",
+      "inspiring": "Inspiring",
+      "dramatic": "Dramatic"
+    },
+    "generateButton": {
+      "label": "Generate Content",
+      "loading": "Generating…"
+    },
+    "result": {
+      "title": "Generated content"
+    }
+  },
+  "translation": {
+    "page": {
+      "title": "Translate",
+      "subtitle": "Multi-language translation for scripts and captions",
+      "helpAria": "Help with translation"
+    },
+    "sourceLanguage": "Source language",
+    "targetLanguage": "Target language",
+    "sourceText": "Source text",
+    "translatedText": "Translated text",
+    "sourcePlaceholder": "Enter text to translate…",
+    "translatedPlaceholder": "Translation will appear here…",
+    "swap": "Swap",
+    "swapAria": "Swap source and target languages and text",
+    "action": "AX Translate",
+    "translating": "Translating…"
+  },
+  "shared": {
+    "uploadZone": {
+      "clickToUpload": "Click to upload",
+      "dragDrop": "or drag and drop",
+      "remove": "Remove file"
+    },
+    "scriptInput": {
+      "characters": "characters"
+    },
+    "voiceSelector": {
+      "label": "Voice style",
+      "woman": "Woman",
+      "man": "Man",
+      "boy": "Boy",
+      "girl": "Girl"
+    },
+    "audioPlayer": {
+      "play": "Play",
+      "pause": "Pause",
+      "download": "Download"
+    },
+    "loginGate": {
+      "defaultMessage": "Sign in to use this feature",
+      "signIn": "Sign in"
+    }
+  },
+  "tools": {
+    "caption-studio": {
+      "name": "Caption Studio",
+      "description": "Auto-generate captions and subtitles from video files."
+    },
+    "ai-voice": {
+      "name": "AI Voice",
+      "description": "Convert text to natural-sounding AI voice audio.",
+      "fields": {
+        "text": "Text to speak",
+        "voice": "Voice style"
+      }
+    },
+    "voice-gen-live": {
+      "name": "Voice Gen Live",
+      "description": "Real-time voice generation from any text input.",
+      "fields": {
+        "text": "Text to generate",
+        "style": "Style"
+      }
+    },
+    "translate": {
+      "name": "Translate",
+      "description": "Translate audio or video content into multiple languages.",
+      "fields": {
+        "targetLanguage": "Target language"
+      }
+    },
+    "content-creator": {
+      "name": "Content Creator",
+      "description": "Generate social media posts, scripts, and marketing copy.",
+      "fields": {
+        "prompt": "Describe the content you need",
+        "platform": "Platform"
+      }
+    },
+    "story-creator": {
+      "name": "Story Creator",
+      "description": "Craft compelling story narratives and screenplays with AI.",
+      "fields": {
+        "premise": "Story premise or prompt",
+        "genre": "Genre"
+      }
+    },
+    "srt-sub": {
+      "name": "SRT Sub",
+      "description": "Generate clean SRT subtitle files directly from video."
+    },
+    "recapper": {
+      "name": "Recapper",
+      "description": "Summarize and recap long-form video content automatically."
+    },
+    "thumbnail": {
+      "name": "Thumbnail",
+      "description": "Generate eye-catching AI thumbnails for your videos.",
+      "fields": {
+        "title": "Video title (optional)"
+      }
+    },
+    "novel-translator": {
+      "name": "Novel Translator",
+      "description": "Translate full novels and long-form documents at scale.",
+      "fields": {
+        "targetLanguage": "Target language"
+      }
+    },
+    "video-recap": {
+      "name": "Video Recap",
+      "description": "Create short highlight recap videos from longer footage."
+    },
+    "master-editor": {
+      "name": "Master Editor",
+      "description": "AI-powered video editing, cutting, and enhancement."
+    },
+    "sub-gen": {
+      "name": "Sub Gen",
+      "description": "Automatically generate burned-in subtitles for any video."
+    },
+    "transcribe": {
+      "name": "Transcribe",
+      "description": "Convert speech to accurate, timestamped text transcripts."
+    },
+    "news-automation": {
+      "name": "News Automation",
+      "description": "Automate news article and bulletin generation from prompts.",
+      "fields": {
+        "topic": "News topic or headline",
+        "tone": "Tone"
+      }
+    }
+  }
+}

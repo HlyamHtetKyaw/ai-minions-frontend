@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import ResultDisplay from './ResultDisplay';
+import { useTranslations } from 'next-intl';
 
 type FieldConfig = {
   name: string;
@@ -106,6 +107,7 @@ export default function ToolForm({
   outputType,
   fields,
 }: ToolFormProps) {
+  const t = useTranslations('toolForm');
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<unknown>(null);
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({});
@@ -135,7 +137,7 @@ export default function ToolForm({
         {showFileInput && (
           <div className="space-y-1.5">
             <label className="block text-sm font-medium">
-              {inputType === 'file+text' ? 'Upload file' : 'Select file'}
+              {inputType === 'file+text' ? t('uploadFile') : t('selectFile')}
             </label>
             <div className="flex items-center gap-3">
               <label className="flex-1 cursor-pointer rounded-lg border-2 border-dashed border-card-border p-6 text-center hover:border-gray-400 dark:hover:border-gray-600 transition-colors">
@@ -150,7 +152,7 @@ export default function ToolForm({
                   {fileName ? (
                     <span className="font-medium text-foreground">{fileName}</span>
                   ) : (
-                    <>Click to upload{acceptedFileTypes ? ` (${acceptedFileTypes})` : ''}</>
+                    <>{t('clickToUpload')}{acceptedFileTypes ? ` (${acceptedFileTypes})` : ''}</>
                   )}
                 </p>
               </label>
@@ -172,7 +174,7 @@ export default function ToolForm({
                 className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400"
               >
                 <option value="" disabled>
-                  Select…
+                  {t('selectPlaceholder')}
                 </option>
                 {field.options?.map((opt) => (
                   <option key={opt} value={opt}>
@@ -197,12 +199,12 @@ export default function ToolForm({
         {showTextField && !fields?.length && (
           <div className="space-y-1.5">
             <label htmlFor="default-text" className="block text-sm font-medium">
-              Input text
+              {t('inputText')}
             </label>
             <textarea
               id="default-text"
               rows={4}
-              placeholder="Enter your text here…"
+              placeholder={t('inputTextPlaceholder')}
               value={fieldValues['text'] ?? ''}
               onChange={(e) => handleFieldChange('text', e.target.value)}
               className="w-full rounded-lg border border-card-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-gray-400 resize-none"
@@ -213,7 +215,7 @@ export default function ToolForm({
         <button
           type="submit"
           disabled={isLoading}
-          className="flex w-full items-center justify-center gap-2 rounded-lg bg-gray-900 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-gray-700 disabled:opacity-60 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200"
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:opacity-60"
         >
           {isLoading ? (
             <>
@@ -221,10 +223,10 @@ export default function ToolForm({
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
               </svg>
-              Processing…
+              {t('processing')}
             </>
           ) : (
-            'Run'
+            t('run')
           )}
         </button>
       </form>
@@ -234,4 +236,4 @@ export default function ToolForm({
       )}
     </div>
   );
-}
+} 

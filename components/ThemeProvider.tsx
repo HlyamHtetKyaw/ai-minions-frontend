@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, useState } from 'react';
 type Theme = 'light' | 'dark';
 
 const ThemeContext = createContext<{ theme: Theme; toggle: () => void }>({
-  theme: 'light',
+  theme: 'dark',
   toggle: () => {},
 });
 
@@ -14,21 +14,24 @@ export function useTheme() {
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>('dark');
 
   useEffect(() => {
     const stored = localStorage.getItem('theme') as Theme | null;
-    const preferred = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    const resolved = stored ?? preferred;
+    const resolved = stored ?? 'dark';
     setTheme(resolved);
-    document.documentElement.classList.toggle('dark', resolved === 'dark');
+    const root = document.documentElement;
+    root.classList.remove('dark', 'light');
+    root.classList.add(resolved === 'dark' ? 'dark' : 'light');
   }, []);
 
   function toggle() {
     setTheme((prev) => {
       const next = prev === 'dark' ? 'light' : 'dark';
       localStorage.setItem('theme', next);
-      document.documentElement.classList.toggle('dark', next === 'dark');
+      const root = document.documentElement;
+      root.classList.remove('dark', 'light');
+      root.classList.add(next === 'dark' ? 'dark' : 'light');
       return next;
     });
   }

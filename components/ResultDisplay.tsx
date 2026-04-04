@@ -1,14 +1,17 @@
 'use client';
 
+import { useTranslations } from 'next-intl';
+
 type ResultDisplayProps = {
   result: unknown;
   outputType: 'json' | 'blob' | 'text';
 };
 
 export default function ResultDisplay({ result, outputType }: ResultDisplayProps) {
+  const t = useTranslations('result');
   return (
     <div className="rounded-xl border border-card-border bg-card p-6 space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">Result</h2>
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{t('title')}</h2>
 
       {outputType === 'json' && (
         <pre className="overflow-x-auto rounded-lg bg-gray-950 dark:bg-black p-4 text-xs text-green-400 leading-relaxed">
@@ -27,7 +30,7 @@ export default function ResultDisplay({ result, outputType }: ResultDisplayProps
 
       {outputType === 'blob' && (
         <div className="flex flex-col items-start gap-3">
-          <p className="text-sm text-muted">Your file is ready to download.</p>
+          <p className="text-sm text-muted">{t('fileReady')}</p>
           <button
             disabled
             className="flex items-center gap-2 rounded-lg border border-card-border px-4 py-2 text-sm font-medium opacity-50 cursor-not-allowed"
@@ -37,9 +40,9 @@ export default function ResultDisplay({ result, outputType }: ResultDisplayProps
               <polyline points="7 10 12 15 17 10" />
               <line x1="12" y1="15" x2="12" y2="3" />
             </svg>
-            Download file
+            {t('downloadFile')}
           </button>
-          <p className="text-xs text-muted">(Download disabled in mock mode)</p>
+          <p className="text-xs text-muted">{t('downloadDisabled')}</p>
         </div>
       )}
     </div>

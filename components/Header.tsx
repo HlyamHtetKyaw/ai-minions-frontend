@@ -1,73 +1,58 @@
 import Link from 'next/link';
-import { FEATURES, LANGUAGES } from '@/lib/constants';
 import ThemeToggle from './ThemeToggle';
+import LocaleSwitcher from './LocaleSwitcher';
+import HeaderClient from './HeaderClient';
+import { getTranslations } from 'next-intl/server';
 
-export default function Header() {
+export default async function Header() {
+  const tHeader = await getTranslations('header');
+
   return (
-    <header className="sticky top-0 z-50 border-b border-card-border bg-background/95 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6">
+    <header className="sticky top-0 z-50 px-4 pt-4 sm:px-6">
+      <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-full glass-panel px-3 py-2 pl-4 shadow-lg sm:px-5 sm:py-2.5">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-semibold text-lg shrink-0">
-          <span className="text-2xl">🤖</span>
-          <span>AI Minions</span>
+        <Link href="/" className="flex shrink-0 items-center gap-3">
+          <span
+            className="flex h-10 w-10 items-center justify-center rounded-full text-sm font-bold text-[#0f172a] shadow-md"
+            style={{
+              background: 'linear-gradient(145deg, var(--accent-gold) 0%, #b8860b 100%)',
+            }}
+          >
+            AI
+          </span>
+          <div className="hidden min-w-0 sm:block">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted">
+              {tHeader('dashboardLabel')}
+            </p>
+            <p className="truncate text-sm font-semibold leading-tight text-foreground">
+              {tHeader('brandTitle')}
+            </p>
+          </div>
         </Link>
 
-        {/* Nav */}
-        <nav className="hidden md:flex items-center gap-1">
-          {/* Features dropdown */}
-          <div className="group relative">
-            <button className="flex items-center gap-1 rounded-md px-3 py-2 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              Tools
-              <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5">
-                <path d="m6 9 6 6 6-6" />
-              </svg>
-            </button>
-
-            {/* Dropdown panel */}
-            <div className="invisible group-hover:visible opacity-0 group-hover:opacity-100 absolute left-0 top-full mt-1 w-72 rounded-xl border border-card-border bg-background p-2 shadow-lg transition-all duration-150">
-              <div className="grid grid-cols-1 gap-0.5 max-h-96 overflow-y-auto">
-                {FEATURES.map((f) => (
-                  <Link
-                    key={f.path}
-                    href={f.path}
-                    className="flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-                  >
-                    <span className="text-base">{f.icon}</span>
-                    <span className="font-medium">{f.name}</span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </div>
-        </nav>
+        <HeaderClient toolsLabel={tHeader('aiModels')} homeLabel={tHeader('home')} />
 
         {/* Right side */}
-        <div className="flex items-center gap-2">
-          {/* Language switcher */}
+        <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
           <div className="hidden sm:block">
-            <select
-              defaultValue="en"
-              className="rounded-md border border-card-border bg-background px-2 py-1.5 text-sm text-foreground focus:outline-none"
-              aria-label="Language"
-            >
-              {LANGUAGES.map((l) => (
-                <option key={l.code} value={l.code}>
-                  {l.name}
-                </option>
-              ))}
-            </select>
+            <LocaleSwitcher label={tHeader('languageLabel')} />
           </div>
 
           <ThemeToggle />
 
-          <div className="flex items-center gap-2 ml-1">
-            <button className="rounded-md px-3 py-1.5 text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors">
-              Sign in
-            </button>
-            <button className="rounded-md bg-gray-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-gray-700 dark:bg-white dark:text-gray-900 dark:hover:bg-gray-200 transition-colors">
-              Sign up
-            </button>
-          </div>
+          <span
+            className="hidden rounded-full border border-accent-gold/40 bg-accent-gold-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-gold lg:inline-flex"
+            title={tHeader('pointsHint')}
+          >
+            {tHeader('pointsBadge')}
+          </span>
+
+          <button
+            type="button"
+            className="rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-foreground"
+          >
+            {tHeader('logout')}
+          </button>
         </div>
       </div>
     </header>
