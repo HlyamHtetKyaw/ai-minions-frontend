@@ -2,11 +2,11 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import LoginGate from '@/features/shared/components/LoginGate';
-import UploadZone from '@/features/shared/components/UploadZone';
-import VideoPreview from '@/features/master-editor/components/VideoPreview';
-import Toolbar from '@/features/master-editor/components/Toolbar';
-import ExportPanel from '@/features/master-editor/components/ExportPanel';
+import LoginGate from '@/components/shared/components/login-gate';
+import UploadZone from '@/components/shared/components/upload-zone';
+import VideoPreview from '@/features/master-editor/components/video-preview';
+import Toolbar from '@/features/master-editor/components/toolbar';
+import ExportPanel from '@/features/master-editor/components/export-panel';
 import {
   TOOLBAR_DEFAULTS,
   FILTER_PRESETS,

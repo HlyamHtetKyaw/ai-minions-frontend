@@ -370,7 +370,7 @@ declare const messages: {
     "translatedPlaceholder": "Translation will appear here…",
     "swap": "Swap",
     "swapAria": "Swap source and target languages and text",
-    "action": "AX Translate",
+    "action": "Translate",
     "translating": "Translating…"
   },
   "shared": {

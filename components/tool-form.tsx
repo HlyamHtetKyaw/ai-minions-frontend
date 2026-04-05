@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import ResultDisplay from './ResultDisplay';
+import ResultDisplay from './result-display';
 import { useTranslations } from 'next-intl';
 
 type FieldConfig = {

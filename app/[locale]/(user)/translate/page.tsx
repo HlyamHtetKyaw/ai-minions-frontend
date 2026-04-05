@@ -3,9 +3,11 @@
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeftRight, CircleHelp, Languages } from 'lucide-react';
-import LoginGate from '@/features/shared/components/LoginGate';
-import LanguageSelector from '@/features/translate/components/LanguageSelector';
-import TranslateButton from '@/features/translate/components/TranslateButton';
+import LoginGate from '@/components/shared/components/login-gate';
+import PageHeader from '@/components/layout/page-header';
+import LanguageSelector from '@/features/translate/components/language-selector';
+import TextPanels from '@/features/translate/components/text-panels';
+import TranslateButton from '@/features/translate/components/translate-button';
 import { LANGUAGES } from '@/lib/constants';
 
 // TODO: replace with real auth state
@@ -43,28 +45,22 @@ export default function TranslatePage() {
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
           <div className="mx-auto w-full max-w-7xl space-y-8">
-            <header className="flex gap-4">
-              <div className="transcribe-icon-tile" aria-hidden>
-                <Languages className="h-6 w-6" strokeWidth={2.25} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                    {t('page.title')}
-                  </h1>
-                  <button
-                    type="button"
-                    className="rounded-full p-1 text-muted transition-colors hover:bg-surface hover:text-foreground"
-                    aria-label={t('page.helpAria')}
-                  >
-                    <CircleHelp className="h-5 w-5" />
-                  </button>
-                </div>
-                <p className="mt-1 text-sm text-muted">{t('page.subtitle')}</p>
-              </div>
-            </header>
+            <PageHeader
+              icon={
+                <PageHeader.Icon tileClassName="transcribe-icon-tile">
+                  <Languages className="h-6 w-6" strokeWidth={2.25} />
+                </PageHeader.Icon>
+              }
+              title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
+              action={
+                <PageHeader.IconButton aria-label={t('page.helpAria')}>
+                  <CircleHelp className="h-5 w-5" />
+                </PageHeader.IconButton>
+              }
+              subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
+            />
 
-            <div className="flex items-end gap-3">
+            <div className="flex items-center gap-3">
               <div className="flex-1">
                 <LanguageSelector
                   label={t('sourceLanguage')}
@@ -76,7 +72,7 @@ export default function TranslatePage() {
               <button
                 type="button"
                 onClick={handleSwap}
-                className="mb-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-card-border bg-surface text-muted transition-colors hover:bg-surface hover:text-foreground"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-glass-border bg-glass/80 text-muted backdrop-blur-sm transition-colors hover:bg-glass hover:text-foreground"
                 aria-label={t('swapAria')}
               >
                 <ArrowLeftRight className="h-4 w-4" />
@@ -91,28 +87,15 @@ export default function TranslatePage() {
               </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted">{t('sourceText')}</label>
-                <textarea
-                  value={sourceText}
-                  onChange={(e) => setSourceText(e.target.value)}
-                  placeholder={t('sourcePlaceholder')}
-                  rows={8}
-                  className="resize-none rounded-xl border border-card-border bg-surface px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-primary focus:outline-none"
-                />
-              </div>
-              <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-medium text-muted">{t('translatedText')}</label>
-                <textarea
-                  value={translatedText}
-                  readOnly
-                  placeholder={t('translatedPlaceholder')}
-                  rows={8}
-                  className="resize-none rounded-xl border border-card-border bg-subtle px-4 py-3 text-sm text-foreground placeholder:text-muted focus:outline-none"
-                />
-              </div>
-            </div>
+            <TextPanels
+              sourceLabel={t('sourceText')}
+              sourceValue={sourceText}
+              sourcePlaceholder={t('sourcePlaceholder')}
+              onSourceChange={setSourceText}
+              translatedLabel={t('translatedText')}
+              translatedValue={translatedText}
+              translatedPlaceholder={t('translatedPlaceholder')}
+            />
 
             <TranslateButton
               onClick={handleTranslate}

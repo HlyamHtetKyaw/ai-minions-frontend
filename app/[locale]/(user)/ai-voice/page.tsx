@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import LoginGate from '@/features/shared/components/LoginGate';
-import ScriptInput from '@/features/shared/components/ScriptInput';
-import VoiceSelector from '@/features/shared/components/VoiceSelector';
-import AudioPlayer from '@/features/shared/components/AudioPlayer';
-import GenerateButton from '@/features/ai-voice/components/GenerateButton';
-import type { VoiceStyle } from '@/features/shared/types';
+import LoginGate from '@/components/shared/components/login-gate';
+import ScriptInput from '@/components/shared/components/script-input';
+import VoiceSelector from '@/components/shared/components/voice-selector';
+import AudioPlayer from '@/components/shared/components/audio-player';
+import GenerateButton from '@/features/ai-voice/components/generate-button';
+import type { VoiceStyle } from '@/components/shared/types';
 
 // TODO: replace with real auth state
 const isSignedIn = true;

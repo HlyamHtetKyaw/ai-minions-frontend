@@ -2,12 +2,14 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Loader2, Mic } from 'lucide-react';
-import LoginGate from '@/features/shared/components/LoginGate';
-import ScriptInput from '@/features/shared/components/ScriptInput';
-import VoiceSelector from '@/features/shared/components/VoiceSelector';
-import AudioPlayer from '@/features/shared/components/AudioPlayer';
-import type { VoiceStyle } from '@/features/shared/types';
+import { Mic } from 'lucide-react';
+import LoginGate from '@/components/shared/components/login-gate';
+import ScriptInput from '@/components/shared/components/script-input';
+import VoiceSelector from '@/components/shared/components/voice-selector';
+import AudioPlayer from '@/components/shared/components/audio-player';
+import type { VoiceStyle } from '@/components/shared/types';
+import PageHeader from '@/components/layout/page-header';
+import GenerateButton from '@/features/voice-over/components/generate-button';
 
 // TODO: replace with real auth state
 const isSignedIn = true;
@@ -37,17 +39,15 @@ export default function VoiceOverPage() {
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
           <div className="mx-auto w-full max-w-7xl">
             <div className="voice-over-shell space-y-10">
-              <header className="flex gap-4">
-                <div className="content-creator-icon-tile" aria-hidden>
-                  <Mic className="h-6 w-6" strokeWidth={2.25} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
-                    {t('page.title')}
-                  </h1>
-                  <p className="mt-1 text-sm text-muted">{t('page.subtitle')}</p>
-                </div>
-              </header>
+              <PageHeader
+                icon={
+                  <PageHeader.Icon tileClassName="content-creator-icon-tile">
+                    <Mic className="h-6 w-6" strokeWidth={2.25} />
+                  </PageHeader.Icon>
+                }
+                title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
+                subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
+              />
 
               <ScriptInput
                 value={scriptText}
@@ -66,19 +66,11 @@ export default function VoiceOverPage() {
                 variant="chips"
               />
 
-              <button
-                type="button"
+              <GenerateButton
                 onClick={handleGenerate}
-                disabled={!scriptText.trim() || isLoading}
-                className="btn-voice-generate"
-              >
-                {isLoading ? (
-                  <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-                ) : (
-                  <Mic className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-                )}
-                {isLoading ? t('generateButton.loading') : t('generateButton.label')}
-              </button>
+                isLoading={isLoading}
+                disabled={!scriptText.trim()}
+              />
 
               {audioSrc ? (
                 <AudioPlayer src={audioSrc} filename="voice-over.mp3" />

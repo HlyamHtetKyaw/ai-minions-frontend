@@ -1,9 +1,9 @@
 'use client';
 
 import { Link as NavLink, usePathname } from '@/i18n/navigation';
-import { FEATURES } from '@/features';
 import { ChevronDown } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { FEATURES } from '@/features';
 
 type Props = {
   toolsLabel: string;

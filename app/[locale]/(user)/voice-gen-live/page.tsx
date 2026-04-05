@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import LoginGate from '@/features/shared/components/LoginGate';
-import ScriptInput from '@/features/shared/components/ScriptInput';
-import VoiceSelector from '@/features/shared/components/VoiceSelector';
-import LivePlayer from '@/features/voice-gen-live/components/LivePlayer';
-import type { VoiceStyle } from '@/features/shared/types';
+import LoginGate from '@/components/shared/components/login-gate';
+import ScriptInput from '@/components/shared/components/script-input';
+import VoiceSelector from '@/components/shared/components/voice-selector';
+import LivePlayer from '@/features/voice-gen-live/components/live-player';
+import StartButton from '@/features/voice-gen-live/components/start-button';
+import type { VoiceStyle } from '@/components/shared/types';
 
 // TODO: replace with real auth state
 const isSignedIn = true;
@@ -44,14 +45,11 @@ export default function VoiceGenLivePage() {
 
           <VoiceSelector value={selectedVoice} onChange={setSelectedVoice} />
 
-          <button
-            type="button"
+          <StartButton
             onClick={handleStart}
+            isLoading={isPlaying}
             disabled={!canStart}
-            className="rounded-xl bg-primary px-6 py-3 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            {isPlaying ? t('startButton.playing') : t('startButton.label')}
-          </button>
+          />
 
           {sentences.length > 0 && (
             <LivePlayer sentences={sentences} currentIndex={currentIndex} />

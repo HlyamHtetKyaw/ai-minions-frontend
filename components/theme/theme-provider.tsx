@@ -14,16 +14,16 @@ export function useTheme() {
 }
 
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('dark');
+  const [theme, setTheme] = useState<Theme>(() => {
+    const stored = typeof window !== 'undefined' ? localStorage.getItem('theme') as Theme | null : null;
+    return stored ?? 'dark';
+  });
 
   useEffect(() => {
-    const stored = localStorage.getItem('theme') as Theme | null;
-    const resolved = stored ?? 'dark';
-    setTheme(resolved);
     const root = document.documentElement;
     root.classList.remove('dark', 'light');
-    root.classList.add(resolved === 'dark' ? 'dark' : 'light');
-  }, []);
+    root.classList.add(theme === 'dark' ? 'dark' : 'light');
+  }, [theme]);
 
   function toggle() {
     setTheme((prev) => {

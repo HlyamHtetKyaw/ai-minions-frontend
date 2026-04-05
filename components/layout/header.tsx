@@ -1,7 +1,7 @@
 import Link from 'next/link';
-import ThemeToggle from './ThemeToggle';
-import LocaleSwitcher from './LocaleSwitcher';
-import HeaderClient from './HeaderClient';
+import ThemeToggle from '@/components/theme/theme-toggle';
+import LocaleSwitcher from './locale-switcher';
+import HeaderClient from './header-client';
 import { getTranslations } from 'next-intl/server';
 
 export default async function Header() {

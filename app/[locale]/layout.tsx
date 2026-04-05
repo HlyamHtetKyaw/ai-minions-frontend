@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import "@/app/globals.css"
-import Header from '@/components/Header';
-import ThemeProvider from '@/components/ThemeProvider';
+import Header from '@/components/layout/header';
+import ThemeProvider from '@/components/theme/theme-provider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
 

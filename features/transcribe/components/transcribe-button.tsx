@@ -1,7 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Loader2, Mic } from 'lucide-react';
+import { Mic } from 'lucide-react';
+import ActionButton from '@/components/shared/components/action-button';
 
 type Props = {
   onClick: () => void;
@@ -13,18 +14,14 @@ export default function TranscribeButton({ onClick, isLoading, disabled }: Props
   const t = useTranslations('transcribe.transcribeButton');
 
   return (
-    <button
-      type="button"
+    <ActionButton
       onClick={onClick}
-      disabled={disabled || isLoading}
+      isLoading={isLoading}
+      disabled={disabled}
+      label={t('label')}
+      loadingLabel={t('loading')}
+      icon={<Mic className="h-4 w-4 shrink-0" strokeWidth={2.25} />}
       className="btn-transcribe"
-    >
-      {isLoading ? (
-        <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
-      ) : (
-        <Mic className="h-4 w-4 shrink-0" strokeWidth={2.25} />
-      )}
-      {isLoading ? t('loading') : t('label')}
-    </button>
+    />
   );
 }

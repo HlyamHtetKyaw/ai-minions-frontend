@@ -1,6 +1,6 @@
 'use client';
 
-import { useTheme } from './ThemeProvider';
+import { useTheme } from '@/components/theme/theme-provider';
 import { useTranslations } from 'next-intl';
 import { Sun, Moon } from 'lucide-react';
 

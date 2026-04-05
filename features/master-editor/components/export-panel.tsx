@@ -1,7 +1,8 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import { Loader2 } from 'lucide-react';
+import { Download } from 'lucide-react';
+import ActionButton from '@/components/shared/components/action-button';
 import type { ExportFormat, ExportQuality } from '../types';
 
 const FORMATS: ExportFormat[] = ['mp4', 'webm', 'mov'];
@@ -79,15 +80,14 @@ export default function ExportPanel({
         </div>
       </div>
 
-      <button
-        type="button"
+      <ActionButton
+        label={t('export')}
+        loadingLabel={t('exporting')}
+        isLoading={isExporting}
+        icon={<Download className="h-4 w-4 shrink-0" />}
         onClick={onExport}
-        disabled={isExporting}
-        className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary py-3 text-sm font-semibold text-primary-fg shadow-md transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-      >
-        {isExporting && <Loader2 className="h-4 w-4 animate-spin" />}
-        {isExporting ? t('exporting') : t('export')}
-      </button>
+        className="btn-transcribe"
+      />
     </div>
   );
 }
