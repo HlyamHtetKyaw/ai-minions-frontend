@@ -3,6 +3,7 @@ import ThemeToggle from '@/components/theme/theme-toggle';
 import LocaleSwitcher from './locale-switcher';
 import HeaderClient from './header-client';
 import { getTranslations } from 'next-intl/server';
+import HeaderAuth from './header-auth';
 
 export default async function Header() {
   const tHeader = await getTranslations('header');
@@ -47,12 +48,11 @@ export default async function Header() {
             {tHeader('pointsBadge')}
           </span>
 
-          <button
-            type="button"
-            className="rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-foreground"
-          >
-            {tHeader('logout')}
-          </button>
+          <HeaderAuth
+            signInLabel={tHeader('signIn')}
+            signUpLabel={tHeader('signUp')}
+            logoutLabel={tHeader('logout')}
+          />
         </div>
       </div>
     </header>

@@ -20,7 +20,7 @@ export default function LoginGate({ message }: Props) {
         {message ?? t('defaultMessage')}
       </p>
       <Link
-        href="/"
+        href="/login"
         className="rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover"
       >
         {t('signIn')}

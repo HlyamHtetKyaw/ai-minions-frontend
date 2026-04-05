@@ -56,3 +56,69 @@ All pages are Server Components (statically prerendered via `generateStaticParam
 
 ### Tailwind v4 dark mode
 Dark mode uses a `.dark` class on `<html>` (applied by `ThemeProvider`). CSS variables are defined in `globals.css` under `:root` and `.dark`, then exposed as Tailwind tokens via `@theme inline`.
+
+Auth Endpoints
+Signup
+
+POST /api/v1/auth/signup
+Body:
+
+json{
+  "username": "string",
+  "email": "user@example.com",
+  "password": "string"
+}
+Login
+
+POST /api/v1/auth/login
+Body:
+
+json{
+  "usernameOrEmail": "string",
+  "password": "string"
+}
+
+HTTP Client Rules
+
+Do NOT use axios or any HTTP library
+Use the native fetch API only
+Always include credentials: "include" on every fetch call so cookies are sent/received automatically
+
+Base fetch wrapper — lib/api.ts
+tsconst BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+
+export async function apiFetch(path: string, options: RequestInit = {}) {
+  const res = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    credentials: "include", // always send/receive cookies
+    headers: {
+      "Content-Type": "application/json",
+      ...options.headers,
+    },
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({}));
+    throw new Error(error.message || "Request failed");
+  }
+
+  return res.json();
+}
+
+Auth Flow Implementation
+Signup — lib/auth.ts
+tsimport { apiFetch } from "./api";
+
+export async function signup(username: string, email: string, password: string) {
+  return apiFetch("/api/v1/auth/signup", {
+    method: "POST",
+    body: JSON.stringify({ username, email, password }),
+  });
+}
+Login — lib/auth.ts
+tsexport async function login(usernameOrEmail: string, password: string) {
+  return apiFetch("/api/v1/auth/login", {
+    method: "POST",
+    body: JSON.stringify({ usernameOrEmail, password }),
+  });
+}
