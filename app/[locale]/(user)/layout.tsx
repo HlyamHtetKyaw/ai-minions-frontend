@@ -1,8 +1,16 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
+import { SESSION_HINT_COOKIE } from '@/lib/auth-token';
 
-// Cookie name(s) the backend sets on login — must match middleware.ts
-const AUTH_COOKIE_NAMES = ['session', 'token', 'auth'];
+// HttpOnly cookies from API + client hint set after login (see lib/auth-token.ts).
+const AUTH_COOKIE_NAMES = [
+  SESSION_HINT_COOKIE,
+  'access_token',
+  'refresh_token',
+  'session',
+  'token',
+  'auth',
+];
 
 export default async function UserLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();

@@ -2,8 +2,17 @@ import createMiddleware from 'next-intl/middleware';
 import { NextRequest, NextResponse } from 'next/server';
 import { routing } from './i18n/routing';
 
-// Cookie name(s) the backend sets on login — update to match your API.
-const AUTH_COOKIE_NAMES = ['session', 'token', 'auth'];
+/** Keep in sync with `lib/auth-token` (Next cannot import client module in edge — duplicate name). */
+const SESSION_HINT_COOKIE = 'aiminions_auth';
+
+const AUTH_COOKIE_NAMES = [
+  SESSION_HINT_COOKIE,
+  'access_token',
+  'refresh_token',
+  'session',
+  'token',
+  'auth',
+];
 
 const PROTECTED_PATHS = [
   '/video-upload',

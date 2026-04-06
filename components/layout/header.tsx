@@ -3,13 +3,13 @@ import ThemeToggle from '@/components/theme/theme-toggle';
 import LocaleSwitcher from './locale-switcher';
 import HeaderClient from './header-client';
 import { getTranslations } from 'next-intl/server';
-import HeaderAuth from './header-auth';
+import HeaderSession from './header-session';
 
 export default async function Header() {
   const tHeader = await getTranslations('header');
 
   return (
-    <header className="sticky top-0 z-50 px-4 pt-4 sm:px-6">
+    <header className="sticky top-0 z-[100] px-4 pt-4 sm:px-6">
       <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-full glass-panel px-3 py-2 pl-4 shadow-lg sm:px-5 sm:py-2.5">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center gap-3">
@@ -31,7 +31,11 @@ export default async function Header() {
           </div>
         </Link>
 
-        <HeaderClient toolsLabel={tHeader('aiModels')} homeLabel={tHeader('home')} />
+        <HeaderClient
+          toolsLabel={tHeader('aiModels')}
+          homeLabel={tHeader('home')}
+          pricingLabel={tHeader('pricing')}
+        />
 
         {/* Right side */}
         <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
@@ -41,18 +45,7 @@ export default async function Header() {
 
           <ThemeToggle />
 
-          <span
-            className="hidden rounded-full border border-accent-gold/40 bg-accent-gold-muted px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-gold lg:inline-flex"
-            title={tHeader('pointsHint')}
-          >
-            {tHeader('pointsBadge')}
-          </span>
-
-          <HeaderAuth
-            signInLabel={tHeader('signIn')}
-            signUpLabel={tHeader('signUp')}
-            logoutLabel={tHeader('logout')}
-          />
+          <HeaderSession />
         </div>
       </div>
     </header>
