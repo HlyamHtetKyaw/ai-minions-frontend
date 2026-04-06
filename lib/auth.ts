@@ -4,10 +4,16 @@ import {
   setStoredAccessToken,
 } from "./auth-token";
 
-type ApiEnvelope<T> = {
+export type ApiEnvelope<T> = {
   success?: boolean;
   data?: T;
   message?: string;
+};
+
+export type AuthTokenPayload = {
+  accessToken: string;
+  refreshToken?: string;
+  verified?: boolean;
 };
 
 function persistTokensFromAuthResponse(body: unknown) {
@@ -28,23 +34,53 @@ export async function signup(username: string, email: string, password: string) 
   });
 }
 
-export async function login(usernameOrEmail: string, password: string) {
-  const body = await apiFetch("/api/v1/auth/login", {
+export async function login(
+  usernameOrEmail: string,
+  password: string,
+): Promise<ApiEnvelope<AuthTokenPayload>> {
+  const body = (await apiFetch("/api/v1/auth/login", {
     method: "POST",
     body: JSON.stringify({ usernameOrEmail, password }),
-  });
+  })) as ApiEnvelope<AuthTokenPayload>;
   persistTokensFromAuthResponse(body);
   return body;
 }
 
 /** Passwordless login using the access code issued when an admin provisions your account. */
-export async function loginWithCode(code: string) {
-  const body = await apiFetch("/api/v1/auth/login-with-code", {
+export async function loginWithCode(
+  code: string,
+): Promise<ApiEnvelope<AuthTokenPayload>> {
+  const body = (await apiFetch("/api/v1/auth/login-with-code", {
     method: "POST",
     body: JSON.stringify({ code: code.trim() }),
-  });
+  })) as ApiEnvelope<AuthTokenPayload>;
   persistTokensFromAuthResponse(body);
   return body;
+}
+
+export async function verifyOtp(
+  usernameOrEmail: string,
+  otp: string,
+): Promise<ApiEnvelope<AuthTokenPayload>> {
+  const body = (await apiFetch("/api/v1/auth/otp-verify", {
+    method: "POST",
+    body: JSON.stringify({
+      usernameOrEmail: usernameOrEmail.trim(),
+      otp: otp.trim(),
+    }),
+  })) as ApiEnvelope<AuthTokenPayload>;
+  persistTokensFromAuthResponse(body);
+  return body;
+}
+
+/** Resend signup verification email (server + client cooldown). */
+export async function resendOtp(
+  usernameOrEmail: string,
+): Promise<ApiEnvelope<void>> {
+  return apiFetch("/api/v1/auth/resend-otp", {
+    method: "POST",
+    body: JSON.stringify({ usernameOrEmail: usernameOrEmail.trim() }),
+  }) as Promise<ApiEnvelope<void>>;
 }
 
 export type MeUser = {
@@ -54,6 +90,8 @@ export type MeUser = {
   role: string;
   displayName?: string;
   creditBalance?: number;
+  /** False until OTP verification after password signup. */
+  isVerified?: boolean;
 };
 
 export async function fetchMe(): Promise<MeUser | null> {

@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
 import { SESSION_HINT_COOKIE } from '@/lib/auth-token';
+import { VerifiedUserShell } from '@/features/auth/verified-user-shell';
 
 // HttpOnly cookies from API + client hint set after login (see lib/auth-token.ts).
 const AUTH_COOKIE_NAMES = [
@@ -20,5 +21,5 @@ export default async function UserLayout({ children }: { children: React.ReactNo
     redirect('/login');
   }
 
-  return <>{children}</>;
+  return <VerifiedUserShell>{children}</VerifiedUserShell>;
 }

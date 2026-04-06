@@ -6,6 +6,7 @@ const pathnames = {
   '/': '/',
   '/login': '/login',
   '/signup': '/signup',
+  '/verify': '/verify',
   '/pricing': '/pricing',
   '/account': '/account',
   '/account/password': '/account/password',

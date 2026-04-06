@@ -47,6 +47,25 @@ export async function updateMyProfile(body: {
   return unwrap<MyProfile>(raw);
 }
 
+export type MemberLevelActivationResult = {
+  memberLevelCode: {
+    id?: number;
+    memberLevelId?: number | null;
+    expiredAt?: string | null;
+  };
+  profile: MyProfile;
+};
+
+export async function activateMemberLevelCode(
+  code: string,
+): Promise<MemberLevelActivationResult> {
+  const raw = await apiFetch("/api/v1/member-levels-codes/activate", {
+    method: "POST",
+    body: JSON.stringify({ code: code.trim() }),
+  });
+  return unwrap<MemberLevelActivationResult>(raw);
+}
+
 export async function changePassword(body: {
   currentPassword: string;
   newPassword: string;

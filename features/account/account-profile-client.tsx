@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { fetchMe } from '@/lib/auth';
 import { fetchMyProfile, updateMyProfile } from '@/lib/account';
+import { AccountActivateSection } from './account-activate-section';
 import { AccountShell } from './account-shell';
 
 export default function AccountProfileClient() {
@@ -67,10 +68,16 @@ export default function AccountProfileClient() {
   if (loading) {
     return (
       <AccountShell>
-        <div className="space-y-4 animate-pulse rounded-2xl border border-card-border bg-card/30 p-8">
-          <div className="h-4 w-24 rounded bg-surface" />
-          <div className="h-10 w-full rounded-xl bg-surface" />
-          <div className="h-10 w-full rounded-xl bg-surface" />
+        <div className="space-y-6">
+          <div className="animate-pulse space-y-4 rounded-2xl border border-card-border bg-card/30 p-8">
+            <div className="h-4 w-40 rounded bg-surface" />
+            <div className="h-10 w-full rounded-xl bg-surface sm:max-w-md" />
+          </div>
+          <div className="animate-pulse space-y-4 rounded-2xl border border-card-border bg-card/30 p-8">
+            <div className="h-4 w-24 rounded bg-surface" />
+            <div className="h-10 w-full rounded-xl bg-surface" />
+            <div className="h-10 w-full rounded-xl bg-surface" />
+          </div>
         </div>
       </AccountShell>
     );
@@ -78,6 +85,11 @@ export default function AccountProfileClient() {
 
   return (
     <AccountShell>
+      <div className="space-y-6">
+        <AccountActivateSection
+          onActivated={(next) => setCredits(next)}
+        />
+
       <div className="rounded-2xl border border-card-border bg-card/50 p-6 sm:p-8">
         <dl className="mb-6 space-y-4 border-b border-card-border pb-6">
           <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between sm:gap-4">
@@ -156,6 +168,7 @@ export default function AccountProfileClient() {
             </button>
           </div>
         </form>
+      </div>
       </div>
     </AccountShell>
   );

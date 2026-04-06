@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Link, useRouter } from '@/i18n/navigation';
 import { KeyRound, Lock, Sparkles } from 'lucide-react';
 import { login, loginWithCode } from '@/lib/auth';
 
@@ -25,7 +24,12 @@ export default function LoginPage() {
       if (mode === 'code') {
         await loginWithCode(accessCode);
       } else {
-        await login(usernameOrEmail, password);
+        const res = await login(usernameOrEmail, password);
+        if (res.success && res.data?.verified === false) {
+          router.push('/verify');
+          router.refresh();
+          return;
+        }
       }
       router.push('/');
       router.refresh();

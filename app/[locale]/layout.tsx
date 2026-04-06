@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import "@/app/globals.css"
 import Header from '@/components/layout/header';
+import { VerificationRedirect } from '@/components/auth/verification-redirect';
 import ThemeProvider from '@/components/theme/theme-provider';
 import { NextIntlClientProvider } from 'next-intl';
 import { getMessages } from 'next-intl/server';
@@ -41,6 +42,7 @@ export default async function RootLayout({
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
             <div className="app-gradient">
+              <VerificationRedirect />
               <Header />
               <main>{children}</main>
             </div>

@@ -1,8 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import Link from 'next/link';
+import { Link, useRouter } from '@/i18n/navigation';
 import { signup } from '@/lib/auth';
 
 export default function SignupPage() {
@@ -19,7 +18,11 @@ export default function SignupPage() {
     setLoading(true);
     try {
       await signup(username, email, password);
-      router.push('/');
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('aiminions_verify_username', username.trim());
+        sessionStorage.setItem('aiminions_verify_email', email.trim());
+      }
+      router.push('/verify');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Signup failed');

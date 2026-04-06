@@ -9,7 +9,7 @@ export function AccountShell({ children }: { children: React.ReactNode }) {
   const isPassword = pathname === '/account/password';
 
   return (
-    <div className="mx-auto max-w-xl px-4 pb-16 pt-8 sm:pt-12">
+    <div className="mx-auto max-w-2xl px-4 pb-16 pt-8 sm:pt-12">
       <p className="text-xs font-medium uppercase tracking-wider text-muted">
         {t('kicker')}
       </p>
