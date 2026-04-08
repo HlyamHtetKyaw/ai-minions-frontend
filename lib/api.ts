@@ -1,10 +1,15 @@
 import { getStoredAccessToken } from "./auth-token";
-
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+import { getPublicApiBaseUrl } from "./api-base";
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
+  const base = getPublicApiBaseUrl();
+  if (!base) {
+    throw new Error(
+      "API base URL is not set (set NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)",
+    );
+  }
   const token = getStoredAccessToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${base}${path}`, {
     ...options,
     credentials: "include",
     headers: {

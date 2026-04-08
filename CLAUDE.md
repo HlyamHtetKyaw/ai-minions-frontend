@@ -85,10 +85,10 @@ Use the native fetch API only
 Always include credentials: "include" on every fetch call so cookies are sent/received automatically
 
 Base fetch wrapper — lib/api.ts
-tsconst BASE_URL = process.env.NEXT_PUBLIC_API_URL;
+tsconst base = getPublicApiBaseUrl();
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
-  const res = await fetch(`${BASE_URL}${path}`, {
+  const res = await fetch(`${base}${path}`, {
     ...options,
     credentials: "include", // always send/receive cookies
     headers: {
