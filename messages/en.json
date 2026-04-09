@@ -139,6 +139,57 @@
           "description": "Turn briefs into ready-to-post updates in one pass."
         }
       }
+    },
+    "landing": {
+      "howItWorks": {
+        "title": "How it works",
+        "subtitle": "Follow a clear path from upload to finished edit — no guesswork, just the tools you need in order."
+      },
+      "trust": {
+        "title": "Why creators use AI Minions",
+        "subtitle": "A focused studio experience with transparent limits and room to grow.",
+        "items": {
+          "speed": {
+            "title": "Fast iteration",
+            "description": "Jump between transcription, content, and edits without leaving the workspace."
+          },
+          "workflow": {
+            "title": "One connected flow",
+            "description": "Each step hands off cleanly to the next so you spend less time tab-hopping."
+          },
+          "fairUse": {
+            "title": "Credits you understand",
+            "description": "See pricing and tiers up front, then use credits where they matter most."
+          }
+        }
+      },
+      "faq": {
+        "title": "Frequently asked questions",
+        "items": {
+          "studio": {
+            "question": "What is AI Minions?",
+            "answer": "AI Minions is an AI-powered media studio for captions, transcription, content generation, voice-over, translation, and video workflows — designed as one cohesive dashboard."
+          },
+          "credits": {
+            "question": "How do credits and plans work?",
+            "answer": "You choose a membership tier or top-up pack on the pricing page. Credits apply when you run AI jobs; details and fair-use notes are shown there too."
+          },
+          "formats": {
+            "question": "What files can I upload?",
+            "answer": "Video upload accepts common formats like MP4, MOV, and AVI. Clear audio improves transcription quality; check each tool’s tips for the best results."
+          },
+          "signup": {
+            "question": "Do I need an account?",
+            "answer": "Yes. Create a free account to save your balance, run tools securely, and access your workspace from any signed-in device."
+          }
+        }
+      },
+      "cta": {
+        "title": "Ready to ship your next video?",
+        "subtitle": "Create an account, pick a plan when you’re ready, and open any studio tool from the dashboard.",
+        "primary": "Create free account",
+        "secondary": "View pricing"
+      }
     }
   },
   "toolForm": {
@@ -491,6 +542,101 @@
       "defaultMessage": "Sign in to use this feature",
       "signIn": "Sign in"
     }
+  },
+  "landing": {
+    "hero": {
+      "headline": "Create Viral Videos in Minutes — No Video Editing Skills Required",
+      "subheadline": "AI-powered transcription, captions, voice-overs, and translations. Turn your raw footage into scroll-stopping content.",
+      "cta": "Start Free",
+      "socialProof": "50,000+ videos processed"
+    },
+    "problemSolution": {
+      "title": "Stop Wasting Time on Manual Work",
+      "painPoints": {
+        "title": "The Problem",
+        "editing": "Editing takes hours",
+        "captions": "Captions are tedious",
+        "voiceTalent": "Finding voice talent is expensive"
+      },
+      "solutions": {
+        "title": "The Solution",
+        "editing": "Spend 10x less time editing",
+        "captions": "Auto-generate perfect captions in 50+ languages",
+        "voiceTalent": "AI voice-overs for free"
+      },
+      "howItWorks": {
+        "title": "How It Works",
+        "step1": "Upload your video",
+        "step2": "AI processes (transcribe, translate, generate voice)",
+        "step3": "Download ready-to-post content"
+      }
+    },
+    "socialProof": {
+      "usersCount": "50,000+ videos processed",
+      "rating": "4.8/5 rating",
+      "testimonial1": "AI Minions cut my editing time by 80%. I went from 4 hours to 30 minutes per video.",
+      "testimonial2": "The auto-caption feature is a game-changer. My TikTok views doubled in a week.",
+      "testimonial3": "Finally, a tool that understands creators. The Burmese translation is seamless.",
+      "companies": "Trusted by creators at"
+    },
+    "trust": {
+      "freePlan": "Free forever plan",
+      "noCard": "No credit card required",
+      "secure": "Secure authentication",
+      "privacy": "Your data is private"
+    },
+    "features": {
+      "title": "Powerful Features for Creators",
+      "captions": {
+        "title": "Stop Manual Captioning",
+        "description": "Auto-captions in 50+ languages with viral-style formatting",
+        "features": ["Auto-captions in 50+ languages", "Viral-style formatting", "One-click SRT export"]
+      },
+      "dubbing": {
+        "title": "Dubbing Made Easy",
+        "description": "AI voice generation with 40+ voice options",
+        "features": ["AI voice generation", "40+ voice options", "Match video timeline"]
+      },
+      "translate": {
+        "title": "Translate to Any Language",
+        "description": "Auto-translate captions to reach global audiences",
+        "features": ["Auto-translate captions", "Lip-sync dubbing", "100+ language pairs"]
+      },
+      "content": {
+        "title": "Create Content Faster",
+        "description": "Generate scripts, hooks, and captions from topics",
+        "features": ["Script generation from topics", "Hook & caption writer", "Hashtag suggestions"]
+      }
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "q1": "How much does it cost?",
+      "a1": "We offer a free forever plan with no credit card required. Paid plans start from 5,000 MMK/month for extra features.",
+      "q2": "How long to set up?",
+      "a2": "Sign up takes just 30 seconds. No credit card or installation required.",
+      "q3": "Is my content secure?",
+      "a3": "Yes, we use enterprise-grade encryption. Your content is stored securely and never shared with third parties.",
+      "q4": "Can I cancel anytime?",
+      "a4": "Yes, no lock-in contracts. Cancel your plan anytime from your account settings.",
+      "q5": "What support is available?",
+      "a5": "We offer email and live chat support. Our team typically responds within 2 hours."
+    },
+    "cta": {
+      "getStarted": "Get Started",
+      "startFree": "Start Free"
+    }
+  },
+  "footer": {
+    "tagline": "AI-powered media creation for everyone",
+    "quickLinks": "Quick Links",
+    "legal": "Legal",
+    "home": "Home",
+    "pricing": "Pricing",
+    "tools": "Tools",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cta": "Start Free",
+    "copyright": "© 2024 AI Minions. All rights reserved."
   },
   "tools": {
     "caption-studio": {

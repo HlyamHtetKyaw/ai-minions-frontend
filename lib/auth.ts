@@ -16,6 +16,38 @@ export type AuthTokenPayload = {
   verified?: boolean;
 };
 
+export type AuthErrorReason =
+  | "expired"
+  | "invalid"
+  | "not_found"
+  | "unknown";
+
+export class AuthRequestError extends Error {
+  reason: AuthErrorReason;
+
+  constructor(message: string, reason: AuthErrorReason = "unknown") {
+    super(message);
+    this.name = "AuthRequestError";
+    this.reason = reason;
+  }
+}
+
+function mapAuthErrorReason(message: string): AuthErrorReason {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("expired")) return "expired";
+  if (normalized.includes("not found") || normalized.includes("(404)")) {
+    return "not_found";
+  }
+  if (
+    normalized.includes("invalid token") ||
+    normalized.includes("token invalid") ||
+    normalized.includes("invalid")
+  ) {
+    return "invalid";
+  }
+  return "unknown";
+}
+
 function persistTokensFromAuthResponse(body: unknown) {
   if (!body || typeof body !== "object") return;
   const data = (body as ApiEnvelope<{ accessToken?: string }>).data;
@@ -81,6 +113,64 @@ export async function resendOtp(
     method: "POST",
     body: JSON.stringify({ usernameOrEmail: usernameOrEmail.trim() }),
   }) as Promise<ApiEnvelope<void>>;
+}
+
+type PasswordResetRequestPayload = {
+  token?: string;
+  accessToken?: string;
+};
+
+/**
+ * Request a password reset token for a user email.
+ */
+export async function requestPasswordReset(email: string): Promise<string> {
+  try {
+    const body = (await apiFetch("/api/v1/auth/forget-password", {
+      method: "POST",
+      body: JSON.stringify({ email: email.trim() }),
+    })) as ApiEnvelope<PasswordResetRequestPayload> &
+      PasswordResetRequestPayload;
+
+    const token =
+      body.data?.token ??
+      body.data?.accessToken ??
+      body.token ??
+      body.accessToken;
+
+    if (!token || typeof token !== "string") {
+      throw new AuthRequestError(
+        "Reset token was not returned by the server.",
+        "unknown",
+      );
+    }
+
+    return token;
+  } catch (err) {
+    if (err instanceof AuthRequestError) throw err;
+    const message =
+      err instanceof Error ? err.message : "Failed to request password reset.";
+    throw new AuthRequestError(message, mapAuthErrorReason(message));
+  }
+}
+
+/**
+ * Reset password using token + new password.
+ */
+export async function resetPassword(
+  token: string,
+  newPassword: string,
+): Promise<true> {
+  try {
+    await apiFetch("/api/v1/auth/reset-password", {
+      method: "POST",
+      body: JSON.stringify({ token: token.trim(), newPassword }),
+    });
+    return true;
+  } catch (err) {
+    const message =
+      err instanceof Error ? err.message : "Failed to reset password.";
+    throw new AuthRequestError(message, mapAuthErrorReason(message));
+  }
 }
 
 export type MeUser = {

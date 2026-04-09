@@ -4,9 +4,12 @@ const locales = ['en', 'mm'] as const;
 
 const pathnames = {
   '/': '/',
+  '/landing': '/landing',
   '/login': '/login',
   '/signup': '/signup',
   '/verify': '/verify',
+  '/forgot-password': '/forgot-password',
+  '/reset-password': '/reset-password',
   '/pricing': '/pricing',
   '/account': '/account',
   '/account/password': '/account/password',
