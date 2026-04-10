@@ -56,7 +56,7 @@ export default function ContentGenerationPage() {
         contentType,
         textLength,
         targetLanguage,
-        outputMode: outputMode === 'imageOnly' ? 'imageOnly' : 'imageAndText',
+        outputMode,
         tone,
         toonStyle,
         logoDataUrl,
@@ -136,7 +136,7 @@ export default function ContentGenerationPage() {
                 />
               ) : null}
               <TopicInput value={topic} onChange={setTopic} />
-              {outputMode === 'imageAndText' ? (
+              {outputMode === 'imageAndText' || outputMode === 'textOnly' ? (
                 <div className="space-y-1">
                   <p className="text-xs text-muted">Target language</p>
                   <div className="flex items-center gap-6 rounded-md border border-card-border bg-background px-3 py-2">
@@ -180,7 +180,7 @@ export default function ContentGenerationPage() {
                   </select>
                 </div>
               ) : null}
-              {outputMode === 'imageAndText' ? (
+              {outputMode === 'imageAndText' || outputMode === 'textOnly' ? (
                 <div className="space-y-1">
                   <p className="text-xs text-muted">Generated text length</p>
                   <div className="flex items-center gap-6 rounded-md border border-card-border bg-background px-3 py-2">

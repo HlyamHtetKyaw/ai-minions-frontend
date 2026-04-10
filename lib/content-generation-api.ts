@@ -11,7 +11,7 @@ export type ContentGenerateV2Params = {
   contentType: string;
   textLength?: 'short' | 'long';
   targetLanguage?: 'English' | 'Myanmar';
-  outputMode: 'imageOnly' | 'imageAndText';
+  outputMode: 'imageOnly' | 'imageAndText' | 'textOnly';
   tone: string;
   toonStyle?: string;
   logoDataUrl?: string;
