@@ -9,9 +9,6 @@ const AUTH_COOKIE_NAMES = [
   SESSION_HINT_COOKIE,
   'access_token',
   'refresh_token',
-  'session',
-  'token',
-  'auth',
 ];
 
 const PROTECTED_PATHS = [
@@ -27,6 +24,8 @@ const PROTECTED_PATHS = [
   '/master-editor',
   '/admin',
 ];
+
+const GUEST_ONLY_PATHS = ['/forgot-password', '/reset-password'];
 
 const intlMiddleware = createMiddleware(routing);
 
@@ -54,6 +53,16 @@ export function proxy(request: NextRequest) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = `/${routing.defaultLocale}/login`;
     return NextResponse.redirect(loginUrl);
+  }
+
+  const isGuestOnly = GUEST_ONLY_PATHS.some(
+    (p) => path === p || path.startsWith(`${p}/`),
+  );
+
+  if (isGuestOnly && isAuthenticated(request)) {
+    const homeUrl = request.nextUrl.clone();
+    homeUrl.pathname = `/${routing.defaultLocale}`;
+    return NextResponse.redirect(homeUrl);
   }
 
   return intlMiddleware(request);
