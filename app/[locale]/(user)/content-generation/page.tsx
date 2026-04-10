@@ -12,7 +12,8 @@ import TonePicker, { type ToneKey } from '@/features/content-generation/componen
 import GenerateButton from '@/features/content-generation/components/generate-button';
 import ResultPanel from '@/features/content-generation/components/result-panel';
 import UploadZone from '@/components/shared/components/upload-zone';
-import { fileToDataUrl, generateContentV2 } from '@/lib/content-generation-api';
+import { fileToDataUrl, openContentGenerationSse, startGenerateContentV2 } from '@/lib/content-generation-api';
+import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 
 // TODO: replace with real auth state
 const isSignedIn = true;
@@ -23,6 +24,7 @@ export default function ContentGenerationPage() {
   const [contentType, setContentType] = useState<ContentTypeKey>('hook');
   const [outputMode, setOutputMode] = useState<OutputModeKey>('imageAndText');
   const [textLength, setTextLength] = useState<'short' | 'long'>('short');
+  const [targetLanguage, setTargetLanguage] = useState<'English' | 'Myanmar'>('Myanmar');
   const [tone, setTone] = useState<ToneKey>('inspiring');
   const [toonStyle, setToonStyle] = useState('toon comic style, social media meme layout');
   const [topic, setTopic] = useState('');
@@ -32,17 +34,28 @@ export default function ContentGenerationPage() {
   const [generatedText, setGeneratedText] = useState('');
   const [generatedImageDataUrl, setGeneratedImageDataUrl] = useState('');
   const [storageUrl, setStorageUrl] = useState('');
+  const [status, setStatus] = useState('');
+  const [progress, setProgress] = useState<{ percent: number; label: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const isVisualOutput = outputMode === 'imageAndText' || outputMode === 'imageOnly';
 
+  const toUserSafeError = (raw: string): string => {
+    const msg = (raw ?? '').trim();
+    if (!msg) return 'Content generation failed. Please try again.';
+    return msg.length > 180 ? `${msg.slice(0, 180)}...` : msg;
+  };
+
   const handleGenerate = async () => {
     setIsLoading(true);
+    setStatus('');
+    setProgress({ percent: 8, label: 'Preparing request...' });
     try {
       const logoDataUrl = logoFile ? await fileToDataUrl(logoFile) : undefined;
-      const result = await generateContentV2({
+      const start = await startGenerateContentV2({
         topic,
         contentType,
         textLength,
+        targetLanguage,
         outputMode: outputMode === 'imageOnly' ? 'imageOnly' : 'imageAndText',
         tone,
         toonStyle,
@@ -50,10 +63,38 @@ export default function ContentGenerationPage() {
         aiOverlayTextEnabled,
         userOverlayText: userOverlayText.trim() || undefined,
       });
+      setProgress({ percent: 14, label: 'Job created. Waiting for updates...' });
 
-      setGeneratedText(result.generatedText || '');
-      setStorageUrl(result.storageUrl || '');
-      setGeneratedImageDataUrl(result.imageBase64 ? `data:image/png;base64,${result.imageBase64}` : '');
+      await new Promise<void>((resolve) => {
+        openContentGenerationSse(start.jobId, {
+          onStatus: (raw) => {
+            const parsed = parseGenerationSseProgressPayload(raw);
+            if (parsed) {
+              setProgress(parsed);
+            }
+          },
+          onDone: () => {},
+          onError: (msg) => {
+            setStatus(toUserSafeError(msg));
+            setProgress(null);
+            resolve();
+          },
+          onTerminal: (payload) => {
+            if (payload.status === 'completed' && payload.data) {
+              const result = payload.data;
+              setGeneratedText(result.generatedText || '');
+              setStorageUrl(result.storageUrl || '');
+              setGeneratedImageDataUrl(result.imageBase64 ? `data:image/png;base64,${result.imageBase64}` : '');
+              setProgress({ percent: 100, label: 'Finished 🎉' });
+              setStatus('');
+            } else {
+              setStatus(toUserSafeError(payload.message ?? 'Content generation failed.'));
+              setProgress(null);
+            }
+            resolve();
+          },
+        });
+      });
     } finally {
       setIsLoading(false);
     }
@@ -95,6 +136,33 @@ export default function ContentGenerationPage() {
                 />
               ) : null}
               <TopicInput value={topic} onChange={setTopic} />
+              {outputMode === 'imageAndText' ? (
+                <div className="space-y-1">
+                  <p className="text-xs text-muted">Target language</p>
+                  <div className="flex items-center gap-6 rounded-md border border-card-border bg-background px-3 py-2">
+                    <label className="flex items-center gap-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="targetLanguage"
+                        value="Myanmar"
+                        checked={targetLanguage === 'Myanmar'}
+                        onChange={() => setTargetLanguage('Myanmar')}
+                      />
+                      Myanmar
+                    </label>
+                    <label className="flex items-center gap-2 text-sm text-foreground">
+                      <input
+                        type="radio"
+                        name="targetLanguage"
+                        value="English"
+                        checked={targetLanguage === 'English'}
+                        onChange={() => setTargetLanguage('English')}
+                      />
+                      English
+                    </label>
+                  </div>
+                </div>
+              ) : null}
               {isVisualOutput ? (
                 <div className="space-y-1">
                   <p className="text-xs text-muted">Toon style</p>
@@ -162,6 +230,29 @@ export default function ContentGenerationPage() {
               ) : null}
               <TonePicker value={tone} onChange={setTone} />
               <GenerateButton topic={topic} isLoading={isLoading} onClick={handleGenerate} />
+              {progress ? (
+                <div className={`rounded-xl border border-card-border bg-card px-4 py-3 ${progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className={`text-sm ${progress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                      {progress.label}
+                    </p>
+                    <p className="text-xs font-semibold text-muted-foreground tabular-nums">
+                      {progress.percent}%
+                    </p>
+                  </div>
+                  <div className="mt-2 h-2 w-full rounded-full bg-subtle">
+                    <div
+                      className={`h-2 rounded-full transition-[width] ${progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'}`}
+                      style={{ width: `${progress.percent}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+              {!progress && status ? (
+                <div className="rounded-xl border border-card-border bg-card px-4 py-3">
+                  <p className="text-sm text-muted-foreground">{status}</p>
+                </div>
+              ) : null}
               <ResultPanel text={generatedText} imageDataUrl={generatedImageDataUrl} storageUrl={storageUrl} />
             </div>
           </div>
