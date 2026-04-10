@@ -1,6 +1,11 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
+import {
+  authHeaders,
+  errorMessageFromBody,
+  fetchInit,
+  fetchWithAuthRetry,
+} from '@/lib/api-auth-fetch';
 import { openGenerationJobSseStream, type GenerationJobSseHandlers } from '@/lib/generation-job-sse';
-import { getStoredAccessToken, setSessionHintCookie, setStoredAccessToken } from '@/lib/auth-token';
 
 /** Phase 1 — no job id until {@link transcribeCompleteUpload}. */
 export type TranscribePrepareData = {
@@ -77,65 +82,10 @@ type ApiEnvelope<T> = {
   data?: T;
 };
 
-/** ApiResponse from GlobalExceptionHandler, or Spring ProblemDetail / error JSON. */
-function errorMessageFromBody(json: unknown, fallback: string): string {
-  if (json && typeof json === 'object') {
-    const o = json as Record<string, unknown>;
-    if (typeof o.message === 'string' && o.message.trim()) return o.message;
-    if (typeof o.detail === 'string' && o.detail.trim()) return o.detail;
-  }
-  return fallback;
-}
-
 function inferSourceType(file: File): 'audio' | 'video' {
   const t = file.type.toLowerCase();
   if (t.startsWith('video/')) return 'video';
   return 'audio';
-}
-
-const fetchInit: RequestInit = { credentials: 'include' };
-
-function authHeaders(): Record<string, string> {
-  const token = getStoredAccessToken();
-  return token ? { Authorization: `Bearer ${token}` } : {};
-}
-
-/**
- * Uses refresh_token cookie when present; updates localStorage access token from JSON body.
- * Helps when the access JWT expired during a long upload or after a backend restart cleared Redis session
- * while cookies still carry a valid refresh token.
- */
-async function tryRefreshAccessToken(): Promise<boolean> {
-  const base = getPublicApiBaseUrl();
-  if (!base) return false;
-  const res = await fetch(`${base}/api/v1/auth/refresh`, {
-    ...fetchInit,
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: '{}',
-  });
-  if (!res.ok) return false;
-  const json = (await res.json().catch(() => ({}))) as ApiEnvelopeLoose<{ accessToken?: string }>;
-  const token =
-    json.data != null && typeof json.data === 'object' && typeof json.data.accessToken === 'string'
-      ? json.data.accessToken
-      : undefined;
-  if (!token) return false;
-  setStoredAccessToken(token);
-  setSessionHintCookie();
-  return true;
-}
-
-async function fetchWithAuthRetry(url: string, init: RequestInit): Promise<Response> {
-  const res = await fetch(url, init);
-  if (res.status !== 401) return res;
-  const refreshed = await tryRefreshAccessToken();
-  if (!refreshed) return res;
-  const h = new Headers(init.headers as HeadersInit);
-  const token = getStoredAccessToken();
-  if (token) h.set('Authorization', `Bearer ${token}`);
-  else h.delete('Authorization');
-  return fetch(url, { ...init, headers: h });
 }
 
 /**

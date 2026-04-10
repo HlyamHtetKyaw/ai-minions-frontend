@@ -467,7 +467,12 @@ declare const messages: {
     "swap": "Swap",
     "swapAria": "Swap source and target languages and text",
     "action": "Translate",
-    "translating": "Translating…"
+    "translating": "Translating…",
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "unauthorized": "Your session expired. Please sign in again.",
+      "verificationRequired": "Please verify your email to use translation."
+    }
   },
   "shared": {
     "uploadZone": {
