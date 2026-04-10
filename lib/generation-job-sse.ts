@@ -45,13 +45,115 @@ export type GenerationJobSseHandlers = {
   onStatus: (rawData: string) => void;
   onDone: () => void;
   onError: (message: string) => void;
+  /** First byte / EventSource `open` — stream is established (before first `status` event). */
+  onOpen?: () => void;
   /** Fired once when status is completed | failed | error | timeout (after {@link onStatus} for that chunk). */
   onTerminal?: (payload: GenerationJobTerminalPayload) => void;
 };
 
 /**
+ * Derives UI progress from SSE JSON:
+ * - Main-service hello: `{ status: "subscribed", generationId, jobId, featureName?, … }`
+ * - Processing-service: `{ status: "processing", stage, jobId, generationId }` (see {@code GenerationStatusPublisher})
+ */
+export function parseGenerationSseProgressPayload(raw: string): { percent: number; label: string } | null {
+  try {
+    const o = JSON.parse(raw) as Record<string, unknown>;
+    const statusRaw = String(o.status ?? '').toLowerCase();
+
+    const stepOrStage =
+      (typeof o.stage === 'string' && o.stage.trim() ? o.stage : null) ??
+      (typeof o.step === 'string' && o.step.trim() ? o.step : null);
+
+    if (statusRaw === 'subscribed') {
+      const rawName =
+        typeof o.featureName === 'string' && o.featureName.trim()
+          ? o.featureName.trim().toLowerCase()
+          : '';
+      // Friendly copy for the first SSE hello (avoid raw API names like "TRANSCRIBE" in the UI).
+      let label = "Hang tight — we're working on what you asked for. It won't take long!";
+      if (rawName.includes('transcribe')) {
+        label = "Thanks for waiting — we're getting your transcript ready for you.";
+      }
+      return {
+        percent: 38,
+        label,
+      };
+    }
+
+    if (statusRaw === 'processing' && stepOrStage) {
+      const stage = stepOrStage.toLowerCase();
+      const stages: Record<string, { percent: number; label: string }> = {
+        download: { percent: 22, label: 'Downloading media' },
+        extract_audio: { percent: 38, label: 'Extracting audio' },
+        normalize_audio: { percent: 48, label: 'Normalizing audio' },
+        silence_removal: { percent: 58, label: 'Removing silence' },
+        ai_transcription: { percent: 78, label: 'Transcribing with AI' },
+      };
+      const hit = stages[stage];
+      if (hit) {
+        return { percent: hit.percent, label: hit.label };
+      }
+      const pretty = stage.replace(/_/g, ' ');
+      return { percent: 52, label: `Processing: ${pretty}` };
+    }
+
+    const message =
+      typeof o.message === 'string' && o.message.trim()
+        ? o.message.trim()
+        : stepOrStage
+          ? stepOrStage.replace(/_/g, ' ')
+          : statusRaw || 'Working…';
+
+    const candidates = [
+      o.progressPercent,
+      o.percent,
+      o.progress,
+      (o.meta && typeof o.meta === 'object' ? (o.meta as Record<string, unknown>).progressPercent : undefined),
+    ];
+    const n = candidates.find((v) => typeof v === 'number') as number | undefined;
+    if (typeof n === 'number' && Number.isFinite(n)) {
+      return { percent: Math.max(0, Math.min(100, Math.round(n))), label: message };
+    }
+
+    const map: Record<string, number> = {
+      queued: 5,
+      pending: 5,
+      started: 10,
+      processing: 45,
+      downloading: 20,
+      download: 20,
+      extracting: 35,
+      ffmpeg: 40,
+      converting: 45,
+      transcribing: 70,
+      transcribe: 70,
+      uploading: 85,
+      saving: 90,
+      notifying: 95,
+      completed: 100,
+      failed: 100,
+      error: 100,
+      timeout: 100,
+    };
+
+    const percent =
+      map[statusRaw] ?? Object.entries(map).find(([k]) => message.toLowerCase().includes(k))?.[1];
+    if (typeof percent === 'number') {
+      return { percent, label: message };
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+/**
  * SSE for any {@code ai_generations} async job (transcribe, translate, voice-over, …).
- * Same cookie/credentials rules as other API calls.
+ *
+ * Uses native {@link EventSource} with `withCredentials: true` so HttpOnly cookies are sent cross-origin.
+ * Firefox (and some Chromium builds) often label cross-origin `fetch()` + `ReadableStream` SSE as "Blocked"
+ * in DevTools even when CORS headers are correct; EventSource is the supported path for credentialed SSE.
  */
 export function openGenerationJobSseStream(
   generationId: number,
@@ -64,18 +166,19 @@ export function openGenerationJobSseStream(
     return;
   }
   const path = `${base}/api/v1/generations/${generationId}/stream`;
-  const ac = new AbortController();
   let finished = false;
   let sawTerminalStatus = false;
+  let es: EventSource | null = null;
 
   const finish = () => {
     if (finished) return;
     finished = true;
     try {
-      ac.abort();
+      es?.close();
     } catch {
       /* ignore */
     }
+    es = null;
     handlers.onDone();
   };
 
@@ -87,13 +190,13 @@ export function openGenerationJobSseStream(
       if (s === 'completed' || s === 'failed' || s === 'error' || s === 'timeout') {
         sawTerminalStatus = true;
         const jobId = typeof o.jobId === 'number' ? o.jobId : Number(o.jobId);
-        const generationId = typeof o.generationId === 'number' ? o.generationId : Number(o.generationId);
+        const generationIdNum = typeof o.generationId === 'number' ? o.generationId : Number(o.generationId);
         handlers.onTerminal?.({
           status: s as GenerationJobTerminalPayload['status'],
           outputData: o.outputData,
           message: typeof o.message === 'string' ? o.message : undefined,
           jobId: Number.isFinite(jobId) ? jobId : undefined,
-          generationId: Number.isFinite(generationId) ? generationId : undefined,
+          generationId: Number.isFinite(generationIdNum) ? generationIdNum : undefined,
         });
         finish();
       }
@@ -102,11 +205,47 @@ export function openGenerationJobSseStream(
     }
   };
 
+  if (typeof EventSource !== 'undefined') {
+    try {
+      es = new EventSource(path, { withCredentials: true });
+    } catch (e) {
+      handlers.onError(e instanceof Error ? e.message : String(e));
+      handlers.onDone();
+      return;
+    }
+
+    es.addEventListener('status', (ev: MessageEvent<string>) => {
+      if (ev.data) handlePayload(ev.data);
+    });
+
+    es.addEventListener('message', (ev: MessageEvent<string>) => {
+      if (ev.data) handlePayload(ev.data);
+    });
+
+    es.onopen = () => {
+      if (!finished) handlers.onOpen?.();
+    };
+
+    es.onerror = () => {
+      if (finished) return;
+      const state = es?.readyState;
+      if (state === EventSource.CLOSED) {
+        if (!sawTerminalStatus) {
+          handlers.onError('SSE connection closed before the job finished.');
+        }
+        finish();
+      }
+    };
+
+    return;
+  }
+
+  /** Fallback: streaming fetch (no custom Accept — avoids extra CORS complexity in some browsers). */
+  const ac = new AbortController();
   void (async () => {
     try {
       const res = await fetch(path, {
         method: 'GET',
-        headers: { Accept: 'text/event-stream' },
         credentials: 'include',
         signal: ac.signal,
       });
@@ -124,6 +263,8 @@ export function openGenerationJobSseStream(
         finish();
         return;
       }
+
+      if (!finished) handlers.onOpen?.();
 
       const body = res.body;
       if (!body) {

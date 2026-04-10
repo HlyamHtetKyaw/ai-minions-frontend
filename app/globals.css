@@ -19,6 +19,10 @@
   --status-available: #34d399;
   --status-live: #a78bfa;
   --nav-pill: rgba(0, 0, 0, 0.06);
+  /* Home / landing primary buttons — use with arbitrary Tailwind or .landing-home-primary */
+  --landing-home-primary-bg: #e6c978;
+  --landing-home-primary-fg: #0a1128;
+  --landing-home-primary-hover: #efd589;
 }
 
 .dark {
@@ -40,6 +44,9 @@
   --status-available: #34d399;
   --status-live: #a78bfa;
   --nav-pill: rgba(255, 255, 255, 0.08);
+  --landing-home-primary-bg: #e6c978;
+  --landing-home-primary-fg: #0a1128;
+  --landing-home-primary-hover: #efd589;
 }
 
 @theme inline {
@@ -63,6 +70,19 @@
   --color-nav-pill: var(--nav-pill);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* Solid primary CTA for home + landing (avoids Tailwind @theme issues with multi-part color names) */
+.landing-home-primary {
+  background-color: var(--landing-home-primary-bg);
+  color: var(--landing-home-primary-fg);
+  transition: background-color 0.15s ease;
+}
+.landing-home-primary:hover {
+  background-color: var(--landing-home-primary-hover);
+}
+.group:hover .landing-home-primary--group {
+  background-color: var(--landing-home-primary-hover);
 }
 
 html {
