@@ -433,6 +433,12 @@ declare const messages: {
       "textOnly": "Scripts, captions, and posts without an image.",
       "imageOnly": "A single image asset from your brief."
     },
+    "logoUpload": {
+      "kicker": "Brand logo",
+      "label": "Upload logo (optional)",
+      "instruction": "Click to upload your logo",
+      "formats": "PNG, JPG, WEBP, SVG"
+    },
     "topicLabel": "Topic or description",
     "topicPlaceholder": "Describe what you want to create content about… Example: A video about AI tools for content creators",
     "toneLabel": "Tone",
