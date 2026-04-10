@@ -14,9 +14,11 @@ import {
   transcribeUploadToSignedUrl,
   transcribeCompleteUpload,
   openGenerationJobSseStream,
-  pollAiGenerationUntilTerminal,
 } from '@/lib/transcribe-api';
-import { extractTranscriptTextFromOutputData } from '@/lib/generation-job-sse';
+import {
+  extractTranscriptTextFromOutputData,
+  parseGenerationSseProgressPayload,
+} from '@/lib/generation-job-sse';
 
 export default function TranscribePage() {
   const t = useTranslations('transcribe');
@@ -100,68 +102,12 @@ export default function TranscribePage() {
     }
   };
 
-  const parseProgressFromSse = (raw: string): { percent: number; label: string } | null => {
-    try {
-      const o = JSON.parse(raw) as Record<string, unknown>;
-      const statusRaw = String(o.status ?? '').toLowerCase();
-      const message =
-        typeof o.message === 'string' && o.message.trim()
-          ? o.message
-          : typeof o.step === 'string' && o.step.trim()
-            ? o.step
-            : statusRaw || 'working';
-
-      const candidates = [
-        o.progressPercent,
-        o.percent,
-        o.progress,
-        (o.meta && typeof o.meta === 'object' ? (o.meta as Record<string, unknown>).progressPercent : undefined),
-      ];
-      const n = candidates.find((v) => typeof v === 'number') as number | undefined;
-      if (typeof n === 'number' && Number.isFinite(n)) {
-        return { percent: Math.max(0, Math.min(100, Math.round(n))), label: message };
-      }
-
-      // Fallback mapping when backend doesn't send a numeric percent.
-      const map: Record<string, number> = {
-        queued: 5,
-        pending: 5,
-        started: 10,
-        downloading: 20,
-        download: 20,
-        extracting: 35,
-        ffmpeg: 40,
-        converting: 45,
-        transcribing: 70,
-        transcribe: 70,
-        uploading: 85,
-        saving: 90,
-        notifying: 95,
-        completed: 100,
-        failed: 100,
-        error: 100,
-        timeout: 100,
-      };
-
-      const percent =
-        map[statusRaw] ??
-        Object.entries(map).find(([k]) => message.toLowerCase().includes(k))?.[1];
-      if (typeof percent === 'number') {
-        return { percent, label: message };
-      }
-    } catch {
-      // ignore non-JSON chunks
-    }
-    return null;
-  };
-
   const handleTranscribe = async () => {
     if (!uploadedFile) return;
     setIsLoading(true);
     setStatus('');
     setProgress(null);
     try {
-      setStatus('Preparing upload…');
       setProgress({ percent: 10, label: 'Preparing upload…' });
       const prep = await withTimeout(
         transcribePrepareUpload(uploadedFile),
@@ -169,7 +115,6 @@ export default function TranscribePage() {
         'Prepare upload timed out. The server may be unavailable.',
       );
 
-      setStatus('Uploading…');
       setProgress({ percent: 25, label: 'Uploading…' });
       await withTimeout(
         transcribeUploadToSignedUrl(prep.uploadUrl, uploadedFile),
@@ -177,7 +122,6 @@ export default function TranscribePage() {
         'Upload timed out. Check your network and try again.',
       );
 
-      setStatus('Starting transcription…');
       setProgress({ percent: 35, label: 'Starting transcription…' });
       const complete = await withTimeout(
         transcribeCompleteUpload(prep.uploadSessionId),
@@ -185,30 +129,25 @@ export default function TranscribePage() {
         'Starting job timed out. The server may be unhealthy (DB/Redis).',
       );
 
-      let finished = false;
       openGenerationJobSseStream(complete.jobId, {
         onStatus: (raw) => {
-          const p = parseProgressFromSse(raw);
+          const p = parseGenerationSseProgressPayload(raw);
           if (p) {
             setProgress(p);
-            if (p.label) setStatus(p.label);
           }
         },
-        onDone: () => {
-          finished = true;
-        },
+        onDone: () => {},
         onError: (msg) => {
           console.warn('[Transcribe SSE] error:', msg);
           setStatus(toUserSafeError(msg));
           setProgress(null);
-          finished = true;
         },
         onTerminal: (payload) => {
           const text = extractTranscriptTextFromOutputData(payload.outputData);
           if (text) {
             setTranscribedText(text);
             setStatus('');
-            setProgress({ percent: 100, label: 'Completed' });
+            setProgress({ percent: 100, label: 'Finished 🎉' });
           } else {
             const raw = payload.message ?? 'No transcript text returned.';
             setStatus(toUserSafeError(raw));
@@ -216,33 +155,6 @@ export default function TranscribePage() {
           }
         },
       });
-
-      // SSE can close before terminal if Redis/SSE mismatch. Poll DB as a fallback.
-      setTimeout(() => {
-        void (async () => {
-          if (finished) return;
-          setStatus('Finalizing…');
-          setProgress({ percent: 90, label: 'Finalizing…' });
-          const snap = await pollAiGenerationUntilTerminal(complete.jobId, {
-            maxAttempts: 45,
-            intervalMs: 2000,
-          });
-          if (!snap) {
-            setStatus('Timed out waiting for transcript.');
-            setProgress(null);
-            return;
-          }
-          const text = extractTranscriptTextFromOutputData(snap.outputData);
-          if (text) {
-            setTranscribedText(text);
-            setStatus('');
-            setProgress({ percent: 100, label: 'Completed' });
-          } else {
-            setStatus('Job finished but transcript was empty.');
-            setProgress(null);
-          }
-        })();
-      }, 8000);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       console.warn('[Transcribe] failed:', e);
@@ -264,9 +176,8 @@ export default function TranscribePage() {
         <LoginGate />
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          {/* Same horizontal rail as Header: mx-auto max-w-7xl + page px-4 sm:px-6 */}
-          <div className="mx-auto w-full max-w-7xl">
-            <div className="transcribe-shell space-y-8">
+          <div className="mx-auto w-full max-w-2xl">
+            <div className="transcribe-shell space-y-6">
               <PageHeader
                 icon={
                   <PageHeader.Icon tileClassName="transcribe-icon-tile">
@@ -293,6 +204,7 @@ export default function TranscribePage() {
                   setUploadedFile(f);
                   setTranscribedText('');
                   setStatus('');
+                  setProgress(null);
                 }}
               />
 
@@ -307,24 +219,38 @@ export default function TranscribePage() {
                   Result
                 </p>
 
-                {progress && !transcribedText ? (
-                  <div className="rounded-xl border border-card-border bg-card px-4 py-3">
+                {progress ? (
+                  <div
+                    className={`rounded-xl border border-card-border bg-card px-4 py-3 ${
+                      progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
+                    }`}
+                  >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm text-muted-foreground">{progress.label}</p>
+                      <p
+                        className={`text-sm ${
+                          progress.percent >= 100
+                            ? 'font-medium text-foreground'
+                            : 'text-muted-foreground'
+                        }`}
+                      >
+                        {progress.label}
+                      </p>
                       <p className="text-xs font-semibold text-muted-foreground tabular-nums">
                         {progress.percent}%
                       </p>
                     </div>
                     <div className="mt-2 h-2 w-full rounded-full bg-subtle">
                       <div
-                        className="h-2 rounded-full bg-foreground transition-[width]"
+                        className={`h-2 rounded-full transition-[width] ${
+                          progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'
+                        }`}
                         style={{ width: `${progress.percent}%` }}
                       />
                     </div>
                   </div>
                 ) : null}
 
-                {status ? (
+                {!progress && status ? (
                   <div className="rounded-xl border border-card-border bg-card px-4 py-3">
                     <p className="text-sm text-muted-foreground">{status}</p>
                   </div>
@@ -332,7 +258,7 @@ export default function TranscribePage() {
 
                 {transcribedText ? (
                   <TranscriptResult text={transcribedText} />
-                ) : (
+                ) : !progress ? (
                   <div className="rounded-xl border border-card-border bg-card px-4 py-6">
                     <p className="text-sm font-medium text-foreground">
                       No transcript yet
@@ -341,7 +267,7 @@ export default function TranscribePage() {
                       Upload an audio/video file, then click Transcribe to generate the result here.
                     </p>
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>
