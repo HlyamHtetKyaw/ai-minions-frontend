@@ -19,7 +19,10 @@ declare const messages: {
     "pointsHint": "Reward points balance",
     "signedInAs": "Signed in as",
     "account": "Account",
-    "logout": "Logout"
+    "logout": "Logout",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "navigationLabel": "Site navigation"
   },
   "verify": {
     "metaTitle": "Verify email — AI Minions",

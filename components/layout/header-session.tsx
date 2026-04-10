@@ -5,13 +5,8 @@ import { Link, useRouter } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, LogOut, User } from 'lucide-react';
 import { apiFetch } from '@/lib/api';
-import {
-  ACCESS_TOKEN_STORAGE_KEY,
-  AUTH_CHANGED_EVENT,
-  clearClientAuth,
-  getStoredAccessToken,
-} from '@/lib/auth-token';
-import { fetchMe, type MeUser } from '@/lib/auth';
+import { clearClientAuth } from '@/lib/auth-token';
+import { useAuthSession } from '@/components/layout/auth-session-context';
 
 function initials(name: string) {
   const t = name.trim();
@@ -26,56 +21,9 @@ function initials(name: string) {
 export default function HeaderSession() {
   const t = useTranslations('header');
   const router = useRouter();
-  const [user, setUser] = useState<MeUser | null>(null);
-  /** True until we know session state; no /me call when there is no token. */
-  const [loading, setLoading] = useState(true);
+  const { user, loading, setUser } = useAuthSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
-  /** Latest user for effects (avoid showing skeleton on every navigation). */
-  const userRef = useRef<MeUser | null>(null);
-  userRef.current = user;
-
-  useEffect(() => {
-    let cancelled = false;
-
-    const resolve = async (silent: boolean) => {
-      const token = getStoredAccessToken();
-      if (!token) {
-        if (!cancelled) {
-          setUser(null);
-          setLoading(false);
-        }
-        return;
-      }
-      if (!silent && !cancelled) setLoading(true);
-      const me = await fetchMe();
-      if (!cancelled) {
-        setUser(me);
-        setLoading(false);
-      }
-    };
-
-    void resolve(false);
-
-    function onAuthChanged() {
-      void resolve(userRef.current != null);
-    }
-
-    function onStorage(e: StorageEvent) {
-      if (e.storageArea !== localStorage) return;
-      if (e.key !== ACCESS_TOKEN_STORAGE_KEY) return;
-      void resolve(userRef.current != null);
-    }
-
-    window.addEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
-    window.addEventListener('storage', onStorage);
-
-    return () => {
-      cancelled = true;
-      window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
-      window.removeEventListener('storage', onStorage);
-    };
-  }, []);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -128,7 +76,7 @@ export default function HeaderSession() {
           <button
             type="button"
             onClick={() => setMenuOpen((o) => !o)}
-            className="flex items-center gap-2 rounded-full border border-card-border bg-surface/60 py-1 pl-1 pr-2 transition-colors hover:bg-surface hover:border-accent-gold/30 sm:pr-3"
+            className="flex items-center gap-2 rounded-full border border-card-border bg-surface/60 py-1 pl-1 pr-2 transition-colors hover:border-accent-gold/30 hover:bg-surface sm:pr-3"
             aria-expanded={menuOpen}
             aria-haspopup="menu"
           >
@@ -189,7 +137,7 @@ export default function HeaderSession() {
   }
 
   return (
-    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
+    <div className="hidden shrink-0 items-center gap-1 sm:gap-2 lg:flex">
       <span
         className="hidden rounded-full border border-accent-gold/25 bg-accent-gold-muted/50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-gold/90 lg:inline-flex"
         title={t('pointsGuestHint')}

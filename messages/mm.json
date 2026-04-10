@@ -16,7 +16,10 @@
     "pointsHint": "ပွိုင့်လက်ကျန်ငွေ",
     "signedInAs": "ဝင်ရောက်ထားသူ",
     "account": "အကောင့်",
-    "logout": "ထွက်ရန်"
+    "logout": "ထွက်ရန်",
+    "openMenu": "မီနူး ဖွင့်ရန်",
+    "closeMenu": "မီနူး ပိတ်ရန်",
+    "navigationLabel": "ဝဘ်ဆိုဒ် လမ်းညွှန်မှု"
   },
   "verify": {
     "metaTitle": "အီးမေးလ် အတည်ပြုရန် — AI Minions",
