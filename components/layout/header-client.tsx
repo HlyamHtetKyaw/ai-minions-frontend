@@ -8,20 +8,27 @@ import { FEATURES } from '@/features';
 type Props = {
   toolsLabel: string;
   homeLabel: string;
+  workspaceLabel: string;
   pricingLabel: string;
 };
 
-export default function HeaderClient({ toolsLabel, homeLabel, pricingLabel }: Props) {
+export default function HeaderClient({
+  toolsLabel,
+  homeLabel,
+  workspaceLabel,
+  pricingLabel,
+}: Props) {
   const pathname = usePathname();
   const tFeatures = useTranslations('features');
   const isHome = pathname === '/';
+  const isWorkspace = pathname === '/tools';
   const isPricing = pathname === '/pricing';
 
   return (
-    <nav className="hidden md:flex flex-1 items-center justify-center gap-1 px-4">
+    <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 px-1 sm:px-2 md:flex lg:gap-1 lg:px-3">
       <NavLink
         href="/"
-        className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+        className={`rounded-full px-2.5 py-2 text-sm font-medium transition-colors lg:px-4 ${
           isHome ? 'bg-nav-pill text-foreground shadow-sm' : 'text-muted hover:text-foreground'
         }`}
       >
@@ -29,8 +36,17 @@ export default function HeaderClient({ toolsLabel, homeLabel, pricingLabel }: Pr
       </NavLink>
 
       <NavLink
+        href="/tools"
+        className={`rounded-full px-2.5 py-2 text-sm font-medium transition-colors lg:px-4 ${
+          isWorkspace ? 'bg-nav-pill text-foreground shadow-sm' : 'text-muted hover:text-foreground'
+        }`}
+      >
+        {workspaceLabel}
+      </NavLink>
+
+      <NavLink
         href="/pricing"
-        className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+        className={`rounded-full px-2.5 py-2 text-sm font-medium transition-colors lg:px-4 ${
           isPricing ? 'bg-nav-pill text-foreground shadow-sm' : 'text-muted hover:text-foreground'
         }`}
       >
@@ -40,7 +56,7 @@ export default function HeaderClient({ toolsLabel, homeLabel, pricingLabel }: Pr
       <div className="group/menu relative z-10 hover:z-[300] focus-within:z-[300]">
         <button
           type="button"
-          className="flex items-center gap-1 rounded-full px-4 py-2 text-sm font-medium text-muted hover:text-foreground transition-colors"
+          className="flex items-center gap-1 rounded-full px-2.5 py-2 text-sm font-medium text-muted transition-colors hover:text-foreground lg:px-4"
         >
           {toolsLabel}
           <ChevronDown className="h-3.5 w-3.5 opacity-70" />

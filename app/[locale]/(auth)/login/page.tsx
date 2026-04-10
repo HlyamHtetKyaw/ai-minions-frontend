@@ -31,7 +31,7 @@ export default function LoginPage() {
           return;
         }
       }
-      router.push('/');
+      router.push('/tools');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');

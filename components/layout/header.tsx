@@ -9,8 +9,8 @@ export default async function Header() {
   const tHeader = await getTranslations('header');
 
   return (
-    <header className="sticky top-0 z-[100] px-4 pt-4 sm:px-6">
-      <div className="mx-auto flex max-w-7xl items-center gap-3 rounded-full glass-panel px-3 py-2 pl-4 shadow-lg sm:px-5 sm:py-2.5">
+    <header className="sticky top-0 z-[100] min-w-0 px-4 pt-4 sm:px-6">
+      <div className="mx-auto flex w-full min-w-0 max-w-7xl items-center gap-2 rounded-full glass-panel px-2 py-2 pl-3 shadow-lg sm:gap-3 sm:px-4 sm:py-2.5 sm:pl-4 md:px-5">
         {/* Logo */}
         <Link href="/" className="flex shrink-0 items-center gap-3">
           <span
@@ -34,6 +34,7 @@ export default async function Header() {
         <HeaderClient
           toolsLabel={tHeader('aiModels')}
           homeLabel={tHeader('home')}
+          workspaceLabel={tHeader('tools')}
           pricingLabel={tHeader('pricing')}
         />
 

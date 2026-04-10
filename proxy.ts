@@ -60,9 +60,9 @@ export function proxy(request: NextRequest) {
   );
 
   if (isGuestOnly && isAuthenticated(request)) {
-    const homeUrl = request.nextUrl.clone();
-    homeUrl.pathname = `/${routing.defaultLocale}`;
-    return NextResponse.redirect(homeUrl);
+    const workspaceUrl = request.nextUrl.clone();
+    workspaceUrl.pathname = `/${routing.defaultLocale}/tools`;
+    return NextResponse.redirect(workspaceUrl);
   }
 
   return intlMiddleware(request);

@@ -189,7 +189,7 @@ export default function HeaderSession() {
   }
 
   return (
-    <div className="flex items-center gap-1 sm:gap-2">
+    <div className="flex shrink-0 items-center gap-1 sm:gap-2">
       <span
         className="hidden rounded-full border border-accent-gold/25 bg-accent-gold-muted/50 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-accent-gold/90 lg:inline-flex"
         title={t('pointsGuestHint')}
@@ -198,13 +198,13 @@ export default function HeaderSession() {
       </span>
       <Link
         href="/login"
-        className="rounded-full px-3 py-2 text-sm font-medium text-muted transition-colors hover:bg-surface hover:text-foreground"
+        className="rounded-full px-2.5 py-2 text-xs font-medium text-muted transition-colors hover:bg-surface hover:text-foreground sm:px-3 sm:text-sm"
       >
         {t('signIn')}
       </Link>
       <Link
         href="/signup"
-        className="rounded-full bg-primary px-3 py-2 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover"
+        className="rounded-full bg-primary px-2.5 py-2 text-xs font-medium text-primary-fg transition-colors hover:bg-primary-hover sm:px-3 sm:text-sm"
       >
         {t('signUp')}
       </Link>

@@ -12,15 +12,15 @@ export default async function HeroOverview() {
     <section className="mb-14 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start lg:gap-10">
       <div className="flex flex-col justify-center">
         <h1 className="mb-4 max-w-xl text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl lg:text-[2.35rem] lg:leading-[1.15]">
-          {tHome('heroTitle')}
+          {tHome('toolsPage.heroTitle')}
         </h1>
         <p className="mb-8 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
-          {tHome('heroDescription')}
+          {tHome('toolsPage.heroDescription')}
         </p>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
           <Link
             href={captionStudioHref}
-            className="inline-flex w-fit items-center justify-center rounded-full bg-primary px-7 py-3 text-sm font-semibold text-primary-fg shadow-lg transition hover:bg-primary-hover"
+            className="landing-home-primary inline-flex w-fit items-center justify-center rounded-full px-7 py-3 text-sm font-bold shadow-lg"
           >
             {tHome('openStudio')}
           </Link>

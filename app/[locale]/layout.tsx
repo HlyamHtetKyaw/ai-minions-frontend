@@ -38,13 +38,13 @@ export default async function RootLayout({
       className={`dark ${geistSans.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen text-foreground antialiased">
+      <body className="min-h-screen min-w-0 overflow-x-clip text-foreground antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
-            <div className="app-gradient">
+            <div className="app-gradient min-w-0 w-full overflow-x-clip">
               <VerificationRedirect />
               <Header />
-              <main>{children}</main>
+              <main className="min-w-0">{children}</main>
             </div>
           </ThemeProvider>
         </NextIntlClientProvider>

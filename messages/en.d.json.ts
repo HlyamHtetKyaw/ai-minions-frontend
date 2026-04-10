@@ -120,7 +120,13 @@ declare const messages: {
     "signedInStatus": "Signed in as Creator",
     "allTools": "Workspace tools",
     "available": "Available",
-    "openCardLink": "Open studio",
+    "openCardLink": "Open tool",
+    "toolsPage": {
+      "metaTitle": "Workspace tools — AI Minions",
+      "metaDescription": "Your dashboard for transcription, captions, voice-over, translation, and the rest of your AI media workflow.",
+      "heroTitle": "Your AI media workspace",
+      "heroDescription": "Transcribe, caption, generate, and polish from one dashboard — pick a tool below or open Caption Studio to start."
+    },
     "overview": {
       "title": "Overview",
       "subtitle": "Today's workspace",
@@ -151,6 +157,7 @@ declare const messages: {
       "trust": {
         "title": "Why creators use AI Minions",
         "subtitle": "A focused studio experience with transparent limits and room to grow.",
+        "socialProof": "Trusted by 10,000+ creators.",
         "items": {
           "speed": {
             "title": "Fast iteration",
@@ -168,6 +175,7 @@ declare const messages: {
       },
       "faq": {
         "title": "Frequently asked questions",
+        "subtitle": "Quick answers about the studio, credits, files, and signing up.",
         "items": {
           "studio": {
             "question": "What is AI Minions?",
@@ -185,6 +193,41 @@ declare const messages: {
             "question": "Do I need an account?",
             "answer": "Yes. Create a free account to save your balance, run tools securely, and access your workspace from any signed-in device."
           }
+        }
+      },
+      "workspaceTools": {
+        "subtitle": "Create, edit, and process your videos with AI",
+        "dashboardLink": "Open dashboard",
+        "recommended": "Recommended",
+        "ctaStart": "Start",
+        "flow": {
+          "leadMark": "↑",
+          "steps": {
+            "upload": "Upload",
+            "transcribe": "Transcribe",
+            "translate": "Translate",
+            "edit": "Edit",
+            "voiceOver": "Voice Over"
+          }
+        },
+        "sections": {
+          "startHere": {
+            "title": "Start here"
+          },
+          "process": {
+            "title": "Process"
+          },
+          "createEdit": {
+            "title": "Create & edit"
+          }
+        },
+        "descriptions": {
+          "video-upload": "Upload your video to begin",
+          "transcribe": "Turn video/audio into text",
+          "translate": "Translate captions or scripts",
+          "video-edit": "Trim and enhance your video",
+          "voice-over": "Add AI narration",
+          "content-generation": "Create scripts or posts"
         }
       },
       "cta": {
@@ -268,15 +311,15 @@ declare const messages: {
       "description": "Manage users, pricing, and platform settings."
     },
     "content-generation": {
-      "name": "Content Generation",
-      "description": "Generate scripts, posts, and marketing content with AI.",
-      "category": "Content studio",
+      "name": "Generate content",
+      "description": "Turn ideas into scripts, posts, and marketing copy with AI.",
+      "category": "Create content",
       "cardLetter": "C"
     },
     "transcribe": {
-      "name": "Transcribe",
-      "description": "Convert audio and video speech to accurate text.",
-      "category": "Auto caption",
+      "name": "Convert speech to text",
+      "description": "Turn speech in your audio or video into editable text.",
+      "category": "Process media",
       "cardLetter": "T"
     },
     "transcript": {
@@ -286,27 +329,27 @@ declare const messages: {
       "cardLetter": "R"
     },
     "video-edit": {
-      "name": "Video Edit",
-      "description": "Edit, trim, and enhance video content with AI.",
-      "category": "Studio editor",
+      "name": "Edit video",
+      "description": "Trim, adjust, and polish your video in the editor.",
+      "category": "Edit & finalize",
       "cardLetter": "E"
     },
     "video-upload": {
-      "name": "Video Upload",
-      "description": "Upload and manage video files for processing.",
-      "category": "Pipeline",
+      "name": "Upload video",
+      "description": "Upload videos to start editing or processing.",
+      "category": "Process media",
       "cardLetter": "V"
     },
     "voice-over": {
-      "name": "Voice Over",
-      "description": "Add AI voice-over narration to your videos.",
-      "category": "Dubbing",
+      "name": "Add voice over",
+      "description": "Add natural AI narration to your project.",
+      "category": "Create content",
       "cardLetter": "D"
     },
     "translate": {
-      "name": "Translate",
-      "description": "Multi-language translation for scripts and captions.",
-      "category": "Language",
+      "name": "Translate text",
+      "description": "Translate scripts and captions into other languages.",
+      "category": "Process media",
       "cardLetter": "A"
     }
   },
