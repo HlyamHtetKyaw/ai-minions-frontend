@@ -406,6 +406,86 @@
       "loadMore": "ထပ်မံဖတ်ရန်",
       "editProject": "ပရော့ချက် တည်းဖြတ်ရန်",
       "deleteProject": "ပရော့ချက် ဖျက်ရန်"
+    },
+    "workspace": {
+      "returnToDashboard": "ဒက်ရှ်ဘုတ်သို့ ပြန်သွားရန်",
+      "aspectToggleAria": "ကင်ဗပ်အချိုးအစား",
+      "aspect": {
+        "ratio16_9": "16:9",
+        "ratio9_16": "9:16",
+        "ratio1_1": "1:1",
+        "ratio4_3": "4:3"
+      },
+      "exportVideo": "ဗီဒီယို ထုတ်မည်",
+      "tools": {
+        "media": "မီဒီယာ",
+        "text": "စာသား",
+        "blur": "မှုန်ဝါး",
+        "image": "ပုံ",
+        "crop": "ဖြတ်တောက်",
+        "speed": "အမြန်နှုန်း",
+        "subs": "စာတန်း",
+        "trim": "ဖြတ်တောက်",
+        "audio": "အသံ"
+      },
+      "tabs": {
+        "properties": "ဂုဏ်သတ္တိများ"
+      },
+      "font": "ဖောင့်",
+      "position": "တည်နေရာ",
+      "opacity": "အရောင်ဖျော့မှု",
+      "timing": "အချိန်မှတ်တမ်း",
+      "timeIn": "စ",
+      "timeOut": "ကြား",
+      "deleteLayer": "အလွှာဖျက်ရန်",
+      "subs": {
+        "uploadTitle": ".srt ဖိုင်တင်ရန်",
+        "uploadHint": "တင်သွင်းသော စာတန်းများကို စာသားအလွှာများအဖြစ် ပြောင်းပြီး လွတ်လပ်စွာ တည်းဖြတ်နိုင်သည်။",
+        "invalidFile": ".srt ဖိုင်ကို ရွေးပါ။",
+        "empty": "ဤဖိုင်တွင် စာတန်းမတွေ့ပါ။"
+      },
+      "canvasAria": "တည်းဖြတ်ကင်ဗပ်",
+      "canvasSampleText": "Hello world",
+      "timeAtPlayhead": "{current} / {total}",
+      "timeline": {
+        "emptyUpload": "အချိန်မျဉ်းကြောင်းကို မြင်ရန် ဗီဒီယို တင်ပါ။",
+        "preparing": "အချိန်မျဉ်းကြောင်း ပြင်ဆင်နေသည်…",
+        "tracks": {
+          "video": "ဗီဒီယို",
+          "text": "စာသား",
+          "blur": "မှုန်ဝါး",
+          "image": "ပုံ",
+          "subtitle": "စာတန်း",
+          "audio": "အသံ"
+        },
+        "clips": {
+          "uploadedVideo": "ဗီဒီယို",
+          "summerReel": "Summer reel.mp4",
+          "helloWorld": "Hello world",
+          "blurLayer": "Blur layer",
+          "autoSubs": "Auto subtitles",
+          "backgroundMp3": "background.mp3"
+        },
+        "trim": {
+          "splitAtPlayhead": "ဒီမှာခွဲမည်",
+          "splitAtPlayheadAria": "ပလေးဟက်ဒ်တည်နေရာမှာ ဗီဒီယိုကို နှစ်ပိုင်းခွဲပါ၊ အပိုင်းမဖျက်ပါ",
+          "deleteSegment": "ကလစ်ဖျက်မည်",
+          "deleteSegmentAria": "ရွေးထားသော ဗီဒီယိုအပိုင်းကို တိုင်မလိုင်းမှ ဖယ်ရှားပါ (အနည်းဆုံး နှစ်ပိုင်းလိုအပ်သည်)"
+        }
+      },
+      "playback": {
+        "prev": "ယခင်ပုံရိပ်",
+        "next": "နောက်ပုံရိပ်",
+        "play": "ဖွင့်မည်",
+        "pause": "ခဏရပ်မည်",
+        "speed": "အမြန်နှုန်း",
+        "speedAria": "ဖွင့်သည့်အမြန်နှုန်း",
+        "volume": "အသံအတိုးအကျယ်",
+        "mute": "အသံပိတ်ရန်",
+        "unmute": "အသံဖွင့်ရန်",
+        "fullscreenEnter": "မျက်နှြင်အပြည့်",
+        "fullscreenExit": "မျက်နှြင်အပြည့်မှ ထွက်ရန်"
+      }
     }
   },
   "transcript": {

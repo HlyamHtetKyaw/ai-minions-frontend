@@ -755,3 +755,9 @@ button.video-edit-export-card .video-edit-export-card-desc {
   transform: none;
   box-shadow: none;
 }
+
+/* Video-edit timeline: WaveSurfer v7 Shadow DOM — `::part` must target the host (first child) per https://wavesurfer.xyz/docs/ CSS styling */
+.timeline-waveform-host > div::part(scroll),
+.timeline-waveform-host > div::part(wrapper) {
+  min-height: 40px;
+}

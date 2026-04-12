@@ -4,6 +4,19 @@ import { useMemo, useState } from 'react';
 import NextLink from 'next/link';
 import { useLocale, useTranslations } from 'next-intl';
 import { ChevronDown, Pencil, Play, Plus, Trash2 } from 'lucide-react';
+import {
+  dashboardActionTileClassName,
+  DashboardCardGrid,
+  DashboardCardGridItem,
+  DashboardFilterTabs,
+  DashboardLoadMoreRow,
+  DashboardMediaCardShell,
+  DashboardSectionHeader,
+  DashboardShellHeader,
+  DashboardStatCard,
+  DashboardStatGrid,
+  type DashboardFilterOption,
+} from '@/components/shared/dashboard';
 
 type ProjectFilter = 'all' | 'drafts' | 'exported';
 type ProjectStatus = 'exported' | 'processing' | 'draft';
@@ -82,6 +95,15 @@ export function ProjectsDashboard() {
       ? `/${locale}/video-edit/work-space?project=${encodeURIComponent(projectId)}`
       : `/${locale}/video-edit/work-space`;
 
+  const filterOptions = useMemo(
+    (): DashboardFilterOption<ProjectFilter>[] => [
+      { id: 'all', label: t('filters.all') },
+      { id: 'drafts', label: t('filters.drafts') },
+      { id: 'exported', label: t('filters.exported') },
+    ],
+    [t],
+  );
+
   const visible = useMemo(
     () => MOCK_PROJECTS.filter((p) => matchesFilter(p, filter)),
     [filter],
@@ -89,73 +111,42 @@ export function ProjectsDashboard() {
 
   return (
     <div className="video-edit-projects space-y-8">
-      <div className="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {t('title')}
-          </h1>
-          <p className="mt-1 text-sm text-muted">{t('subtitle')}</p>
-        </div>
-        <NextLink
-          href={workspace()}
-          className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-foreground/25 bg-transparent px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground/5"
-        >
-          <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
-          {t('newProject')}
-        </NextLink>
-      </div>
+      <DashboardShellHeader
+        title={t('title')}
+        subtitle={t('subtitle')}
+        action={
+          <NextLink
+            href={workspace()}
+            className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl border border-foreground/25 bg-transparent px-4 py-2.5 text-sm font-medium text-foreground transition-colors hover:bg-foreground/5"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2.25} aria-hidden />
+            {t('newProject')}
+          </NextLink>
+        }
+      />
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <div className="video-edit-projects-stat rounded-2xl border border-white/10 bg-black/20 p-5 dark:bg-white/4">
-          <p className="text-xs font-medium text-muted">{t('stats.totalProjects')}</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">
-            {STATS.totalProjects}
-          </p>
-        </div>
-        <div className="video-edit-projects-stat rounded-2xl border border-white/10 bg-black/20 p-5 dark:bg-white/4">
-          <p className="text-xs font-medium text-muted">{t('stats.exportedVideos')}</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">
-            {STATS.exportedVideos}
-          </p>
-        </div>
-        <div className="video-edit-projects-stat rounded-2xl border border-white/10 bg-black/20 p-5 dark:bg-white/4">
-          <p className="text-xs font-medium text-muted">{t('stats.storageUsed')}</p>
-          <p className="mt-2 text-3xl font-bold tabular-nums text-foreground">
-            {STATS.storageUsed}
-          </p>
-        </div>
-      </div>
+      <DashboardStatGrid>
+        <DashboardStatCard label={t('stats.totalProjects')} value={STATS.totalProjects} />
+        <DashboardStatCard label={t('stats.exportedVideos')} value={STATS.exportedVideos} />
+        <DashboardStatCard label={t('stats.storageUsed')} value={STATS.storageUsed} />
+      </DashboardStatGrid>
 
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-lg font-semibold text-foreground">{t('recent')}</h2>
-        <div
-          className="flex flex-wrap gap-2"
-          role="tablist"
-          aria-label={t('filtersAria')}
-        >
-          {(['all', 'drafts', 'exported'] as const).map((key) => (
-            <button
-              key={key}
-              type="button"
-              role="tab"
-              aria-selected={filter === key}
-              onClick={() => setFilter(key)}
-              className={`rounded-lg px-3.5 py-1.5 text-sm font-medium transition-colors ${
-                filter === key
-                  ? 'border border-foreground/40 bg-foreground/5 text-foreground'
-                  : 'border border-transparent text-muted hover:bg-foreground/5 hover:text-foreground'
-              }`}
-            >
-              {t(`filters.${key}`)}
-            </button>
-          ))}
-        </div>
-      </div>
+      <DashboardSectionHeader
+        title={t('recent')}
+        trailing={
+          <DashboardFilterTabs
+            options={filterOptions}
+            value={filter}
+            onChange={setFilter}
+            ariaLabel={t('filtersAria')}
+          />
+        }
+      />
 
-      <ul className="grid list-none gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <DashboardCardGrid>
         {visible.map((project) => (
-          <li key={project.id}>
-            <article className="video-edit-project-card group flex h-full flex-col overflow-hidden rounded-2xl border border-white/10 bg-black/15 shadow-sm dark:bg-white/3">
+          <DashboardCardGridItem key={project.id}>
+            <DashboardMediaCardShell>
               <NextLink
                 href={workspace(project.id)}
                 className="relative block aspect-video overflow-hidden bg-linear-to-br from-zinc-800 via-zinc-900 to-black"
@@ -197,24 +188,21 @@ export function ProjectsDashboard() {
                   </div>
                 </div>
               </div>
-            </article>
-          </li>
+            </DashboardMediaCardShell>
+          </DashboardCardGridItem>
         ))}
 
-        <li>
-          <NextLink
-            href={workspace()}
-            className="flex min-h-[280px] flex-col items-center justify-center gap-3 rounded-2xl border border-dashed border-white/20 bg-black/10 px-6 py-10 text-center transition-colors hover:border-emerald-500/40 hover:bg-emerald-500/6 dark:bg-white/2"
-          >
+        <DashboardCardGridItem>
+          <NextLink href={workspace()} className={dashboardActionTileClassName}>
             <span className="flex h-14 w-14 items-center justify-center rounded-full border border-white/15 bg-black/20 text-foreground">
               <Plus className="h-7 w-7" strokeWidth={2} />
             </span>
             <span className="text-sm font-medium text-foreground">{t('newProject')}</span>
           </NextLink>
-        </li>
-      </ul>
+        </DashboardCardGridItem>
+      </DashboardCardGrid>
 
-      <div className="flex justify-center pb-4 pt-2">
+      <DashboardLoadMoreRow>
         <button
           type="button"
           className="flex h-10 w-10 items-center justify-center rounded-full border border-white/15 bg-black/20 text-muted transition-colors hover:border-white/30 hover:text-foreground"
@@ -222,7 +210,7 @@ export function ProjectsDashboard() {
         >
           <ChevronDown className="h-5 w-5" />
         </button>
-      </div>
+      </DashboardLoadMoreRow>
     </div>
   );
 }
