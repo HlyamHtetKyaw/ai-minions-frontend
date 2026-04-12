@@ -22,6 +22,7 @@ const PROTECTED_PATHS = [
   '/ai-voice',
   '/voice-gen-live',
   '/master-editor',
+  '/editor',
   '/admin',
 ];
 

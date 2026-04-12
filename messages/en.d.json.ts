@@ -409,6 +409,86 @@ declare const messages: {
       "loadMore": "Load more",
       "editProject": "Edit project",
       "deleteProject": "Delete project"
+    },
+    "workspace": {
+      "returnToDashboard": "Return to dashboard",
+      "aspectToggleAria": "Canvas aspect ratio",
+      "aspect": {
+        "ratio16_9": "16:9",
+        "ratio9_16": "9:16",
+        "ratio1_1": "1:1",
+        "ratio4_3": "4:3"
+      },
+      "exportVideo": "Export video",
+      "tools": {
+        "media": "media",
+        "text": "text",
+        "blur": "blur",
+        "image": "image",
+        "crop": "crop",
+        "speed": "speed",
+        "subs": "subs",
+        "trim": "trim",
+        "audio": "audio"
+      },
+      "tabs": {
+        "properties": "properties"
+      },
+      "font": "Font",
+      "position": "Position",
+      "opacity": "Opacity",
+      "timing": "Timing",
+      "timeIn": "in",
+      "timeOut": "out",
+      "deleteLayer": "Delete layer",
+      "subs": {
+        "uploadTitle": "Upload .srt file",
+        "uploadHint": "Imported captions will be converted to text layers which you can edit freely.",
+        "invalidFile": "Please choose a .srt file.",
+        "empty": "No subtitles found in this file."
+      },
+      "canvasAria": "Edit canvas",
+      "canvasSampleText": "Hello world",
+      "timeAtPlayhead": "{current} / {total}",
+      "timeline": {
+        "emptyUpload": "Upload a video to see the timeline.",
+        "preparing": "Preparing timeline…",
+        "tracks": {
+          "video": "video",
+          "text": "text",
+          "blur": "blur",
+          "image": "image",
+          "subtitle": "subtitle",
+          "audio": "audio"
+        },
+        "clips": {
+          "uploadedVideo": "Video",
+          "summerReel": "Summer reel.mp4",
+          "helloWorld": "Hello world",
+          "blurLayer": "Blur layer",
+          "autoSubs": "Auto subtitles",
+          "backgroundMp3": "background.mp3"
+        },
+        "trim": {
+          "splitAtPlayhead": "Split here",
+          "splitAtPlayheadAria": "Divide the video clip at the playhead into two segments; nothing is removed",
+          "deleteSegment": "Delete clip",
+          "deleteSegmentAria": "Remove the selected video segment from the timeline (requires at least two segments)"
+        }
+      },
+      "playback": {
+        "prev": "Previous frame",
+        "next": "Next frame",
+        "play": "Play",
+        "pause": "Pause",
+        "speed": "Speed",
+        "speedAria": "Playback speed",
+        "volume": "Volume",
+        "mute": "Mute",
+        "unmute": "Unmute",
+        "fullscreenEnter": "Enter fullscreen",
+        "fullscreenExit": "Exit fullscreen"
+      }
     }
   },
   "transcript": {

@@ -21,6 +21,7 @@ const pathnames = {
   '/voice-over': '/voice-over',
   '/video-edit': '/video-edit',
   '/video-edit/work-space': '/video-edit/work-space',
+  '/editor': '/editor',
   '/translate': '/translate',
   '/admin': '/admin'
 } as const satisfies Pathnames<typeof locales>;
