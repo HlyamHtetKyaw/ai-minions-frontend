@@ -20,6 +20,7 @@ const pathnames = {
   '/content-generation': '/content-generation',
   '/voice-over': '/voice-over',
   '/video-edit': '/video-edit',
+  '/video-edit/work-space': '/video-edit/work-space',
   '/translate': '/translate',
   '/admin': '/admin'
 } as const satisfies Pathnames<typeof locales>;

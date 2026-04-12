@@ -376,6 +376,36 @@
     "uploadZone": {
       "label": "Upload your video to start editing",
       "kicker": "Upload video"
+    },
+    "projects": {
+      "title": "My projects",
+      "subtitle": "All your video edits in one place",
+      "newProject": "New project",
+      "stats": {
+        "totalProjects": "Total projects",
+        "exportedVideos": "Exported videos",
+        "storageUsed": "Storage used"
+      },
+      "recent": "Recent projects",
+      "filtersAria": "Filter projects",
+      "filters": {
+        "all": "All",
+        "drafts": "Drafts",
+        "exported": "Exported"
+      },
+      "timeAgo": {
+        "twoDays": "2 days ago",
+        "oneWeek": "1 week ago",
+        "threeDays": "3 days ago"
+      },
+      "status": {
+        "exported": "Exported",
+        "processing": "Processing",
+        "draft": "Draft"
+      },
+      "loadMore": "Load more",
+      "editProject": "Edit project",
+      "deleteProject": "Delete project"
     }
   },
   "transcript": {

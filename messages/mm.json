@@ -376,6 +376,36 @@
     "uploadZone": {
       "label": "တည်းဖြတ်ရန် ဗီဒီယိုတင်ပါ",
       "kicker": "ဗီဒီယို တင်ရန်"
+    },
+    "projects": {
+      "title": "ကျွန်ုပ်၏ ပရော့ချက်များ",
+      "subtitle": "ဗီဒီယိုတည်းဖြတ်မှုအားလုံးကို တစ်နေရာတည်းတွင်",
+      "newProject": "ပရော့ချက်အသစ်",
+      "stats": {
+        "totalProjects": "ပရော့ချက် စုစုပေါင်း",
+        "exportedVideos": "ထုတ်ပြီးဗီဒီယိုများ",
+        "storageUsed": "သုံးစွဲသိုလှောင်မှု"
+      },
+      "recent": "မကြာသေးမီ ပရော့ချက်များ",
+      "filtersAria": "ပရော့ချက်စစ်ထုတ်ရန်",
+      "filters": {
+        "all": "အားလုံး",
+        "drafts": "မူကြမ်း",
+        "exported": "ထုတ်ပြီး"
+      },
+      "timeAgo": {
+        "twoDays": "၂ ရက်က",
+        "oneWeek": "၁ ပတ်က",
+        "threeDays": "၃ ရက်က"
+      },
+      "status": {
+        "exported": "ထုတ်ပြီး",
+        "processing": "လုပ်ဆောင်နေ",
+        "draft": "မူကြမ်း"
+      },
+      "loadMore": "ထပ်မံဖတ်ရန်",
+      "editProject": "ပရော့ချက် တည်းဖြတ်ရန်",
+      "deleteProject": "ပရော့ချက် ဖျက်ရန်"
     }
   },
   "transcript": {
