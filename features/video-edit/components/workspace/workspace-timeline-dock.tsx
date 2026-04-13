@@ -1,6 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import {
   Maximize2,
   Minimize2,
@@ -12,19 +19,24 @@ import {
   Volume2,
   VolumeX,
 } from 'lucide-react';
-import { useTimelineClipDrag } from '@/hooks/useTimelineClipDrag';
+import {
+  useTimelineClipDrag,
+  type UseTimelineClipDragParams,
+} from '@/hooks/useTimelineClipDrag';
 import { useEditorStore } from '@/store/editorStore';
 import { WorkspaceIconButton } from './ui';
 import { WorkspaceVideoWaveform } from './workspace-video-waveform';
 
 type Clip = {
   id: string;
+  kind: 'video' | 'text' | 'blur' | 'image' | 'audio';
   label: string;
   start: number;
   width: number;
   tone: 'violet' | 'emerald' | 'rose' | 'amber' | 'sky';
   thumbnailSrc?: string;
   verticalLane?: number;
+  audioType?: 'music' | 'voiceover';
 };
 
 const toneClass: Record<Clip['tone'], string> = {
@@ -35,22 +47,40 @@ const toneClass: Record<Clip['tone'], string> = {
   sky: 'bg-sky-600/90 ring-sky-400/25',
 };
 
+const WorkspaceTimelineDragGuideContext = createContext<
+  ((ratios: number[] | null) => void) | null
+>(null);
+
+function useWorkspaceTimelineClipDrag(
+  params: Omit<UseTimelineClipDragParams, 'onDragGuideLines'>,
+) {
+  const setGuide = useContext(WorkspaceTimelineDragGuideContext);
+  return useTimelineClipDrag({
+    ...params,
+    onDragGuideLines: setGuide ?? undefined,
+  });
+}
+
 export type WorkspaceTimelinePhase = 'no-media' | 'loading' | 'ready';
 
 type WorkspaceTextClipProps = {
   clip: Clip;
   durationSec: number;
   selected: boolean;
+  rowId: string;
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
+  onMoveToRow?: (clipId: string, rowId: string) => void;
 };
 
 function WorkspaceTextTimelineClip({
   clip,
   durationSec,
   selected,
+  rowId,
   trackLaneRef,
   onSelect,
+  onMoveToRow,
 }: WorkspaceTextClipProps) {
   const updateTextLayer = useEditorStore((s) => s.updateTextLayer);
   const startTime = clip.start * durationSec;
@@ -69,13 +99,15 @@ function WorkspaceTextTimelineClip({
     tooltipText,
     tooltipPosition,
     handlers,
-  } = useTimelineClipDrag({
+  } = useWorkspaceTimelineClipDrag({
     layerId: clip.id,
     startTime,
     endTime,
     duration: durationSec,
     trackLaneRef,
     onUpdate: onClipUpdate,
+    currentRowId: rowId,
+    onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
   });
 
   return (
@@ -154,16 +186,20 @@ type WorkspaceBlurClipProps = {
   clip: Clip;
   durationSec: number;
   selected: boolean;
+  rowId: string;
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
+  onMoveToRow?: (clipId: string, rowId: string) => void;
 };
 
 function WorkspaceBlurTimelineClip({
   clip,
   durationSec,
   selected,
+  rowId,
   trackLaneRef,
   onSelect,
+  onMoveToRow,
 }: WorkspaceBlurClipProps) {
   const updateBlurLayer = useEditorStore((s) => s.updateBlurLayer);
   const startTime = clip.start * durationSec;
@@ -182,13 +218,15 @@ function WorkspaceBlurTimelineClip({
     tooltipText,
     tooltipPosition,
     handlers,
-  } = useTimelineClipDrag({
+  } = useWorkspaceTimelineClipDrag({
     layerId: clip.id,
     startTime,
     endTime,
     duration: durationSec,
     trackLaneRef,
     onUpdate: onClipUpdate,
+    currentRowId: rowId,
+    onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
   });
 
   return (
@@ -268,16 +306,20 @@ type WorkspaceImageClipProps = {
   clip: Clip;
   durationSec: number;
   selected: boolean;
+  rowId: string;
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
+  onMoveToRow?: (clipId: string, rowId: string) => void;
 };
 
 function WorkspaceImageTimelineClip({
   clip,
   durationSec,
   selected,
+  rowId,
   trackLaneRef,
   onSelect,
+  onMoveToRow,
 }: WorkspaceImageClipProps) {
   const updateImageLayer = useEditorStore((s) => s.updateImageLayer);
   const startTime = clip.start * durationSec;
@@ -298,13 +340,15 @@ function WorkspaceImageTimelineClip({
     tooltipText,
     tooltipPosition,
     handlers,
-  } = useTimelineClipDrag({
+  } = useWorkspaceTimelineClipDrag({
     layerId: clip.id,
     startTime,
     endTime,
     duration: durationSec,
     trackLaneRef,
     onUpdate: onClipUpdate,
+    currentRowId: rowId,
+    onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
   });
 
   return (
@@ -396,16 +440,30 @@ type WorkspaceVideoClipProps = {
   clip: Clip;
   durationSec: number;
   selected: boolean;
+  rowId: string;
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
+  onMoveToRow?: (clipId: string, rowId: string) => void;
+};
+
+type WorkspaceAudioClipProps = {
+  clip: Clip;
+  durationSec: number;
+  selected: boolean;
+  rowId: string;
+  trackLaneRef: React.RefObject<HTMLDivElement | null>;
+  onSelect: (id: string) => void;
+  onMoveToRow?: (clipId: string, rowId: string) => void;
 };
 
 function WorkspaceVideoTimelineClip({
   clip,
   durationSec,
   selected,
+  rowId,
   trackLaneRef,
   onSelect,
+  onMoveToRow,
 }: WorkspaceVideoClipProps) {
   const playbackSpeed = useEditorStore((s) => s.playbackSpeed);
   const updateVideoTimelineSegment = useEditorStore((s) => s.updateVideoTimelineSegment);
@@ -425,13 +483,15 @@ function WorkspaceVideoTimelineClip({
     tooltipText,
     tooltipPosition,
     handlers,
-  } = useTimelineClipDrag({
+  } = useWorkspaceTimelineClipDrag({
     layerId: clip.id,
     startTime,
     endTime,
     duration: durationSec,
     trackLaneRef,
     onUpdate: onClipUpdate,
+    currentRowId: rowId,
+    onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
   });
 
   return (
@@ -520,6 +580,106 @@ function WorkspaceVideoTimelineClip({
   );
 }
 
+function WorkspaceAudioTimelineClip({
+  clip,
+  durationSec,
+  selected,
+  rowId,
+  trackLaneRef,
+  onSelect,
+  onMoveToRow,
+}: WorkspaceAudioClipProps) {
+  const updateAudioTrack = useEditorStore((s) => s.updateAudioTrack);
+  const startTime = clip.start * durationSec;
+  const endTime = (clip.start + clip.width) * durationSec;
+
+  const onClipUpdate = useCallback(
+    (patch: { startTime?: number; endTime?: number }) => {
+      updateAudioTrack(clip.id, patch);
+    },
+    [clip.id, updateAudioTrack],
+  );
+
+  const { clipStyle, isDragging, tooltipText, tooltipPosition, handlers } = useWorkspaceTimelineClipDrag({
+    layerId: clip.id,
+    startTime,
+    endTime,
+    duration: durationSec,
+    trackLaneRef,
+    onUpdate: onClipUpdate,
+    currentRowId: rowId,
+    onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
+  });
+
+  const isMusic = clip.audioType === 'music';
+  const bg = isMusic ? '#0a1612' : '#0a1a2a';
+  const border = selected
+    ? isMusic
+      ? '2px solid #1D9E75'
+      : '2px solid #378ADD'
+    : isMusic
+      ? '0.5px solid #1D9E75'
+      : '0.5px solid #185FA5';
+
+  return (
+    <>
+      <div
+        data-timeline-clip
+        className="absolute top-1 flex h-[calc(100%-0.5rem)] min-w-8 touch-none items-center overflow-hidden rounded px-2 text-[10px] font-medium ring-1 ring-inset"
+        style={{ ...clipStyle, boxSizing: 'border-box', background: bg, color: '#D4D4D8', border }}
+      >
+        {selected && (
+          <>
+            <div
+              className="absolute top-0 bottom-0 left-0 z-10"
+              style={{ width: 6, background: 'rgba(255,255,255,0.3)', cursor: 'col-resize' }}
+              aria-hidden
+              onMouseDown={handlers.onLeftHandleMouseDown}
+            />
+            <div
+              className="absolute top-0 right-0 bottom-0 z-10"
+              style={{ width: 6, background: 'rgba(255,255,255,0.3)', cursor: 'col-resize' }}
+              aria-hidden
+              onMouseDown={handlers.onRightHandleMouseDown}
+            />
+          </>
+        )}
+        <div
+          className={
+            selected
+              ? 'absolute top-0 right-[6px] bottom-0 left-[6px] flex cursor-grab items-center overflow-hidden text-left leading-none select-none active:cursor-grabbing'
+              : 'absolute inset-0 flex cursor-grab items-center overflow-hidden text-left leading-none select-none active:cursor-grabbing'
+          }
+          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
+          onMouseDown={(e) => {
+            onSelect(clip.id);
+            handlers.onBodyMouseDown(e);
+          }}
+        >
+          <span className="truncate">{clip.label}</span>
+        </div>
+      </div>
+      {tooltipText != null && tooltipPosition != null && (
+        <div
+          className="pointer-events-none fixed z-100 whitespace-nowrap"
+          style={{
+            left: tooltipPosition.x,
+            top: tooltipPosition.y,
+            transform: 'translate(-50%, calc(-100% - 4px))',
+            background: '#1a1a1a',
+            color: '#ffffff',
+            fontSize: 10,
+            borderRadius: 4,
+            padding: '3px 7px',
+          }}
+        >
+          {tooltipText}
+        </div>
+      )}
+    </>
+  );
+}
+
 type WorkspaceTimelineDockProps = {
   phase: WorkspaceTimelinePhase;
   durationSec: number;
@@ -558,6 +718,7 @@ type WorkspaceTimelineDockProps = {
   onTimelineDeselect?: () => void;
   /** Select a clip (video or text) and sync the active tool in the shell. */
   onTimelineClipSelect?: (clipId: string) => void;
+  onTimelineClipMoveRow?: (clipId: string, rowId: string) => void;
   /** When true, show split-at-playhead control in the transport row. */
   trimToolActive?: boolean;
   splitAtPlayheadLabel?: string;
@@ -567,6 +728,13 @@ type WorkspaceTimelineDockProps = {
   deleteSegmentAriaLabel?: string;
   deleteSegmentEnabled?: boolean;
   onDeleteVideoSegment?: () => void;
+  selectedAudioTrackId?: string | null;
+  onTimelineAudioClipSelect?: (clipId: string) => void;
+  audioUploadVisible?: boolean;
+  addMusicLabel?: string;
+  addVoiceoverLabel?: string;
+  onAddMusic?: () => void;
+  onAddVoiceover?: () => void;
 };
 
 export function WorkspaceTimelineDock({
@@ -604,6 +772,7 @@ export function WorkspaceTimelineDock({
   selectedTimelineClipId = null,
   onTimelineDeselect,
   onTimelineClipSelect,
+  onTimelineClipMoveRow,
   trimToolActive = false,
   splitAtPlayheadLabel = 'Split',
   splitAtPlayheadAriaLabel,
@@ -612,13 +781,22 @@ export function WorkspaceTimelineDock({
   deleteSegmentAriaLabel,
   deleteSegmentEnabled = false,
   onDeleteVideoSegment,
+  selectedAudioTrackId = null,
+  onTimelineAudioClipSelect,
+  audioUploadVisible = false,
+  addMusicLabel = 'Add music',
+  addVoiceoverLabel = 'Add voiceover',
+  onAddMusic,
+  onAddVoiceover,
 }: WorkspaceTimelineDockProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
   const videoTrackLaneRef = useRef<HTMLDivElement>(null);
   const textTrackLaneRef = useRef<HTMLDivElement>(null);
   const blurTrackLaneRef = useRef<HTMLDivElement>(null);
   const imageTrackLaneRef = useRef<HTMLDivElement>(null);
+  const audioTrackLaneRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const [clipDragGuideRatios, setClipDragGuideRatios] = useState<number[] | null>(null);
 
   const ticks: number[] = [];
   const safeDuration = Math.max(durationSec, 1e-6);
@@ -741,6 +919,24 @@ export function WorkspaceTimelineDock({
             <option value="4">4×</option>
           </select>
         </label>
+        {audioUploadVisible ? (
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onAddMusic}
+              className="rounded-md bg-[#0a1612] px-2.5 py-1.5 text-[11px] font-medium text-[#1D9E75] ring-1 ring-[#1D9E75]/60 transition-colors hover:bg-[#0f2218]"
+            >
+              {addMusicLabel}
+            </button>
+            <button
+              type="button"
+              onClick={onAddVoiceover}
+              className="rounded-md bg-[#0a1a2a] px-2.5 py-1.5 text-[11px] font-medium text-[#378ADD] ring-1 ring-[#185FA5]/70 transition-colors hover:bg-[#0f1f33]"
+            >
+              {addVoiceoverLabel}
+            </button>
+          </div>
+        ) : null}
         <div
           className={`ml-auto flex min-w-32 flex-wrap items-center justify-end gap-2 sm:flex-nowrap ${transportDisabled ? 'pointer-events-none opacity-40' : ''}`}
         >
@@ -793,38 +989,34 @@ export function WorkspaceTimelineDock({
       )}
 
       {phase === 'ready' && (
-        <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
-          <div
-            ref={timelineRef}
-            className="relative flex min-w-0 flex-col bg-black/25"
-            role="presentation"
-          >
+        <WorkspaceTimelineDragGuideContext.Provider value={setClipDragGuideRatios}>
+          <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
             <div
-              className="relative h-7 shrink-0 cursor-pointer border-b border-white/10 bg-black/40"
-              onMouseDown={onRulerMouseDown}
+              ref={timelineRef}
+              className="relative flex min-w-0 flex-col bg-black/25"
+              role="presentation"
             >
-              {ticks.map((t) => (
-                <span
-                  key={t}
-                  className="pointer-events-none absolute top-1 font-mono text-[10px] text-muted"
-                  style={{ left: `${(t / safeDuration) * 100}%`, transform: 'translateX(-50%)' }}
-                >
-                  {t}s
-                </span>
-              ))}
-            </div>
-
-            <div className="relative flex min-h-0 flex-col">
               <div
-                className="pointer-events-none absolute bottom-0 top-0 z-10 w-px bg-violet-400"
-                style={{ left: `${playheadPosition * 100}%` }}
+                className="relative h-7 shrink-0 cursor-pointer border-b border-white/10 bg-black/40"
+                onMouseDown={onRulerMouseDown}
               >
-                <div className="absolute -left-1.5 top-0 h-2.5 w-3.5 rounded-sm bg-violet-400 shadow-sm ring-1 ring-violet-200/40" />
+                {ticks.map((t) => (
+                  <span
+                    key={t}
+                    className="pointer-events-none absolute top-1 font-mono text-[10px] text-muted"
+                    style={{ left: `${(t / safeDuration) * 100}%`, transform: 'translateX(-50%)' }}
+                  >
+                    {t}s
+                  </span>
+                ))}
               </div>
-              {tracks.map((row) => (
+
+              <div className="relative flex min-h-0 flex-col">
+                {tracks.map((row) => (
                 <div
                   key={row.id}
                   data-timeline-track-row
+                  data-row-id={row.id}
                   ref={
                     row.id === 'text'
                       ? textTrackLaneRef
@@ -834,6 +1026,8 @@ export function WorkspaceTimelineDock({
                           ? blurTrackLaneRef
                           : row.id === 'image'
                             ? imageTrackLaneRef
+                            : row.id === 'audio'
+                              ? audioTrackLaneRef
                             : undefined
                   }
                   className={
@@ -845,7 +1039,9 @@ export function WorkspaceTimelineDock({
                     row.id === 'text' ||
                     row.id === 'video' ||
                     row.id === 'blur' ||
-                    row.id === 'image'
+                    row.id === 'image' ||
+                    row.id === 'audio' ||
+                    row.id === 'subtitle'
                       ? (e) => {
                           if (e.target === e.currentTarget) {
                             e.stopPropagation();
@@ -856,51 +1052,73 @@ export function WorkspaceTimelineDock({
                   }
                 >
                   {row.clips.map((clip) => {
-                    if (row.id === 'video' && onTimelineClipSelect != null) {
+                    if (clip.kind === 'video' && onTimelineClipSelect != null) {
                       return (
                         <WorkspaceVideoTimelineClip
                           key={clip.id}
                           clip={clip}
                           durationSec={durationSec}
                           selected={clip.id === selectedTimelineClipId}
+                          rowId={row.id}
                           trackLaneRef={videoTrackLaneRef}
                           onSelect={onTimelineClipSelect}
+                          onMoveToRow={onTimelineClipMoveRow}
                         />
                       );
                     }
-                    if (row.id === 'text' && onTimelineClipSelect != null) {
+                    if (clip.kind === 'text' && onTimelineClipSelect != null) {
                       return (
                         <WorkspaceTextTimelineClip
                           key={clip.id}
                           clip={clip}
                           durationSec={durationSec}
                           selected={clip.id === selectedTimelineClipId}
+                          rowId={row.id}
                           trackLaneRef={textTrackLaneRef}
                           onSelect={onTimelineClipSelect}
+                          onMoveToRow={onTimelineClipMoveRow}
                         />
                       );
                     }
-                    if (row.id === 'blur' && onTimelineClipSelect != null) {
+                    if (clip.kind === 'blur' && onTimelineClipSelect != null) {
                       return (
                         <WorkspaceBlurTimelineClip
                           key={clip.id}
                           clip={clip}
                           durationSec={durationSec}
                           selected={clip.id === selectedTimelineClipId}
+                          rowId={row.id}
                           trackLaneRef={blurTrackLaneRef}
                           onSelect={onTimelineClipSelect}
+                          onMoveToRow={onTimelineClipMoveRow}
                         />
                       );
                     }
-                    if (row.id === 'image' && onTimelineClipSelect != null) {
+                    if (clip.kind === 'image' && onTimelineClipSelect != null) {
                       return (
                         <WorkspaceImageTimelineClip
                           key={clip.id}
                           clip={clip}
                           durationSec={durationSec}
                           selected={clip.id === selectedTimelineClipId}
+                          rowId={row.id}
                           trackLaneRef={imageTrackLaneRef}
                           onSelect={onTimelineClipSelect}
+                          onMoveToRow={onTimelineClipMoveRow}
+                        />
+                      );
+                    }
+                    if (clip.kind === 'audio' && onTimelineAudioClipSelect != null) {
+                      return (
+                        <WorkspaceAudioTimelineClip
+                          key={clip.id}
+                          clip={clip}
+                          durationSec={durationSec}
+                          selected={clip.id === selectedAudioTrackId}
+                          rowId={row.id}
+                          trackLaneRef={audioTrackLaneRef}
+                          onSelect={onTimelineAudioClipSelect}
+                          onMoveToRow={onTimelineClipMoveRow}
                         />
                       );
                     }
@@ -919,9 +1137,26 @@ export function WorkspaceTimelineDock({
                   })}
                 </div>
               ))}
+              </div>
+
+              <div className="pointer-events-none absolute inset-0 z-10" aria-hidden>
+                <div
+                  className="pointer-events-none absolute bottom-0 top-0 w-px bg-violet-400"
+                  style={{ left: `${playheadPosition * 100}%` }}
+                >
+                  <div className="absolute -left-1.5 top-0 h-2.5 w-3.5 rounded-sm bg-violet-400 shadow-sm ring-1 ring-violet-200/40" />
+                </div>
+                {clipDragGuideRatios?.map((ratio, i) => (
+                  <div
+                    key={`guide-${i}-${ratio}`}
+                    className="pointer-events-none absolute bottom-0 top-0 z-11 w-0 -translate-x-1/2 border-l-2 border-dashed border-amber-400/85"
+                    style={{ left: `${ratio * 100}%` }}
+                  />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
+        </WorkspaceTimelineDragGuideContext.Provider>
       )}
     </div>
   );

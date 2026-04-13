@@ -99,6 +99,16 @@ export type AudioTrack = {
   audioBuffer: AudioBuffer | null;
 };
 
+export type VideoSegment = {
+  id: string;
+  startTime: number;
+  endTime: number;
+  volume: number;
+  isMuted: boolean;
+  fadeIn: number;
+  fadeOut: number;
+};
+
 export type EditorTool =
   | 'pointer'
   | 'text'
@@ -121,6 +131,70 @@ export type VideoTimelineSegment = {
 
 const MIN_VIDEO_CLIP_SEC = 1;
 const DEFAULT_TEXT_LAYER_SPAN_SEC = 10;
+const DEFAULT_VIDEO_SEGMENT_SETTINGS = {
+  volume: 100,
+  isMuted: false,
+  fadeIn: 0,
+  fadeOut: 0,
+} as const;
+
+function buildVideoSegments(
+  trimStart: number,
+  trimEnd: number,
+  splitPoints: number[],
+  previousSegments: VideoSegment[],
+) {
+  if (trimEnd <= trimStart) return [];
+  const boundaries = [trimStart, ...splitPoints, trimEnd]
+    .filter((point) => Number.isFinite(point) && point >= trimStart && point <= trimEnd)
+    .sort((a, b) => a - b);
+  const deduped: number[] = [];
+  for (const point of boundaries) {
+    if (deduped.length === 0 || Math.abs(point - deduped[deduped.length - 1]!) > 1e-4) {
+      deduped.push(point);
+    }
+  }
+  if (deduped.length < 2) return [];
+  const previousByRange = new Map(
+    previousSegments.map((segment) => [
+      `${segment.startTime.toFixed(4)}-${segment.endTime.toFixed(4)}`,
+      segment,
+    ]),
+  );
+
+  const nextSegments: VideoSegment[] = [];
+  for (let i = 0; i < deduped.length - 1; i++) {
+    const startTime = deduped[i]!;
+    const endTime = deduped[i + 1]!;
+    if (endTime - startTime <= 1e-4) continue;
+    const key = `${startTime.toFixed(4)}-${endTime.toFixed(4)}`;
+    const prev = previousByRange.get(key);
+    nextSegments.push({
+      id: nanoid(),
+      startTime,
+      endTime,
+      volume: prev?.volume ?? DEFAULT_VIDEO_SEGMENT_SETTINGS.volume,
+      isMuted: prev?.isMuted ?? DEFAULT_VIDEO_SEGMENT_SETTINGS.isMuted,
+      fadeIn: prev?.fadeIn ?? DEFAULT_VIDEO_SEGMENT_SETTINGS.fadeIn,
+      fadeOut: prev?.fadeOut ?? DEFAULT_VIDEO_SEGMENT_SETTINGS.fadeOut,
+    });
+  }
+
+  return nextSegments;
+}
+
+function buildTimelineSegments(
+  trimStart: number,
+  trimEnd: number,
+  splitPoints: number[],
+): VideoTimelineSegment[] {
+  const segments = buildVideoSegments(trimStart, trimEnd, splitPoints, []);
+  return segments.map((segment, index) => ({
+    id: index === 0 ? MAIN_VIDEO_TIMELINE_CLIP_ID : nanoid(),
+    startTime: segment.startTime,
+    endTime: segment.endTime,
+  }));
+}
 
 const defaultCropSettings = (): CropSettings => ({
   top: 0,
@@ -177,6 +251,9 @@ export type EditorState = {
   selectedAudioTrackId: string | null;
   /** Ordered partition of [0, duration] for workspace timeline; empty until duration is known. */
   videoTimelineSegments: VideoTimelineSegment[];
+  splitPoints: number[];
+  videoSegments: VideoSegment[];
+  selectedSegmentId: string | null;
   setVideoSrc: (src: string | null) => void;
   setDuration: (d: number) => void;
   setCurrentTime: (t: number) => void;
@@ -220,6 +297,11 @@ export type EditorState = {
   setOriginalAudioVolume: (v: number) => void;
   setSelectedAudioTrackId: (id: string | null) => void;
   setAudioTrackBuffer: (id: string, buffer: AudioBuffer) => void;
+  initSegments: () => void;
+  updateVideoSegment: (id: string, patch: Partial<VideoSegment>) => void;
+  setSelectedSegmentId: (id: string | null) => void;
+  addSplitPoint: (time: number) => void;
+  removeSplitPoint: (time: number) => void;
   /** Split the segment under `currentTime` into two; nothing is deleted. Full timeline stays playable. */
   splitVideoAtPlayhead: () => void;
   updateVideoTimelineSegment: (
@@ -260,6 +342,9 @@ export const useEditorStore = create<EditorState>((set) => ({
   originalAudioVolume: 100,
   selectedAudioTrackId: null,
   videoTimelineSegments: [],
+  splitPoints: [],
+  videoSegments: [],
+  selectedSegmentId: null,
   setVideoSrc: (src) =>
     set((state) => {
       const prev = state.videoSrc;
@@ -294,6 +379,9 @@ export const useEditorStore = create<EditorState>((set) => ({
               trimEnd: 0,
               trimApplyNonce: 0,
               videoTimelineSegments: [],
+              splitPoints: [],
+              videoSegments: [],
+              selectedSegmentId: null,
               blurLayers: [],
               galleryImages: [],
               imageLayers: [],
@@ -314,6 +402,9 @@ export const useEditorStore = create<EditorState>((set) => ({
               trimEnd: 0,
               trimApplyNonce: 0,
               videoTimelineSegments: [],
+              splitPoints: [],
+              videoSegments: [],
+              selectedSegmentId: null,
               textLayers: [],
               blurLayers: [],
               galleryImages: [],
@@ -341,11 +432,15 @@ export const useEditorStore = create<EditorState>((set) => ({
             ? state.audioTracks.map((t) => {
                 let end = t.endTime <= 0 ? d : t.endTime;
                 end = Math.min(end, d);
-                let start = Math.min(t.startTime, Math.max(0, end - MIN_VIDEO_CLIP_SEC));
+              const start = Math.min(t.startTime, Math.max(0, end - MIN_VIDEO_CLIP_SEC));
                 end = Math.max(start + MIN_VIDEO_CLIP_SEC, end);
                 return { ...t, startTime: start, endTime: end };
               })
             : state.audioTracks;
+        const splitPoints = state.splitPoints
+          .filter((point) => point > 0 && point < d)
+          .sort((a, b) => a - b);
+        const videoSegments = buildVideoSegments(0, d, splitPoints, state.videoSegments);
         return {
           duration: d,
           trimStart: 0,
@@ -354,6 +449,13 @@ export const useEditorStore = create<EditorState>((set) => ({
             { id: MAIN_VIDEO_TIMELINE_CLIP_ID, startTime: 0, endTime: d },
           ],
           audioTracks: fixedTracks,
+          splitPoints,
+          videoSegments,
+          selectedSegmentId:
+            state.selectedSegmentId != null &&
+            videoSegments.some((segment) => segment.id === state.selectedSegmentId)
+              ? state.selectedSegmentId
+              : null,
         };
       }
       const maxStart = Math.max(0, d - MIN_VIDEO_CLIP_SEC);
@@ -365,7 +467,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       }
       const audioTracks = state.audioTracks.map((t) => {
         let endT = Math.min(t.endTime, d);
-        let startT = Math.min(t.startTime, Math.max(0, endT - MIN_VIDEO_CLIP_SEC));
+        const startT = Math.min(t.startTime, Math.max(0, endT - MIN_VIDEO_CLIP_SEC));
         endT = Math.max(startT + MIN_VIDEO_CLIP_SEC, endT);
         return { ...t, startTime: startT, endTime: endT };
       });
@@ -415,12 +517,28 @@ export const useEditorStore = create<EditorState>((set) => ({
         trimEnd = d;
       }
 
+      const splitPoints = state.splitPoints
+        .filter((point) => point > trimStart + 1e-4 && point < trimEnd - 1e-4)
+        .sort((a, b) => a - b);
+      const videoSegments = buildVideoSegments(
+        trimStart,
+        trimEnd,
+        splitPoints,
+        state.videoSegments,
+      );
       return {
         duration: d,
         trimStart,
         trimEnd,
         audioTracks,
         videoTimelineSegments,
+        splitPoints,
+        videoSegments,
+        selectedSegmentId:
+          state.selectedSegmentId != null &&
+          videoSegments.some((segment) => segment.id === state.selectedSegmentId)
+            ? state.selectedSegmentId
+            : null,
       };
     }),
   setCurrentTime: (t) => set({ currentTime: t }),
@@ -481,7 +599,27 @@ export const useEditorStore = create<EditorState>((set) => ({
           { ...videoTimelineSegments[0], startTime: start, endTime: state.trimEnd },
         ];
       }
-      return { trimStart: start, currentTime, videoTimelineSegments };
+      const splitPoints = state.splitPoints
+        .filter((point) => point > start + 1e-4 && point < state.trimEnd - 1e-4)
+        .sort((a, b) => a - b);
+      const videoSegments = buildVideoSegments(
+        start,
+        state.trimEnd,
+        splitPoints,
+        state.videoSegments,
+      );
+      return {
+        trimStart: start,
+        currentTime,
+        videoTimelineSegments,
+        splitPoints,
+        videoSegments,
+        selectedSegmentId:
+          state.selectedSegmentId != null &&
+          videoSegments.some((segment) => segment.id === state.selectedSegmentId)
+            ? state.selectedSegmentId
+            : null,
+      };
     }),
   setTrimEnd: (t) =>
     set((state) => {
@@ -497,7 +635,27 @@ export const useEditorStore = create<EditorState>((set) => ({
           { ...videoTimelineSegments[0], startTime: state.trimStart, endTime: end },
         ];
       }
-      return { trimEnd: end, currentTime, videoTimelineSegments };
+      const splitPoints = state.splitPoints
+        .filter((point) => point > state.trimStart + 1e-4 && point < end - 1e-4)
+        .sort((a, b) => a - b);
+      const videoSegments = buildVideoSegments(
+        state.trimStart,
+        end,
+        splitPoints,
+        state.videoSegments,
+      );
+      return {
+        trimEnd: end,
+        currentTime,
+        videoTimelineSegments,
+        splitPoints,
+        videoSegments,
+        selectedSegmentId:
+          state.selectedSegmentId != null &&
+          videoSegments.some((segment) => segment.id === state.selectedSegmentId)
+            ? state.selectedSegmentId
+            : null,
+      };
     }),
   resetTrim: () =>
     set((state) => {
@@ -505,6 +663,9 @@ export const useEditorStore = create<EditorState>((set) => ({
       return {
         trimStart: 0,
         trimEnd: d,
+        splitPoints: [],
+        videoSegments: d > 0 ? buildVideoSegments(0, d, [], state.videoSegments) : [],
+        selectedSegmentId: null,
         videoTimelineSegments:
           d > 0
             ? [{ id: MAIN_VIDEO_TIMELINE_CLIP_ID, startTime: 0, endTime: d }]
@@ -772,7 +933,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       const d = state.duration;
       const id = nanoid();
       const src = URL.createObjectURL(file);
-      let startTime = 0;
+      const startTime = 0;
       let endTime = d > 0 ? d : 0;
       if (d > 0 && endTime - startTime < MIN_VIDEO_CLIP_SEC) {
         endTime = Math.min(d, startTime + MIN_VIDEO_CLIP_SEC);
@@ -840,6 +1001,108 @@ export const useEditorStore = create<EditorState>((set) => ({
         t.id === id ? { ...t, audioBuffer: buffer } : t,
       ),
     })),
+  initSegments: () =>
+    set((state) => {
+      const next = buildVideoSegments(
+        state.trimStart,
+        state.trimEnd,
+        state.splitPoints,
+        state.videoSegments,
+      );
+      return {
+        videoSegments: next,
+        selectedSegmentId:
+          state.selectedSegmentId != null &&
+          next.some((segment) => segment.id === state.selectedSegmentId)
+            ? state.selectedSegmentId
+            : null,
+      };
+    }),
+  updateVideoSegment: (id, patch) =>
+    set((state) => ({
+      videoSegments: state.videoSegments.map((segment) => {
+        if (segment.id !== id) return segment;
+        const duration = Math.max(0, segment.endTime - segment.startTime);
+        const maxFade = duration / 2;
+        const nextVolume =
+          patch.volume == null
+            ? segment.volume
+            : Math.min(100, Math.max(0, Math.round(patch.volume)));
+        const nextMute = patch.isMuted ?? segment.isMuted;
+        const nextFadeIn =
+          patch.fadeIn == null
+            ? segment.fadeIn
+            : Math.max(0, Math.min(maxFade, patch.fadeIn));
+        const nextFadeOut =
+          patch.fadeOut == null
+            ? segment.fadeOut
+            : Math.max(0, Math.min(maxFade, patch.fadeOut));
+        return {
+          ...segment,
+          ...patch,
+          volume: nextVolume,
+          isMuted: nextMute,
+          fadeIn: nextFadeIn,
+          fadeOut: nextFadeOut,
+        };
+      }),
+    })),
+  setSelectedSegmentId: (id) => set({ selectedSegmentId: id }),
+  addSplitPoint: (time) =>
+    set((state) => {
+      const point = Math.max(state.trimStart, Math.min(state.trimEnd, time));
+      if (point <= state.trimStart + 1e-4 || point >= state.trimEnd - 1e-4) {
+        return {};
+      }
+      if (state.splitPoints.some((value) => Math.abs(value - point) < 1e-4)) {
+        return {};
+      }
+      const splitPoints = [...state.splitPoints, point].sort((a, b) => a - b);
+      const videoSegments = buildVideoSegments(
+        state.trimStart,
+        state.trimEnd,
+        splitPoints,
+        state.videoSegments,
+      );
+      const videoTimelineSegments = buildTimelineSegments(
+        state.trimStart,
+        state.trimEnd,
+        splitPoints,
+      );
+      return {
+        splitPoints,
+        videoSegments,
+        videoTimelineSegments,
+      };
+    }),
+  removeSplitPoint: (time) =>
+    set((state) => {
+      const splitPoints = state.splitPoints
+        .filter((value) => Math.abs(value - time) > 1e-4)
+        .sort((a, b) => a - b);
+      if (splitPoints.length === state.splitPoints.length) return {};
+      const videoSegments = buildVideoSegments(
+        state.trimStart,
+        state.trimEnd,
+        splitPoints,
+        state.videoSegments,
+      );
+      const videoTimelineSegments = buildTimelineSegments(
+        state.trimStart,
+        state.trimEnd,
+        splitPoints,
+      );
+      return {
+        splitPoints,
+        videoSegments,
+        videoTimelineSegments,
+        selectedSegmentId:
+          state.selectedSegmentId != null &&
+          videoSegments.some((segment) => segment.id === state.selectedSegmentId)
+            ? state.selectedSegmentId
+            : null,
+      };
+    }),
   splitVideoAtPlayhead: () =>
     set((state) => {
       const d = state.duration;
@@ -877,11 +1140,17 @@ export const useEditorStore = create<EditorState>((set) => ({
         endTime: s.endTime,
       };
       segments.splice(idx, 1, left, right);
+      const splitPoints = [...state.splitPoints, split]
+        .filter((point) => point > 0 && point < d)
+        .sort((a, b) => a - b);
+      const videoSegments = buildVideoSegments(0, d, splitPoints, state.videoSegments);
       return {
         videoTimelineSegments: segments,
         trimStart: 0,
         trimEnd: d,
         currentTime: split,
+        splitPoints,
+        videoSegments,
       };
     }),
   updateVideoTimelineSegment: (id, patch) =>

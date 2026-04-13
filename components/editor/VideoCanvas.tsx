@@ -31,9 +31,10 @@ import {
 
 type VideoCanvasProps = {
   fileInputId?: string;
+  objectFit?: 'contain' | 'cover';
 };
 
-export function VideoCanvas({ fileInputId }: VideoCanvasProps = {}) {
+export function VideoCanvas({ fileInputId, objectFit = 'contain' }: VideoCanvasProps = {}) {
   const videoSrc = useEditorStore((s) => s.videoSrc);
   const currentTime = useEditorStore((s) => s.currentTime);
   const textLayers = useEditorStore((s) => s.textLayers);
@@ -53,6 +54,7 @@ export function VideoCanvas({ fileInputId }: VideoCanvasProps = {}) {
   const trimStart = useEditorStore((s) => s.trimStart);
   const trimEnd = useEditorStore((s) => s.trimEnd);
   const videoTimelineSegments = useEditorStore((s) => s.videoTimelineSegments);
+  const videoSegments = useEditorStore((s) => s.videoSegments);
   const isPlaying = useEditorStore((s) => s.isPlaying);
   const duration = useEditorStore((s) => s.duration);
   const cropSettings = useEditorStore((s) => s.cropSettings);
@@ -203,8 +205,8 @@ export function VideoCanvas({ fileInputId }: VideoCanvasProps = {}) {
       v.pause();
       v.muted = true;
     } else {
-      v.muted = originalAudioMuted;
-      v.volume = originalAudioVolume / 100;
+      v.muted = false;
+      v.volume = originalAudioMuted ? 0 : originalAudioVolume / 100;
     }
   }, [isCropActive, originalAudioMuted, originalAudioVolume]);
 
@@ -318,7 +320,9 @@ export function VideoCanvas({ fileInputId }: VideoCanvasProps = {}) {
         <video
           ref={attachRef}
           src={videoSrc}
-          className={`relative z-0 block h-full w-full max-h-full max-w-full object-contain will-change-transform [transform:translateZ(0)] ${
+          className={`relative z-0 block h-full w-full max-h-full max-w-full ${
+            objectFit === 'cover' ? 'object-cover' : 'object-contain'
+          } will-change-transform transform-[translateZ(0)] ${
             isCropActive ? 'pointer-events-none opacity-0' : ''
           }`}
           style={appliedCropClipStyle}
@@ -384,6 +388,25 @@ export function VideoCanvas({ fileInputId }: VideoCanvasProps = {}) {
             // `seeking` work and contributed to playback glitches.
             if (Math.abs(v.currentTime - t) > 0.04) {
               v.currentTime = t;
+            }
+            const activeSegment = videoSegments.find(
+              (segment) => t >= segment.startTime && t < segment.endTime,
+            );
+            const globalAudioScale = originalAudioMuted ? 0 : originalAudioVolume / 100;
+            if (activeSegment != null) {
+              const segmentBase = activeSegment.isMuted ? 0 : activeSegment.volume / 100;
+              let nextVolume = segmentBase;
+              if (activeSegment.fadeIn > 0 && t < activeSegment.startTime + activeSegment.fadeIn) {
+                const fadeFraction = (t - activeSegment.startTime) / activeSegment.fadeIn;
+                nextVolume *= Math.max(0, Math.min(1, fadeFraction));
+              }
+              if (activeSegment.fadeOut > 0 && t > activeSegment.endTime - activeSegment.fadeOut) {
+                const fadeFraction = (activeSegment.endTime - t) / activeSegment.fadeOut;
+                nextVolume *= Math.max(0, Math.min(1, fadeFraction));
+              }
+              v.volume = Math.max(0, Math.min(1, nextVolume * globalAudioScale));
+            } else {
+              v.volume = Math.max(0, Math.min(1, globalAudioScale));
             }
             setCurrentTime(t);
           }}

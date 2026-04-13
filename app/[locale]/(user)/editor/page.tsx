@@ -11,6 +11,7 @@ import { SpeedProperties } from '@/components/editor/panels/SpeedProperties';
 import { TextProperties } from '@/components/editor/panels/TextProperties';
 import { ImageGalleryPanel } from '@/components/editor/panels/ImageGalleryPanel';
 import { ImageProperties } from '@/components/editor/panels/ImageProperties';
+import { SegmentAudioPanel } from '@/components/editor/panels/SegmentAudioPanel';
 import { TrimProperties } from '@/components/editor/panels/TrimProperties';
 import { useAudioExtractor } from '@/hooks/useAudioExtractor';
 import { useAudioPlayback } from '@/hooks/useAudioPlayback';
@@ -31,6 +32,7 @@ export default function EditorPage() {
   const blurLayers = useEditorStore((s) => s.blurLayers);
   const imageLayers = useEditorStore((s) => s.imageLayers);
   const videoSrc = useEditorStore((s) => s.videoSrc);
+  const selectedSegmentId = useEditorStore((s) => s.selectedSegmentId);
 
   const [uploadPanelOpen, setUploadPanelOpen] = useState(false);
 
@@ -74,7 +76,8 @@ export default function EditorPage() {
     activeTool === 'trim' ||
     selectedIsText ||
     selectedIsBlur ||
-    selectedIsImage;
+    selectedIsImage ||
+    selectedSegmentId != null;
 
   const panelTitle = useMemo(() => {
     if (activeTool === 'crop') return 'Crop';
@@ -275,6 +278,7 @@ export default function EditorPage() {
             ) : (
               <TextProperties />
             )}
+            {selectedSegmentId != null && <SegmentAudioPanel />}
           </aside>
         )}
       </div>

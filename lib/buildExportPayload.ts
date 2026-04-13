@@ -44,6 +44,14 @@ export function buildExportPayload(state: EditorState) {
    *
    * Replace original audio entirely (originalAudioMuted = true):
    *   [music][voice]amix=inputs=2:normalize=0[aout]
+   *
+   * Segment-based original audio:
+   *   [0:a]atrim=start=0:end=10,volume=1.0,afade=t=in:d=0,afade=t=out:st=9:d=1[seg0];
+   *   [0:a]atrim=start=10:end=20,volume=0.5[seg1];
+   *   [0:a]atrim=start=20:end=30,volume=0.8,afade=t=in:d=2[seg2];
+   *   [seg0][seg1][seg2]concat=n=3:v=0:a=1[origAudio];
+   *   [1:a]music chain -> [musicAudio];
+   *   [origAudio][musicAudio]amix=inputs=2:normalize=0[finalAudio]
    */
 
   return {
@@ -107,6 +115,14 @@ export function buildExportPayload(state: EditorState) {
       volume: t.isMuted ? 0 : t.volume,
       fadeIn: t.fadeIn,
       fadeOut: t.fadeOut,
+    })),
+    videoSegments: state.videoSegments.map((s) => ({
+      id: s.id,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      volume: s.isMuted ? 0 : s.volume / 100,
+      fadeIn: s.fadeIn,
+      fadeOut: s.fadeOut,
     })),
     originalAudio: {
       muted: state.originalAudioMuted,

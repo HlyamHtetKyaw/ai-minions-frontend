@@ -23,6 +23,10 @@ export type UseTimelineClipDragParams = {
   duration: number;
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onUpdate: (patch: { startTime?: number; endTime?: number }) => void;
+  /** When set, called with normalized positions (0–1 along timeline) to draw vertical guide lines; `null` when drag ends. */
+  onDragGuideLines?: (ratios: number[] | null) => void;
+  currentRowId?: string;
+  onMoveToRow?: (targetRowId: string) => void;
 };
 
 export type UseTimelineClipDragResult = {
@@ -49,10 +53,15 @@ export function useTimelineClipDrag({
   duration,
   trackLaneRef,
   onUpdate,
+  onDragGuideLines,
+  currentRowId,
+  onMoveToRow,
 }: UseTimelineClipDragParams): UseTimelineClipDragResult {
   void _layerId;
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
+  const onDragGuideLinesRef = useRef(onDragGuideLines);
+  onDragGuideLinesRef.current = onDragGuideLines;
 
   const [preview, setPreview] = useState<{ start: number; end: number } | null>(null);
   const [dragType, setDragType] = useState<TimelineClipDragType | null>(null);
@@ -78,6 +87,7 @@ export function useTimelineClipDrag({
     }
     sessionRef.current = null;
     liveRef.current = null;
+    onDragGuideLinesRef.current?.(null);
     setPreview(null);
     setDragType(null);
     setTooltipText(null);
@@ -122,6 +132,19 @@ export function useTimelineClipDrag({
       setDragType(type);
       setPreview({ start: origStart, end: origEnd });
 
+      const reportGuideLines = (live: { start: number; end: number }) => {
+        const fn = onDragGuideLinesRef.current;
+        if (!fn || duration <= 0) return;
+        if (type === 'body') {
+          fn([live.start / duration, live.end / duration]);
+        } else if (type === 'left') {
+          fn([live.start / duration]);
+        } else {
+          fn([live.end / duration]);
+        }
+      };
+      reportGuideLines({ start: origStart, end: origEnd });
+
       const updateTooltip = (clientX: number, text: string) => {
         const rect = clipEl.getBoundingClientRect();
         setTooltipText(text);
@@ -142,6 +165,8 @@ export function useTimelineClipDrag({
         updateTooltip(e.clientX, `end: ${origEnd.toFixed(1)}s`);
       }
 
+      let hoveredRowId = currentRowId;
+
       const onMove = (ev: MouseEvent) => {
         const s = sessionRef.current;
         if (!s) return;
@@ -156,21 +181,31 @@ export function useTimelineClipDrag({
           const newEnd = newStart + clipDur;
           liveRef.current = { start: newStart, end: newEnd };
           setPreview({ start: newStart, end: newEnd });
+          reportGuideLines({ start: newStart, end: newEnd });
           updateTooltip(
             ev.clientX,
             `start: ${newStart.toFixed(1)}s — end: ${newEnd.toFixed(1)}s`,
           );
+          if (onMoveToRow != null) {
+            const rowEl = document
+              .elementFromPoint(ev.clientX, ev.clientY)
+              ?.closest?.('[data-timeline-track-row]') as HTMLElement | null;
+            const rowId = rowEl?.dataset?.rowId;
+            if (rowId != null && rowId !== '') hoveredRowId = rowId;
+          }
         } else if (s.type === 'left') {
           const maxStart = s.origEnd - MIN_CLIP_SEC;
           const newStart = clamp(s.origStart + deltaSec, 0, maxStart);
           liveRef.current = { start: newStart, end: s.origEnd };
           setPreview({ start: newStart, end: s.origEnd });
+          reportGuideLines({ start: newStart, end: s.origEnd });
           updateTooltip(ev.clientX, `start: ${newStart.toFixed(1)}s`);
         } else {
           const minEnd = s.origStart + MIN_CLIP_SEC;
           const newEnd = clamp(s.origEnd + deltaSec, minEnd, s.duration);
           liveRef.current = { start: s.origStart, end: newEnd };
           setPreview({ start: s.origStart, end: newEnd });
+          reportGuideLines({ start: s.origStart, end: newEnd });
           updateTooltip(ev.clientX, `end: ${newEnd.toFixed(1)}s`);
         }
       };
@@ -190,6 +225,14 @@ export function useTimelineClipDrag({
               startTime: live.start,
               endTime: live.end,
             });
+            if (
+              onMoveToRow != null &&
+              hoveredRowId != null &&
+              hoveredRowId !== '' &&
+              hoveredRowId !== currentRowId
+            ) {
+              onMoveToRow(hoveredRowId);
+            }
           } else if (s.type === 'left') {
             onUpdateRef.current({ startTime: live.start });
           } else {
@@ -197,6 +240,7 @@ export function useTimelineClipDrag({
           }
         }
 
+        onDragGuideLinesRef.current?.(null);
         setPreview(null);
         setDragType(null);
         setTooltipText(null);
@@ -207,7 +251,7 @@ export function useTimelineClipDrag({
       window.addEventListener('mousemove', onMove);
       window.addEventListener('mouseup', onUp);
     },
-    [duration, removeWindowListeners, trackLaneRef],
+    [currentRowId, duration, onMoveToRow, removeWindowListeners, trackLaneRef],
   );
 
   const onBodyMouseDown = useCallback(
