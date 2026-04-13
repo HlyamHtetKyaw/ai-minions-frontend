@@ -1,17 +1,17 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Volume2, VolumeX } from 'lucide-react';
 import { AudioTrackWaveform } from '@/components/editor/AudioTrackWaveform';
 import { AudioWaveform } from '@/components/editor/AudioWaveform';
 import { useTimelineClipDrag } from '@/hooks/useTimelineClipDrag';
-import { useTrimHandles } from '@/hooks/useTrimHandles';
 import { useEditorStore } from '@/store/editorStore';
 import type {
   AudioTrack,
   BlurLayer as BlurLayerModel,
   ImageLayer as ImageLayerModel,
   TextLayer,
+  VideoSegment,
 } from '@/store/editorStore';
 
 function truncateText(s: string, max = 24) {
@@ -52,126 +52,53 @@ function clampSeekTime(t: number, lo: number, hi: number) {
   return Math.min(Math.max(t, lo), hi);
 }
 
-type TimelineVideoClipProps = {
+function VideoSegmentClip({
+  segment,
+  duration,
+  selected,
+  onSelect,
+}: {
+  segment: VideoSegment;
   duration: number;
-  playbackSpeed: number;
-};
-
-function TimelineVideoClip({ duration, playbackSpeed }: TimelineVideoClipProps) {
-  const trimStart = useEditorStore((s) => s.trimStart);
-  const trimEnd = useEditorStore((s) => s.trimEnd);
-  const laneRef = useRef<HTMLDivElement>(null);
-  const {
-    leftTooltip,
-    rightTooltip,
-    onLeftHandleMouseDown,
-    onRightHandleMouseDown,
-  } = useTrimHandles({ trackLaneRef: laneRef, duration });
-
-  const showSpeedBadge = Math.abs(playbackSpeed - 1) > 0.001;
-  const leftOverlayPct = duration > 0 ? (trimStart / duration) * 100 : 0;
-  const rightOverlayPct = duration > 0 ? ((duration - trimEnd) / duration) * 100 : 0;
-  const leftHandlePct = duration > 0 ? (trimStart / duration) * 100 : 0;
-  const rightHandlePct = duration > 0 ? (trimEnd / duration) * 100 : 0;
-
+  selected: boolean;
+  onSelect: () => void;
+}) {
+  const leftPct = (segment.startTime / duration) * 100;
+  const widthPct = Math.max(0.25, ((segment.endTime - segment.startTime) / duration) * 100);
   return (
-    <>
-      <div
-        ref={laneRef}
-        className="absolute inset-y-1 left-0 right-0 overflow-hidden rounded bg-sky-600/35 ring-1 ring-sky-500/40"
-        aria-hidden
-      >
-        <div
-          className="pointer-events-none absolute top-0 bottom-0 left-0 z-[1]"
-          style={{
-            width: `${leftOverlayPct}%`,
-            background: 'rgba(0,0,0,0.5)',
-          }}
-        />
-        <div
-          className="pointer-events-none absolute top-0 right-0 bottom-0 z-[1]"
-          style={{
-            width: `${rightOverlayPct}%`,
-            background: 'rgba(0,0,0,0.5)',
-          }}
-        />
-        {showSpeedBadge && (
-          <span
-            className="pointer-events-none absolute z-[2] text-[9px] font-medium text-white"
-            style={{
-              background: '#534AB7',
-              borderRadius: 3,
-              padding: '1px 5px',
-              right: 6,
-              top: '50%',
-              transform: 'translateY(-50%)',
-            }}
-          >
-            {playbackSpeed}x
-          </span>
-        )}
-        <div
-          role="slider"
-          tabIndex={-1}
-          aria-label="Trim start"
-          className="absolute top-0 bottom-0 z-20 w-[10px] cursor-col-resize"
-          style={{
-            left: `${leftHandlePct}%`,
-            transform: 'translateX(-50%)',
-            background: '#EF9F27',
-            borderRadius: '5px 0 0 5px',
-          }}
-          onMouseDown={onLeftHandleMouseDown}
-        />
-        <div
-          role="slider"
-          tabIndex={-1}
-          aria-label="Trim end"
-          className="absolute top-0 bottom-0 z-20 w-[10px] cursor-col-resize"
-          style={{
-            left: `${rightHandlePct}%`,
-            transform: 'translateX(-50%)',
-            background: '#EF9F27',
-            borderRadius: '0 5px 5px 0',
-          }}
-          onMouseDown={onRightHandleMouseDown}
-        />
-      </div>
-      {leftTooltip != null && (
-        <div
-          className="pointer-events-none fixed z-100 whitespace-nowrap"
-          style={{
-            left: leftTooltip.x,
-            top: leftTooltip.y,
-            transform: 'translate(-50%, calc(-100% - 4px))',
-            background: '#1a1a1a',
-            color: '#ffffff',
-            fontSize: 10,
-            borderRadius: 4,
-            padding: '3px 7px',
-          }}
-        >
-          {leftTooltip.text}
-        </div>
+    <div
+      className="absolute top-1 bottom-1 overflow-hidden rounded"
+      style={{
+        left: `${leftPct}%`,
+        width: `${widthPct}%`,
+        background: segment.isMuted ? '#2a1a1a' : '#1e1a3a',
+        border: selected ? '2px solid #7F77DD' : `0.5px solid ${segment.isMuted ? '#993C1D' : '#534AB7'}`,
+      }}
+      onMouseDown={(event) => {
+        event.stopPropagation();
+        onSelect();
+      }}
+    >
+      <AudioWaveform segment={segment} />
+      {segment.isMuted && (
+        <VolumeX className="absolute top-1 right-1 h-3.5 w-3.5 text-red-300" />
       )}
-      {rightTooltip != null && (
-        <div
-          className="pointer-events-none fixed z-100 whitespace-nowrap"
-          style={{
-            left: rightTooltip.x,
-            top: rightTooltip.y,
-            transform: 'translate(-50%, calc(-100% - 4px))',
-            background: '#1a1a1a',
-            color: '#ffffff',
-            fontSize: 10,
-            borderRadius: 4,
-            padding: '3px 7px',
-          }}
-        >
-          {rightTooltip.text}
-        </div>
+      {segment.volume !== 100 && (
+        <span className="absolute right-1 bottom-1 rounded bg-black/50 px-1 py-0.5 text-[9px] text-zinc-100">
+          {segment.volume}%
+        </span>
       )}
-    </>
+      {segment.fadeIn > 0 && (
+        <span className="absolute top-1 left-1 rounded bg-black/40 px-1 py-0.5 text-[9px] text-zinc-100">
+          F-in
+        </span>
+      )}
+      {segment.fadeOut > 0 && (
+        <span className="absolute top-1 right-6 rounded bg-black/40 px-1 py-0.5 text-[9px] text-zinc-100">
+          F-out
+        </span>
+      )}
+    </div>
   );
 }
 
@@ -673,6 +600,7 @@ type AudioTrackRowProps = {
   setSelectedAudioTrackId: (id: string | null) => void;
   setSelectedLayerId: (id: string | null) => void;
   variant: 'music' | 'voiceover';
+  setSelectedSegmentId: (id: string | null) => void;
 };
 
 function AudioTrackRow({
@@ -682,6 +610,7 @@ function AudioTrackRow({
   setSelectedAudioTrackId,
   setSelectedLayerId,
   variant,
+  setSelectedSegmentId,
 }: AudioTrackRowProps) {
   const laneRef = useRef<HTMLDivElement>(null);
   const isMusic = variant === 'music';
@@ -701,6 +630,7 @@ function AudioTrackRow({
         onMouseDown={(e) => {
           if (e.target === e.currentTarget) {
             e.stopPropagation();
+            setSelectedSegmentId(null);
             setSelectedLayerId(null);
             setSelectedAudioTrackId(null);
           }
@@ -729,6 +659,9 @@ export function Timeline() {
   const imageLayers = useEditorStore((s) => s.imageLayers);
   const galleryImages = useEditorStore((s) => s.galleryImages);
   const playbackSpeed = useEditorStore((s) => s.playbackSpeed);
+  const videoSegments = useEditorStore((s) => s.videoSegments);
+  const selectedSegmentId = useEditorStore((s) => s.selectedSegmentId);
+  const splitPoints = useEditorStore((s) => s.splitPoints);
   const selectedLayerId = useEditorStore((s) => s.selectedLayerId);
   const audioTracks = useEditorStore((s) => s.audioTracks);
   const originalAudioMuted = useEditorStore((s) => s.originalAudioMuted);
@@ -738,12 +671,15 @@ export function Timeline() {
   const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
   const setSelectedLayerId = useEditorStore((s) => s.setSelectedLayerId);
   const setSelectedAudioTrackId = useEditorStore((s) => s.setSelectedAudioTrackId);
+  const setSelectedSegmentId = useEditorStore((s) => s.setSelectedSegmentId);
+  const removeSplitPoint = useEditorStore((s) => s.removeSplitPoint);
 
   const trackRef = useRef<HTMLDivElement>(null);
   const textTrackLaneRef = useRef<HTMLDivElement>(null);
   const blurTrackLaneRef = useRef<HTMLDivElement>(null);
   const imageTrackLaneRef = useRef<HTMLDivElement>(null);
   const draggingRef = useRef(false);
+  const [hoveredSplitPoint, setHoveredSplitPoint] = useState<number | null>(null);
 
   const imageLaneById = useMemo(
     () => assignImageTimelineVerticalLane(imageLayers),
@@ -787,6 +723,9 @@ export function Timeline() {
 
   const onMouseDown = (e: React.MouseEvent) => {
     if (duration <= 0) return;
+    if (e.target === e.currentTarget) {
+      setSelectedSegmentId(null);
+    }
     e.preventDefault();
     draggingRef.current = true;
     seekFromClientX(e.clientX);
@@ -845,8 +784,52 @@ export function Timeline() {
               <div className="mb-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-500">
                 video
               </div>
-              <div className="relative h-10 w-full rounded bg-zinc-900/90 ring-1 ring-zinc-700/80">
-                <TimelineVideoClip duration={duration} playbackSpeed={playbackSpeed} />
+              <div
+                className="relative h-10 w-full rounded bg-zinc-900/90 ring-1 ring-zinc-700/80"
+                onMouseDown={(e) => {
+                  if (e.target === e.currentTarget) {
+                    e.stopPropagation();
+                    setSelectedSegmentId(null);
+                    setSelectedLayerId(null);
+                    setSelectedAudioTrackId(null);
+                  }
+                }}
+              >
+                {videoSegments.map((segment, index) => (
+                  <div key={segment.id}>
+                    <VideoSegmentClip
+                      segment={segment}
+                      duration={duration}
+                      selected={segment.id === selectedSegmentId}
+                      onSelect={() => {
+                        setSelectedSegmentId(segment.id);
+                        setSelectedLayerId(null);
+                        setSelectedAudioTrackId(null);
+                      }}
+                    />
+                    {index < videoSegments.length - 1 && (
+                      <div
+                        className="pointer-events-none absolute top-1 bottom-1 z-20 w-px bg-white/70"
+                        style={{ left: `${(segment.endTime / duration) * 100}%` }}
+                      />
+                    )}
+                  </div>
+                ))}
+                {Math.abs(playbackSpeed - 1) > 0.001 && (
+                  <span
+                    className="pointer-events-none absolute z-2 text-[9px] font-medium text-white"
+                    style={{
+                      background: '#534AB7',
+                      borderRadius: 3,
+                      padding: '1px 5px',
+                      right: 6,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                    }}
+                  >
+                    {playbackSpeed}x
+                  </span>
+                )}
               </div>
             </div>
 
@@ -860,6 +843,7 @@ export function Timeline() {
                 onMouseDown={(e) => {
                   if (e.target === e.currentTarget) {
                     e.stopPropagation();
+                    setSelectedSegmentId(null);
                     setSelectedLayerId(null);
                     setSelectedAudioTrackId(null);
                   }
@@ -890,6 +874,7 @@ export function Timeline() {
                 onMouseDown={(e) => {
                   if (e.target === e.currentTarget) {
                     e.stopPropagation();
+                    setSelectedSegmentId(null);
                     setSelectedLayerId(null);
                     setSelectedAudioTrackId(null);
                   }
@@ -918,6 +903,7 @@ export function Timeline() {
                 onMouseDown={(e) => {
                   if (e.target === e.currentTarget) {
                     e.stopPropagation();
+                    setSelectedSegmentId(null);
                     setSelectedLayerId(null);
                     setSelectedAudioTrackId(null);
                   }
@@ -991,6 +977,7 @@ export function Timeline() {
                 setSelectedAudioTrackId={setSelectedAudioTrackId}
                 setSelectedLayerId={setSelectedLayerId}
                 variant="music"
+                setSelectedSegmentId={setSelectedSegmentId}
               />
             ))}
 
@@ -1003,6 +990,7 @@ export function Timeline() {
                 setSelectedAudioTrackId={setSelectedAudioTrackId}
                 setSelectedLayerId={setSelectedLayerId}
                 variant="voiceover"
+                setSelectedSegmentId={setSelectedSegmentId}
               />
             ))}
 
@@ -1015,6 +1003,40 @@ export function Timeline() {
               </div>
             </div>
           </div>
+
+          {splitPoints.map((point) => (
+            <div
+              key={`split-marker-${point}`}
+              className="absolute top-0 z-20 h-6 w-px bg-white/30"
+              style={{ left: `${(point / duration) * 100}%` }}
+              onMouseEnter={() => setHoveredSplitPoint(point)}
+              onMouseLeave={() => setHoveredSplitPoint((prev) => (prev === point ? null : prev))}
+            />
+          ))}
+
+          {hoveredSplitPoint != null && (
+            <div
+              className="absolute top-0 z-30 -translate-x-1/2 -translate-y-[110%] rounded border border-zinc-700 bg-zinc-900 px-2 py-1 text-[10px] text-zinc-100"
+              style={{ left: `${(hoveredSplitPoint / duration) * 100}%` }}
+              onMouseEnter={() => setHoveredSplitPoint(hoveredSplitPoint)}
+              onMouseLeave={() => setHoveredSplitPoint(null)}
+            >
+              <div className="flex items-center gap-2">
+                <span>Split at {hoveredSplitPoint.toFixed(1)}s</span>
+                <button
+                  type="button"
+                  className="rounded px-1 text-red-300 hover:bg-red-950/50"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    removeSplitPoint(hoveredSplitPoint);
+                    setHoveredSplitPoint(null);
+                  }}
+                >
+                  X
+                </button>
+              </div>
+            </div>
+          )}
 
           <div
             className="pointer-events-none absolute inset-y-0 z-10 w-px bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.6)]"

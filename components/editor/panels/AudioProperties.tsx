@@ -109,19 +109,25 @@ export function AudioProperties() {
             <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
               Volume
             </span>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={originalAudioVolume}
-                onChange={(e) => setOriginalAudioVolume(Number(e.target.value))}
-                className="min-w-0 flex-1 accent-[#534AB7]"
-              />
-              <span className="w-8 tabular-nums text-right text-xs text-zinc-400">
-                {originalAudioVolume}
-              </span>
-            </div>
+            {selectedTrack == null ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={originalAudioVolume}
+                  onChange={(e) => setOriginalAudioVolume(Number(e.target.value))}
+                  className="min-w-0 flex-1 accent-[#534AB7]"
+                />
+                <span className="w-8 tabular-nums text-right text-xs text-zinc-400">
+                  {originalAudioVolume}
+                </span>
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-500">
+                Original track volume hidden while editing a selected audio layer.
+              </p>
+            )}
           </label>
         </div>
       </section>

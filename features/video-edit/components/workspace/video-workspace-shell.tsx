@@ -9,6 +9,7 @@ import { SpeedProperties } from '@/components/editor/panels/SpeedProperties';
 import { TextProperties } from '@/components/editor/panels/TextProperties';
 import { ImageGalleryPanel } from '@/components/editor/panels/ImageGalleryPanel';
 import { ImageProperties } from '@/components/editor/panels/ImageProperties';
+import { SegmentAudioPanel } from '@/components/editor/panels/SegmentAudioPanel';
 import { buildExportPayload } from '@/lib/buildExportPayload';
 import { clampTimeToVideoSegments } from '@/lib/videoSegmentTime';
 import { useAudioExtractor } from '@/hooks/useAudioExtractor';
@@ -27,6 +28,90 @@ import { WorkspaceSubsPanel } from './workspace-subs-panel';
 import { WorkspaceTimelineDock, type WorkspaceTimelinePhase } from './workspace-timeline-dock';
 import { WorkspaceToolRail, type WorkspaceToolId } from './workspace-tool-rail';
 import { WorkspaceTopBar, type WorkspaceAspectId } from './workspace-top-bar';
+
+type WorkspaceHistorySnapshot = {
+  videoSrc: string | null;
+  duration: number;
+  currentTime: number;
+  trimStart: number;
+  trimEnd: number;
+  trimApplyNonce: number;
+  isPlaying: boolean;
+  textLayers: ReturnType<typeof useEditorStore.getState>['textLayers'];
+  blurLayers: ReturnType<typeof useEditorStore.getState>['blurLayers'];
+  galleryImages: ReturnType<typeof useEditorStore.getState>['galleryImages'];
+  imageLayers: ReturnType<typeof useEditorStore.getState>['imageLayers'];
+  cropSettings: ReturnType<typeof useEditorStore.getState>['cropSettings'];
+  isCropActive: boolean;
+  playbackSpeed: number;
+  selectedLayerId: string | null;
+  selectedSegmentId: string | null;
+  activeTool: EditorTool;
+  audioTracks: ReturnType<typeof useEditorStore.getState>['audioTracks'];
+  originalAudioMuted: boolean;
+  originalAudioVolume: number;
+  selectedAudioTrackId: string | null;
+  videoTimelineSegments: ReturnType<typeof useEditorStore.getState>['videoTimelineSegments'];
+  splitPoints: number[];
+  videoSegments: ReturnType<typeof useEditorStore.getState>['videoSegments'];
+};
+
+function createWorkspaceHistorySnapshot(
+  state: ReturnType<typeof useEditorStore.getState>,
+): WorkspaceHistorySnapshot {
+  return {
+    videoSrc: state.videoSrc,
+    duration: state.duration,
+    currentTime: state.currentTime,
+    trimStart: state.trimStart,
+    trimEnd: state.trimEnd,
+    trimApplyNonce: state.trimApplyNonce,
+    isPlaying: state.isPlaying,
+    textLayers: state.textLayers.map((item) => ({ ...item })),
+    blurLayers: state.blurLayers.map((item) => ({ ...item })),
+    galleryImages: state.galleryImages.map((item) => ({ ...item })),
+    imageLayers: state.imageLayers.map((item) => ({ ...item })),
+    cropSettings: {
+      ...state.cropSettings,
+      easyCrop: { ...state.cropSettings.easyCrop },
+      croppedAreaPixels: state.cropSettings.croppedAreaPixels
+        ? { ...state.cropSettings.croppedAreaPixels }
+        : null,
+      croppedAreaPercentages: state.cropSettings.croppedAreaPercentages
+        ? { ...state.cropSettings.croppedAreaPercentages }
+        : null,
+    },
+    isCropActive: state.isCropActive,
+    playbackSpeed: state.playbackSpeed,
+    selectedLayerId: state.selectedLayerId,
+    selectedSegmentId: state.selectedSegmentId,
+    activeTool: state.activeTool,
+    audioTracks: state.audioTracks.map((item) => ({ ...item })),
+    originalAudioMuted: state.originalAudioMuted,
+    originalAudioVolume: state.originalAudioVolume,
+    selectedAudioTrackId: state.selectedAudioTrackId,
+    videoTimelineSegments: state.videoTimelineSegments.map((item) => ({ ...item })),
+    splitPoints: [...state.splitPoints],
+    videoSegments: state.videoSegments.map((item) => ({ ...item })),
+  };
+}
+
+function snapshotSignature(snapshot: WorkspaceHistorySnapshot) {
+  return JSON.stringify({
+    ...snapshot,
+    audioTracks: snapshot.audioTracks.map(({ audioBuffer, ...rest }) => ({
+      ...rest,
+      hasAudioBuffer: audioBuffer != null,
+    })),
+  });
+}
+
+function isEditableTarget(target: EventTarget | null) {
+  if (!(target instanceof HTMLElement)) return false;
+  const tag = target.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
+  return target.isContentEditable;
+}
 function assignWorkspaceImageTimelineVerticalLane(layers: ImageLayer[]) {
   const sorted = [...layers].sort(
     (a, b) =>
@@ -104,6 +189,17 @@ export function VideoWorkspaceShell() {
   const setActiveToolStore = useEditorStore((s) => s.setActiveTool);
   const selectedLayerId = useEditorStore((s) => s.selectedLayerId);
   const setSelectedLayerId = useEditorStore((s) => s.setSelectedLayerId);
+  const selectedSegmentId = useEditorStore((s) => s.selectedSegmentId);
+  const setSelectedSegmentId = useEditorStore((s) => s.setSelectedSegmentId);
+  const audioTracks = useEditorStore((s) => s.audioTracks);
+  const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
+  const setSelectedAudioTrackId = useEditorStore((s) => s.setSelectedAudioTrackId);
+  const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
+  const setCropSettings = useEditorStore((s) => s.setCropSettings);
+  const originalAudioMuted = useEditorStore((s) => s.originalAudioMuted);
+  const originalAudioVolume = useEditorStore((s) => s.originalAudioVolume);
+  const setOriginalAudioMuted = useEditorStore((s) => s.setOriginalAudioMuted);
+  const setOriginalAudioVolume = useEditorStore((s) => s.setOriginalAudioVolume);
 
   useEffect(() => {
     return () => {
@@ -117,14 +213,105 @@ export function VideoWorkspaceShell() {
   const [pos, setPos] = useState({ x: '810', y: '390', w: '300', h: '60' });
   const [opacity, setOpacity] = useState(100);
   const [timing, setTiming] = useState({ in: '0.0', out: '10.0' });
-  const [volume, setVolume] = useState(72);
+  const [clipRowById, setClipRowById] = useState<Record<string, string>>({});
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
   const previewFrameRef = useRef<HTMLDivElement>(null);
   const volumeBeforeMuteRef = useRef(72);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
+  const musicInputRef = useRef<HTMLInputElement>(null);
+  const voiceInputRef = useRef<HTMLInputElement>(null);
+  const historyPastRef = useRef<WorkspaceHistorySnapshot[]>([]);
+  const historyFutureRef = useRef<WorkspaceHistorySnapshot[]>([]);
+  const isApplyingHistoryRef = useRef(false);
+  const lastHistorySignatureRef = useRef('');
 
   useEffect(() => {
-    if (volume > 0) volumeBeforeMuteRef.current = volume;
-  }, [volume]);
+    const initial = createWorkspaceHistorySnapshot(useEditorStore.getState());
+    historyPastRef.current = [initial];
+    historyFutureRef.current = [];
+    lastHistorySignatureRef.current = snapshotSignature(initial);
+    setCanUndo(false);
+    setCanRedo(false);
+
+    const unsub = useEditorStore.subscribe((state) => {
+      if (isApplyingHistoryRef.current) return;
+      const next = createWorkspaceHistorySnapshot(state);
+      const sig = snapshotSignature(next);
+      if (sig === lastHistorySignatureRef.current) return;
+      historyPastRef.current.push(next);
+      if (historyPastRef.current.length > 100) {
+        historyPastRef.current = historyPastRef.current.slice(-100);
+      }
+      historyFutureRef.current = [];
+      lastHistorySignatureRef.current = sig;
+      setCanUndo(historyPastRef.current.length > 1);
+      setCanRedo(false);
+    });
+
+    return () => unsub();
+  }, []);
+
+  const applyHistorySnapshot = useCallback((snapshot: WorkspaceHistorySnapshot) => {
+    isApplyingHistoryRef.current = true;
+    useEditorStore.setState((state) => ({
+      ...state,
+      ...snapshot,
+      isPlaying: false,
+    }));
+    const v = useEditorStore.getState().videoElement;
+    if (v) {
+      v.currentTime = snapshot.currentTime;
+      v.pause();
+    }
+    isApplyingHistoryRef.current = false;
+    lastHistorySignatureRef.current = snapshotSignature(snapshot);
+    setCanUndo(historyPastRef.current.length > 1);
+    setCanRedo(historyFutureRef.current.length > 0);
+  }, []);
+
+  const undo = useCallback(() => {
+    if (historyPastRef.current.length <= 1) return;
+    const current = historyPastRef.current.pop();
+    if (!current) return;
+    historyFutureRef.current.unshift(current);
+    const prev = historyPastRef.current[historyPastRef.current.length - 1];
+    if (!prev) return;
+    applyHistorySnapshot(prev);
+  }, [applyHistorySnapshot]);
+
+  const redo = useCallback(() => {
+    const next = historyFutureRef.current.shift();
+    if (!next) return;
+    historyPastRef.current.push(next);
+    applyHistorySnapshot(next);
+  }, [applyHistorySnapshot]);
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (isEditableTarget(event.target)) return;
+      const mod = event.ctrlKey || event.metaKey;
+      if (!mod) return;
+      if (event.key.toLowerCase() === 'z' && !event.shiftKey) {
+        event.preventDefault();
+        undo();
+        return;
+      }
+      if (
+        event.key.toLowerCase() === 'y' ||
+        (event.key.toLowerCase() === 'z' && event.shiftKey)
+      ) {
+        event.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [redo, undo]);
+
+  useEffect(() => {
+    if (originalAudioVolume > 0) volumeBeforeMuteRef.current = originalAudioVolume;
+  }, [originalAudioVolume]);
 
   useEffect(() => {
     const sync = () => {
@@ -140,12 +327,15 @@ export function VideoWorkspaceShell() {
   }, []);
 
   const onToggleMute = useCallback(() => {
-    if (volume > 0) {
-      setVolume(0);
+    if (!originalAudioMuted) {
+      setOriginalAudioMuted(true);
     } else {
-      setVolume(volumeBeforeMuteRef.current > 0 ? volumeBeforeMuteRef.current : 72);
+      setOriginalAudioMuted(false);
+      setOriginalAudioVolume(
+        volumeBeforeMuteRef.current > 0 ? volumeBeforeMuteRef.current : 72,
+      );
     }
-  }, [volume]);
+  }, [originalAudioMuted, setOriginalAudioMuted, setOriginalAudioVolume]);
 
   const onTogglePreviewFullscreen = useCallback(() => {
     const el = previewFrameRef.current;
@@ -156,6 +346,24 @@ export function VideoWorkspaceShell() {
       requestElementFullscreen(el);
     }
   }, []);
+
+  const onMusicFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) addAudioTrack('music', file);
+      e.target.value = '';
+    },
+    [addAudioTrack],
+  );
+
+  const onVoiceFile = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (file) addAudioTrack('voiceover', file);
+      e.target.value = '';
+    },
+    [addAudioTrack],
+  );
 
   const handleToolChange = useCallback(
     (id: WorkspaceToolId) => {
@@ -169,11 +377,6 @@ export function VideoWorkspaceShell() {
     },
     [setActiveTool, setActiveToolStore],
   );
-
-  useEffect(() => {
-    if (!videoElement) return;
-    videoElement.volume = volume / 100;
-  }, [videoElement, volume]);
 
   const onTogglePlay = useCallback(() => {
     const v = videoElement;
@@ -252,7 +455,7 @@ export function VideoWorkspaceShell() {
     if (sid == null || videoTimelineSegments.length <= 1) return;
     if (!videoTimelineSegments.some((s) => s.id === sid)) return;
     deleteVideoTimelineSegment(sid);
-    setSelectedLayerId(null);
+    setSelectedSegmentId(null);
     const v = videoElement;
     const next = useEditorStore.getState().currentTime;
     if (v) v.currentTime = next;
@@ -261,39 +464,83 @@ export function VideoWorkspaceShell() {
     deleteVideoTimelineSegment,
     selectedLayerId,
     setCurrentTime,
-    setSelectedLayerId,
+    setSelectedSegmentId,
     videoElement,
     videoTimelineSegments,
   ]);
 
   const onTimelineClipSelect = useCallback(
     (clipId: string) => {
-      setSelectedLayerId(clipId);
       const { videoTimelineSegments: segs, blurLayers: bl } = useEditorStore.getState();
       const isVideoClip =
         segs.some((s) => s.id === clipId) ||
         (segs.length === 0 && clipId === MAIN_VIDEO_TIMELINE_CLIP_ID);
       if (isVideoClip) {
+        const timelineClip = segs.find((s) => s.id === clipId);
+        const matchedVideoSegment = timelineClip
+          ? useEditorStore
+              .getState()
+              .videoSegments.find(
+                (segment) =>
+                  Math.abs(segment.startTime - timelineClip.startTime) < 1e-4 &&
+                  Math.abs(segment.endTime - timelineClip.endTime) < 1e-4,
+              )
+          : null;
+        setSelectedSegmentId(matchedVideoSegment?.id ?? null);
+        setSelectedLayerId(clipId);
+        setSelectedAudioTrackId(null);
         setActiveTool('media');
         setActiveToolStore('pointer');
         return;
       }
+      setSelectedSegmentId(null);
+      setSelectedLayerId(clipId);
       if (bl.some((l) => l.id === clipId)) {
+        setSelectedAudioTrackId(null);
         setActiveTool('blur');
         setActiveToolStore('blur');
         return;
       }
       const il = useEditorStore.getState().imageLayers;
       if (il.some((l) => l.id === clipId)) {
+        setSelectedAudioTrackId(null);
         setActiveTool('image');
         setActiveToolStore('image');
         return;
       }
+      setSelectedAudioTrackId(null);
       setActiveTool('text');
       setActiveToolStore('text');
     },
-    [setActiveTool, setActiveToolStore, setSelectedLayerId],
+    [
+      setActiveTool,
+      setActiveToolStore,
+      setSelectedAudioTrackId,
+      setSelectedLayerId,
+      setSelectedSegmentId,
+    ],
   );
+
+  const onTimelineAudioClipSelect = useCallback(
+    (clipId: string) => {
+      setSelectedLayerId(null);
+      setSelectedSegmentId(null);
+      setSelectedAudioTrackId(clipId);
+      setActiveTool('audio');
+      setActiveToolStore('audio');
+    },
+    [
+      setActiveTool,
+      setActiveToolStore,
+      setSelectedAudioTrackId,
+      setSelectedLayerId,
+      setSelectedSegmentId,
+    ],
+  );
+
+  const onTimelineClipMoveRow = useCallback((clipId: string, rowId: string) => {
+    setClipRowById((prev) => (prev[clipId] === rowId ? prev : { ...prev, [clipId]: rowId }));
+  }, []);
 
   const aspectOptions = useMemo(
     () =>
@@ -304,6 +551,24 @@ export function VideoWorkspaceShell() {
         { id: '4:3' as const, label: t('aspect.ratio4_3') },
       ],
     [t],
+  );
+
+  const onAspectChange = useCallback(
+    (nextAspect: WorkspaceAspectId) => {
+      setAspect(nextAspect);
+      setActiveTool('crop');
+      setActiveToolStore('crop');
+      const easyAspect =
+        nextAspect === '16:9'
+          ? 16 / 9
+          : nextAspect === '9:16'
+            ? 9 / 16
+            : nextAspect === '1:1'
+              ? 1
+              : 4 / 3;
+      setCropSettings({ easyAspect });
+    },
+    [setActiveToolStore, setCropSettings],
   );
 
   const tools = useMemo(
@@ -323,86 +588,83 @@ export function VideoWorkspaceShell() {
   );
 
   const tracks = useMemo(() => {
-    const videoClips =
-      videoSrc && duration > 0
-        ? (() => {
-            const ordered =
-              videoTimelineSegments.length > 0
-                ? [...videoTimelineSegments].sort((a, b) => a.startTime - b.startTime)
-                : [
-                    {
-                      id: MAIN_VIDEO_TIMELINE_CLIP_ID,
-                      startTime: trimStart,
-                      endTime: trimEnd,
-                    },
-                  ];
-            return ordered.map((s) => ({
-              id: s.id,
-              label: t('timeline.clips.uploadedVideo'),
-              start: s.startTime / duration,
-              width: Math.max((s.endTime - s.startTime) / duration, 0.004),
-              tone: 'violet' as const,
-            }));
-          })()
-        : [];
-    const textClips =
-      videoSrc && duration > 0
-        ? textLayers
-            .filter((l) => l.type === 'text')
-            .map((l) => ({
-              id: l.id,
-              label: (l.content.trim() || 'Text').slice(0, 32),
-              start: l.startTime / duration,
-              width: Math.max((l.endTime - l.startTime) / duration, 0.004),
-              tone: 'emerald' as const,
-            }))
-        : [];
-    const blurClips =
-      videoSrc && duration > 0
-        ? blurLayers.map((l) => ({
-            id: l.id,
-            label: 'Blur',
-            start: l.startTime / duration,
-            width: Math.max((l.endTime - l.startTime) / duration, 0.004),
-            tone: 'rose' as const,
-          }))
-        : [];
-    const imageLaneById = assignWorkspaceImageTimelineVerticalLane(imageLayers);
-    const imageClips =
-      videoSrc && duration > 0
-        ? imageLayers.map((l) => {
-            const meta = galleryImages.find((g) => g.id === l.galleryImageId);
-            return {
-              id: l.id,
-              label: (meta?.name ?? 'Image').slice(0, 32),
-              start: l.startTime / duration,
-              width: Math.max((l.endTime - l.startTime) / duration, 0.004),
-              tone: 'amber' as const,
-              thumbnailSrc: l.src,
-              verticalLane: imageLaneById.get(l.id) ?? 0,
-            };
-          })
-        : [];
-    return [
-      { id: 'video', clips: videoClips },
-      { id: 'text', clips: textClips },
-      { id: 'blur', clips: blurClips },
-      { id: 'image', clips: imageClips },
-      { id: 'subtitle', clips: [] },
-      { id: 'audio', clips: [] },
-    ];
-  }, [
-    blurLayers,
-    duration,
-    galleryImages,
-    imageLayers,
-    textLayers,
-    t,
-    trimEnd,
-    trimStart,
-    videoSrc,
-    videoTimelineSegments,
-  ]);
+    const rows = ['video', 'text', 'blur', 'image', 'subtitle', 'audio'] as const;
+    const bucket: Record<(typeof rows)[number], Array<any>> = {
+      video: [],
+      text: [],
+      blur: [],
+      image: [],
+      subtitle: [],
+      audio: [],
+    };
+    const place = (defaultRow: (typeof rows)[number], clip: any) => {
+      const target = clipRowById[clip.id] as (typeof rows)[number] | undefined;
+      const row = target != null && rows.includes(target) ? target : defaultRow;
+      bucket[row].push(clip);
+    };
+    if (videoSrc && duration > 0) {
+      const ordered =
+        videoTimelineSegments.length > 0
+          ? [...videoTimelineSegments].sort((a, b) => a.startTime - b.startTime)
+          : [{ id: MAIN_VIDEO_TIMELINE_CLIP_ID, startTime: trimStart, endTime: trimEnd }];
+      for (const s of ordered) {
+        place('video', {
+          id: s.id,
+          kind: 'video' as const,
+          label: t('timeline.clips.uploadedVideo'),
+          start: s.startTime / duration,
+          width: Math.max((s.endTime - s.startTime) / duration, 0.004),
+          tone: 'violet' as const,
+        });
+      }
+      for (const l of textLayers.filter((x) => x.type === 'text')) {
+        place('text', {
+          id: l.id,
+          kind: 'text' as const,
+          label: (l.content.trim() || 'Text').slice(0, 32),
+          start: l.startTime / duration,
+          width: Math.max((l.endTime - l.startTime) / duration, 0.004),
+          tone: 'emerald' as const,
+        });
+      }
+      for (const l of blurLayers) {
+        place('blur', {
+          id: l.id,
+          kind: 'blur' as const,
+          label: 'Blur',
+          start: l.startTime / duration,
+          width: Math.max((l.endTime - l.startTime) / duration, 0.004),
+          tone: 'rose' as const,
+        });
+      }
+      const imageLaneById = assignWorkspaceImageTimelineVerticalLane(imageLayers);
+      for (const l of imageLayers) {
+        const meta = galleryImages.find((g) => g.id === l.galleryImageId);
+        place('image', {
+          id: l.id,
+          kind: 'image' as const,
+          label: (meta?.name ?? 'Image').slice(0, 32),
+          start: l.startTime / duration,
+          width: Math.max((l.endTime - l.startTime) / duration, 0.004),
+          tone: 'amber' as const,
+          thumbnailSrc: l.src,
+          verticalLane: imageLaneById.get(l.id) ?? 0,
+        });
+      }
+      for (const tAudio of audioTracks.filter((x) => x.type === 'music' || x.type === 'voiceover')) {
+        place('audio', {
+          id: tAudio.id,
+          kind: 'audio' as const,
+          label: tAudio.name.slice(0, 32),
+          start: tAudio.startTime / duration,
+          width: Math.max((tAudio.endTime - tAudio.startTime) / duration, 0.004),
+          tone: 'sky' as const,
+          audioType: tAudio.type,
+        });
+      }
+    }
+    return rows.map((id) => ({ id, clips: bucket[id] }));
+  }, [audioTracks, blurLayers, clipRowById, duration, galleryImages, imageLayers, t, textLayers, trimEnd, trimStart, videoSrc, videoTimelineSegments]);
 
   const timeDisplay = t('timeAtPlayhead', {
     current: formatWorkspaceTime(currentTime),
@@ -442,6 +704,7 @@ export function VideoWorkspaceShell() {
     activeTool === 'speed' ||
     activeTool === 'subs' ||
     activeTool === 'audio' ||
+    selectedSegmentId != null ||
     (selectedLayerId != null && !selectedIsVideoTimelineClip);
 
   const onExportClick = useCallback(() => {
@@ -454,17 +717,41 @@ export function VideoWorkspaceShell() {
       <WorkspaceTopBar
         returnToDashboardLabel={t('returnToDashboard')}
         aspect={aspect}
-        onAspectChange={setAspect}
+        onAspectChange={onAspectChange}
         aspectOptions={aspectOptions}
         aspectToggleAriaLabel={t('aspectToggleAria')}
         exportLabel={t('exportVideo')}
         onExportClick={onExportClick}
+        onUndoClick={undo}
+        onRedoClick={redo}
+        canUndo={canUndo}
+        canRedo={canRedo}
       />
 
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <WorkspaceToolRail tools={tools} activeTool={activeTool} onToolChange={handleToolChange} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
-          <WorkspacePreviewCanvas ref={previewFrameRef} canvasLabel={t('canvasAria')} />
+          <input
+            ref={musicInputRef}
+            type="file"
+            accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/x-aac,.mp3,.wav,.aac"
+            className="sr-only"
+            aria-hidden
+            onChange={onMusicFile}
+          />
+          <input
+            ref={voiceInputRef}
+            type="file"
+            accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/x-aac,.mp3,.wav,.aac"
+            className="sr-only"
+            aria-hidden
+            onChange={onVoiceFile}
+          />
+          <WorkspacePreviewCanvas
+            ref={previewFrameRef}
+            canvasLabel={t('canvasAria')}
+            aspect={aspect}
+          />
           <WorkspaceTimelineDock
             phase={timelinePhase}
             durationSec={duration}
@@ -485,8 +772,13 @@ export function VideoWorkspaceShell() {
               if (Number.isFinite(n) && n > 0) setPlaybackSpeed(n);
             }}
             volumeLabel={t('playback.volume')}
-            volumeValue={volume}
-            onVolumeChange={setVolume}
+            volumeValue={originalAudioMuted ? 0 : originalAudioVolume}
+            onVolumeChange={(value) => {
+              setOriginalAudioVolume(value);
+              if (value > 0 && originalAudioMuted) {
+                setOriginalAudioMuted(false);
+              }
+            }}
             muteLabel={t('playback.mute')}
             unmuteLabel={t('playback.unmute')}
             fullscreenEnterLabel={t('playback.fullscreenEnter')}
@@ -500,8 +792,15 @@ export function VideoWorkspaceShell() {
             onNext={onNext}
             onSeekRatio={onSeekRatio}
             selectedTimelineClipId={selectedLayerId}
-            onTimelineDeselect={() => setSelectedLayerId(null)}
+            selectedAudioTrackId={selectedAudioTrackId}
+            onTimelineDeselect={() => {
+              setSelectedLayerId(null);
+              setSelectedSegmentId(null);
+              setSelectedAudioTrackId(null);
+            }}
             onTimelineClipSelect={onTimelineClipSelect}
+            onTimelineAudioClipSelect={onTimelineAudioClipSelect}
+            onTimelineClipMoveRow={onTimelineClipMoveRow}
             trimToolActive={activeTool === 'trim'}
             splitAtPlayheadLabel={t('timeline.trim.splitAtPlayhead')}
             splitAtPlayheadAriaLabel={t('timeline.trim.splitAtPlayheadAria')}
@@ -510,90 +809,101 @@ export function VideoWorkspaceShell() {
             deleteSegmentAriaLabel={t('timeline.trim.deleteSegmentAria')}
             deleteSegmentEnabled={canDeleteSelectedVideoSegment}
             onDeleteVideoSegment={onDeleteSelectedVideoSegment}
+            audioUploadVisible={activeTool === 'audio'}
+            addMusicLabel="Add music"
+            addVoiceoverLabel="Add voiceover"
+            onAddMusic={() => musicInputRef.current?.click()}
+            onAddVoiceover={() => voiceInputRef.current?.click()}
           />
         </div>
-        {showStoreToolPanel ? (
-          <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-l border-white/10 bg-black/70 md:w-72 md:min-w-72 md:max-w-72">
-            <div className="shrink-0 border-b border-white/10 px-4 py-3">
-              <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                {activeTool === 'crop'
-                  ? t('tools.crop')
-                  : activeTool === 'speed'
-                    ? t('tools.speed')
-                    : activeTool === 'subs'
-                      ? t('tools.subs')
-                      : activeTool === 'audio'
-                        ? t('tools.audio')
-                        : activeTool === 'blur' || selectedIsBlur
-                          ? t('tools.blur')
-                          : activeTool === 'image' || selectedIsImage
-                            ? t('tools.image')
-                            : t('tools.text')}
-              </h2>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
-              {activeTool === 'crop' ? (
-                <CropProperties onAfterApply={() => setActiveTool('media')} />
-              ) : activeTool === 'speed' ? (
-                <SpeedProperties />
-              ) : activeTool === 'subs' ? (
-                <WorkspaceSubsPanel
-                  onImported={() => {
-                    setActiveTool('text');
-                    setActiveToolStore('text');
-                  }}
-                />
-              ) : activeTool === 'audio' ? (
-                <AudioProperties />
-              ) : activeTool === 'blur' || selectedIsBlur ? (
-                <BlurProperties />
-              ) : activeTool === 'image' || selectedIsImage ? (
-                <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-                  {activeTool === 'image' ? (
-                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                      <ImageGalleryPanel />
-                    </div>
-                  ) : null}
-                  {selectedIsImage ? (
-                    <div className="min-h-0 shrink-0 overflow-y-auto">
-                      <ImageProperties />
-                    </div>
-                  ) : activeTool === 'image' ? (
-                    <p className="shrink-0 text-xs leading-relaxed text-muted">
-                      Drag a thumbnail onto the video preview, click + to add, or select an image clip
-                      on the timeline.
-                    </p>
-                  ) : null}
-                </div>
-              ) : (
-                <TextProperties />
-              )}
-            </div>
-          </aside>
-        ) : (
-          <WorkspacePropertiesPanel
-            titleLabel={t('tabs.properties')}
-            fontLabel={t('font')}
-            fontValue={font}
-            onFontChange={setFont}
-            positionSectionLabel={t('position')}
-            x={pos.x}
-            y={pos.y}
-            w={pos.w}
-            h={pos.h}
-            onPositionChange={(key, v) => setPos((p) => ({ ...p, [key]: v }))}
-            opacityLabel={t('opacity')}
-            opacityPct={opacity}
-            onOpacityChange={setOpacity}
-            timingSectionLabel={t('timing')}
-            inLabel={t('timeIn')}
-            outLabel={t('timeOut')}
-            timeIn={timing.in}
-            timeOut={timing.out}
-            onTimingChange={(key, v) => setTiming((x) => ({ ...x, [key]: v }))}
-            deleteLabel={t('deleteLayer')}
-          />
-        )}
+        {activeTool !== 'media' && activeTool !== 'trim' || selectedSegmentId != null ? (
+          showStoreToolPanel ? (
+            <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-l border-white/10 bg-black/70 md:w-72 md:min-w-72 md:max-w-72">
+              <div className="shrink-0 border-b border-white/10 px-4 py-3">
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  {selectedSegmentId != null
+                    ? 'Segment audio'
+                    : activeTool === 'crop'
+                    ? t('tools.crop')
+                    : activeTool === 'speed'
+                      ? t('tools.speed')
+                      : activeTool === 'subs'
+                        ? t('tools.subs')
+                        : activeTool === 'audio'
+                          ? t('tools.audio')
+                          : activeTool === 'blur' || selectedIsBlur
+                            ? t('tools.blur')
+                            : activeTool === 'image' || selectedIsImage
+                              ? t('tools.image')
+                              : t('tools.text')}
+                </h2>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
+                {selectedSegmentId != null ? (
+                  <SegmentAudioPanel />
+                ) : activeTool === 'crop' ? (
+                  <CropProperties onAfterApply={() => setActiveTool('media')} />
+                ) : activeTool === 'speed' ? (
+                  <SpeedProperties />
+                ) : activeTool === 'subs' ? (
+                  <WorkspaceSubsPanel
+                    onImported={() => {
+                      setActiveTool('text');
+                      setActiveToolStore('text');
+                    }}
+                  />
+                ) : activeTool === 'audio' ? (
+                  <AudioProperties />
+                ) : activeTool === 'blur' || selectedIsBlur ? (
+                  <BlurProperties />
+                ) : activeTool === 'image' || selectedIsImage ? (
+                  <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+                    {activeTool === 'image' ? (
+                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                        <ImageGalleryPanel />
+                      </div>
+                    ) : null}
+                    {selectedIsImage ? (
+                      <div className="min-h-0 shrink-0 overflow-y-auto">
+                        <ImageProperties />
+                      </div>
+                    ) : activeTool === 'image' ? (
+                      <p className="shrink-0 text-xs leading-relaxed text-muted">
+                        Drag a thumbnail onto the video preview, click + to add, or select an image clip
+                        on the timeline.
+                      </p>
+                    ) : null}
+                  </div>
+                ) : (
+                  <TextProperties />
+                )}
+              </div>
+            </aside>
+          ) : (
+            <WorkspacePropertiesPanel
+              titleLabel={t('tabs.properties')}
+              fontLabel={t('font')}
+              fontValue={font}
+              onFontChange={setFont}
+              positionSectionLabel={t('position')}
+              x={pos.x}
+              y={pos.y}
+              w={pos.w}
+              h={pos.h}
+              onPositionChange={(key, v) => setPos((p) => ({ ...p, [key]: v }))}
+              opacityLabel={t('opacity')}
+              opacityPct={opacity}
+              onOpacityChange={setOpacity}
+              timingSectionLabel={t('timing')}
+              inLabel={t('timeIn')}
+              outLabel={t('timeOut')}
+              timeIn={timing.in}
+              timeOut={timing.out}
+              onTimingChange={(key, v) => setTiming((x) => ({ ...x, [key]: v }))}
+              deleteLabel={t('deleteLayer')}
+            />
+          )
+        ) : null}
       </div>
     </div>
   );

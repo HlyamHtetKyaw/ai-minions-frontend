@@ -34,6 +34,14 @@ export function CropProperties(props: CropPropertiesProps = {}) {
   const resultH = Math.max(0, Math.round(fh - top - bottom));
 
   const originalAspect = fw > 0 && fh > 0 ? fw / fh : 16 / 9;
+  const selectedAspect = easyAspect > 0 ? easyAspect : originalAspect;
+  const isAspectSelected = (value: number) => Math.abs(selectedAspect - value) < 0.001;
+  const aspectButtonClass = (active: boolean) =>
+    `rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
+      active
+        ? 'border-[#534AB7] bg-[#534AB7]/20 text-zinc-100'
+        : 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+    }`;
 
   return (
     <div className="flex flex-col gap-4 p-3">
@@ -119,35 +127,35 @@ export function CropProperties(props: CropPropertiesProps = {}) {
           <button
             type="button"
             onClick={() => setCropSettings({ easyAspect: originalAspect })}
-            className="rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
+            className={aspectButtonClass(isAspectSelected(originalAspect))}
           >
             Original
           </button>
           <button
             type="button"
             onClick={() => setCropSettings({ easyAspect: 16 / 9 })}
-            className="rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
+            className={aspectButtonClass(isAspectSelected(16 / 9))}
           >
             16:9
           </button>
           <button
             type="button"
             onClick={() => setCropSettings({ easyAspect: 9 / 16 })}
-            className="rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
+            className={aspectButtonClass(isAspectSelected(9 / 16))}
           >
             9:16
           </button>
           <button
             type="button"
             onClick={() => setCropSettings({ easyAspect: 1 })}
-            className="rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
+            className={aspectButtonClass(isAspectSelected(1))}
           >
             1:1
           </button>
           <button
             type="button"
             onClick={() => setCropSettings({ easyAspect: 4 / 3 })}
-            className="rounded-md border border-zinc-600 bg-zinc-800 px-3 py-1.5 text-xs font-medium text-zinc-200 hover:bg-zinc-700"
+            className={aspectButtonClass(isAspectSelected(4 / 3))}
           >
             4:3
           </button>
