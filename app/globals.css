@@ -45,8 +45,22 @@
   --status-live: #a78bfa;
   --nav-pill: rgba(255, 255, 255, 0.08);
   --landing-home-primary-bg: #e6c978;
-  --landing-home-primary-fg: #0a1128;
+  --landing-home-primary-fg: #0f1128;
   --landing-home-primary-hover: #efd589;
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
+.dark select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.dark select optgroup {
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 @theme inline {
