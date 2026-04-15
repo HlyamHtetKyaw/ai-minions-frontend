@@ -7,12 +7,10 @@ import PageHeader from '@/components/layout/page-header';
 import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
 import ActionButton from '@/components/shared/components/action-button';
-import AnalyzeButton from '@/components/viralShorts/AnalyzeButton';
-import ClipResultsGrid from '@/components/viralShorts/ClipResultsGrid';
+import CreationStudio from '@/components/viralShorts/CreationStudio';
 import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
-import { useViralShortsStore } from '@/store/viralShortsStore';
 
-type PageStep = 'upload' | 'settings' | 'analyzing' | 'results';
+type PageStep = 'upload' | 'studio';
 
 export default function ViralShortsPage() {
   const t = useTranslations('viralShorts');
@@ -20,10 +18,7 @@ export default function ViralShortsPage() {
   const [step, setStep] = useState<PageStep>('upload');
   const [file, setFile] = useState<File | null>(null);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [videoDuration, setVideoDuration] = useState(600);
   const [videoName, setVideoName] = useState('');
-
-  const activeJobId = useViralShortsStore((s) => s.activeJobId);
 
   useEffect(() => {
     const resolve = () => setIsSignedIn(Boolean(getStoredAccessToken()));
@@ -32,49 +27,16 @@ export default function ViralShortsPage() {
     return () => window.removeEventListener(AUTH_CHANGED_EVENT, resolve);
   }, []);
 
-  useEffect(() => {
-    if (!videoUrl || !file) return;
-
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-
-    const onMeta = () => {
-      const d = video.duration;
-      if (Number.isFinite(d) && d > 0) {
-        setVideoDuration(d);
-      } else {
-        setVideoDuration(600);
-      }
-      video.removeEventListener('loadedmetadata', onMeta);
-    };
-
-    video.addEventListener('loadedmetadata', onMeta);
-    video.src = videoUrl;
-
-    return () => {
-      video.removeEventListener('loadedmetadata', onMeta);
-    };
-  }, [file, videoUrl]);
-
-  const clearJobs = useCallback(() => {
-    const { activeJobId: id, removeJob, clearCombineSelection } = useViralShortsStore.getState();
-    clearCombineSelection();
-    if (id) removeJob(id);
-  }, []);
-
   const handleContinueFromUpload = useCallback(() => {
     if (!file || !videoUrl) return;
-    clearJobs();
-    setStep('settings');
-  }, [clearJobs, file, videoUrl]);
+    setStep('studio');
+  }, [file, videoUrl]);
 
   const handleBackToUpload = useCallback(() => {
-    clearJobs();
     setStep('upload');
-  }, [clearJobs]);
+  }, []);
 
   const handleNewVideo = useCallback(() => {
-    clearJobs();
     setVideoUrl((prev) => {
       if (prev?.startsWith('blob:')) {
         URL.revokeObjectURL(prev);
@@ -83,9 +45,8 @@ export default function ViralShortsPage() {
     });
     setFile(null);
     setVideoName('');
-    setVideoDuration(600);
     setStep('upload');
-  }, [clearJobs]);
+  }, []);
 
   return (
     <>
@@ -93,10 +54,8 @@ export default function ViralShortsPage() {
         <LoginGate />
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-8 sm:px-6 sm:py-10">
-          <div
-            className={`mx-auto w-full space-y-8 ${step === 'results' ? 'max-w-6xl' : 'max-w-2xl'}`}
-          >
-            {step !== 'results' ? (
+          <div className={`mx-auto w-full space-y-8 ${step === 'studio' ? 'max-w-7xl' : 'max-w-2xl'}`}>
+            {step !== 'studio' ? (
               <PageHeader
                 icon={
                   <PageHeader.Icon tileClassName="viral-shorts-icon-tile">
@@ -140,9 +99,6 @@ export default function ViralShortsPage() {
                     return URL.createObjectURL(f);
                   });
                   setVideoName(f?.name ?? '');
-                  if (!f) {
-                    setVideoDuration(600);
-                  }
                 }}
               />
 
@@ -158,23 +114,23 @@ export default function ViralShortsPage() {
               </div>
             </section>
 
-            {(step === 'settings' || step === 'analyzing') && videoUrl ? (
-              <section className="viral-shorts-upload-panel p-5 sm:p-6" aria-label="Analysis settings">
-                <AnalyzeButton
-                  videoName={videoName}
-                  videoDuration={videoDuration}
-                  videoUrl={videoUrl}
-                  onAnalysisStart={() => setStep('analyzing')}
-                  onAnalysisComplete={() => setStep('results')}
-                  onAnalysisCancelled={() => setStep('settings')}
-                  onBack={handleBackToUpload}
-                />
-              </section>
+            {step === 'studio' && videoUrl ? (
+              <CreationStudio
+                videoName={videoName}
+                videoUrl={videoUrl}
+                onBackToUpload={handleBackToUpload}
+              />
             ) : null}
 
-            {step === 'results' && activeJobId ? (
-              <ClipResultsGrid jobId={activeJobId} onNewVideo={handleNewVideo} />
-            ) : null}
+            {step === 'studio' ? null : (
+              <button
+                type="button"
+                onClick={handleNewVideo}
+                className="text-sm font-medium text-muted underline-offset-2 hover:text-foreground hover:underline"
+              >
+                Upload a different video
+              </button>
+            )}
           </div>
         </div>
       )}
