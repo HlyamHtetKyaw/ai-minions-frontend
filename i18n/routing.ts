@@ -23,7 +23,8 @@ const pathnames = {
   '/video-edit/work-space': '/video-edit/work-space',
   '/editor': '/editor',
   '/translate': '/translate',
-  '/admin': '/admin'
+  '/admin': '/admin',
+  '/viral-shorts': '/viral-shorts',
 } as const satisfies Pathnames<typeof locales>;
 
 export type AppPathname = keyof typeof pathnames;

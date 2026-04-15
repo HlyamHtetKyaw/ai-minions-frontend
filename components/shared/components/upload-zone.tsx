@@ -18,6 +18,8 @@ type Props = {
   dropzoneClassName?: string;
   /** Applied while dragging when using a custom `dropzoneClassName` (defaults to transcribe active style) */
   dropzoneActiveClassName?: string;
+  /** Omit the large upload icon above the instruction text */
+  hideDropzoneIcon?: boolean;
 };
 
 export default function UploadZone({
@@ -30,6 +32,7 @@ export default function UploadZone({
   className,
   dropzoneClassName,
   dropzoneActiveClassName = 'transcribe-dropzone-active',
+  hideDropzoneIcon = false,
 }: Props) {
   const t = useTranslations('shared.uploadZone');
   const [file, setFile] = useState<File | null>(null);
@@ -115,7 +118,7 @@ export default function UploadZone({
                 }`
           }
         >
-          <Upload className="h-8 w-8 text-muted" />
+          {!hideDropzoneIcon && <Upload className="h-8 w-8 text-muted" />}
           <div className="text-center space-y-1">
             <p className="text-sm font-medium text-foreground">{line1}</p>
             {showLine2 && line2 !== undefined && (
