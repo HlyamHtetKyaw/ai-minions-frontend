@@ -19,7 +19,7 @@ const FLOW_STEP_KEYS = [
 
 /** Tool keys per mockup section order */
 const SECTIONS = [
-  { sectionKey: 'startHere' as const, toolKeys: ['video-upload'] as const },
+  { sectionKey: 'startHere' as const, toolKeys: ['viral-shorts'] as const },
   { sectionKey: 'process' as const, toolKeys: ['transcribe', 'translate'] as const },
   {
     sectionKey: 'createEdit' as const,
@@ -150,21 +150,25 @@ export default async function LandingWorkspaceTools() {
       </p>
 
       <div className="flex flex-col gap-14 sm:gap-16 lg:gap-20">
-        {SECTIONS.map(({ sectionKey, toolKeys }) => (
-          <div key={sectionKey}>
+        {SECTIONS.map(({ sectionKey, toolKeys }) => {
+          const startHereFeature =
+            sectionKey === 'startHere' ? FEATURE_BY_KEY[toolKeys[0]] : undefined;
+
+          return (
+            <div key={sectionKey}>
             <h3 className="mb-5 text-lg font-bold tracking-tight text-foreground sm:mb-6 sm:text-xl">
               {tHome(`landing.workspaceTools.sections.${sectionKey}.title`)}
             </h3>
 
-            {sectionKey === 'startHere' ? (
+            {sectionKey === 'startHere' && startHereFeature ? (
               <StartHereCard
-                feature={FEATURE_BY_KEY[toolKeys[0]]!}
+                feature={startHereFeature}
                 name={tFeatures(`${toolKeys[0]}.name`)}
                 description={tHome(`landing.workspaceTools.descriptions.${toolKeys[0]}`)}
                 cta={ctaStart}
                 recommendedLabel={tHome('landing.workspaceTools.recommended')}
               />
-            ) : (
+            ) : sectionKey !== 'startHere' ? (
               <div
                 className={
                   sectionKey === 'process'
@@ -186,9 +190,10 @@ export default async function LandingWorkspaceTools() {
                   );
                 })}
               </div>
-            )}
-          </div>
-        ))}
+            ) : null}
+            </div>
+          );
+        })}
       </div>
     </section>
   );

@@ -222,6 +222,7 @@
           }
         },
         "descriptions": {
+          "viral-shorts": "Upload long-form video and surface viral-ready moments with AI.",
           "video-upload": "Upload your video to begin",
           "transcribe": "Turn video/audio into text",
           "translate": "Translate captions or scripts",
@@ -266,6 +267,10 @@
     "heading": "Workflow",
     "tipHeading": "Tip",
     "steps": {
+      "viral-shorts": {
+        "name": "Viral Shorts",
+        "description": "Find clips from long-form video"
+      },
       "video-upload": {
         "name": "Video Upload",
         "description": "Upload your video file"
@@ -296,6 +301,7 @@
       }
     },
     "tips": {
+      "viral-shorts": "Use a stable master file (1080p or 4K MP4/WebM). Clear speech and visible subjects help the model pick stronger moments.",
       "video-upload": "Upload MP4, MOV, or AVI files. Clear audio gives the best transcription accuracy.",
       "transcribe": "AI transcription works best with clear audio and minimal background noise.",
       "transcript": "Review and correct the transcript before generating content for better results.",
@@ -351,6 +357,12 @@
       "description": "Translate scripts and captions into other languages.",
       "category": "Process media",
       "cardLetter": "A"
+    },
+    "viral-shorts": {
+      "name": "Viral Shorts",
+      "description": "Turn long videos into vertical 9:16 clips with AI-picked highlights.",
+      "category": "Edit & finalize",
+      "cardLetter": "S"
     }
   },
   "voice-over": {
@@ -582,6 +594,31 @@
     "generateButton": {
       "label": "Generate Voice",
       "loading": "Generating…"
+    }
+  },
+  "viralShorts": {
+    "page": {
+      "title": "Viral Shorts",
+      "subtitle": "Upload long-form video up to 1 hour 30 min (e.g. podcast, event, interview). AI finds viral moments; trim, preview, download, or combine any two segments into a 9:16 vertical.",
+      "helpAria": "Help with Viral Shorts"
+    },
+    "uploadCard": {
+      "title": "Upload long-form video"
+    },
+    "uploadZone": {
+      "instruction": "Click or drop a video (MP4/WebM, max 1 hour 30 min)"
+    },
+    "continue": {
+      "label": "Upload & continue",
+      "loading": "Preparing…"
+    },
+    "analyze": {
+      "status": "Video uploaded. Run AI to detect viral moments.",
+      "primary": {
+        "label": "Analyze for viral clips",
+        "loading": "Analyzing…"
+      },
+      "back": "Back"
     }
   },
   "transcribe": {
