@@ -14,6 +14,16 @@ export type TranslateResult = {
   usedProvider?: string | null;
 };
 
+export type PointsEstimate = {
+  baseCostPoints: number;
+  reserveCostPoints: number;
+  tokenIn: string | number;
+  tokenOut: string | number;
+  mbAudio: string | number;
+  mbVideo: string | number;
+  fileSizeBytes?: number | null;
+};
+
 type ApiEnvelope<T> = {
   success: boolean;
   message?: string;
@@ -61,6 +71,29 @@ export async function translateText(params: {
   }
   if (typeof json.data.translatedText !== 'string') {
     throw new Error('Translate response missing text');
+  }
+  return json.data;
+}
+
+export async function translateEstimatePoints(text: string): Promise<PointsEstimate> {
+  const base = getPublicApiBaseUrl();
+  if (!base) {
+    throw new Error('API base URL is not set (NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)');
+  }
+  const res = await fetchWithAuthRetry(`${base}/api/v1/ai/translate/estimate`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ text }),
+  });
+
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<PointsEstimate>;
+  if (!res.ok || !json.success || json.data == null) {
+    throw new Error(errorMessageFromBody(json, `Estimate failed (${res.status})`));
   }
   return json.data;
 }

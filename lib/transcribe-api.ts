@@ -20,6 +20,16 @@ export type TranscribeCompleteData = {
   storageUrl: string;
 };
 
+export type PointsEstimate = {
+  baseCostPoints: number;
+  reserveCostPoints: number;
+  tokenIn: string | number;
+  tokenOut: string | number;
+  mbAudio: string | number;
+  mbVideo: string | number;
+  fileSizeBytes?: number | null;
+};
+
 /** Matches main-service {@code GenerationStatus} codes. */
 export const GENERATION_STATUS_PENDING = 1;
 export const GENERATION_STATUS_SUCCESS = 2;
@@ -117,6 +127,32 @@ export async function transcribePrepareUpload(file: File): Promise<TranscribePre
     throw new Error(
       errorMessageFromBody(json, `upload-url (prepare) failed (${res.status})`),
     );
+  }
+  return json.data;
+}
+
+export async function transcribeEstimatePoints(file: File): Promise<PointsEstimate> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set (NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)');
+
+  const sourceType = inferSourceType(file);
+  const res = await fetchWithAuthRetry(`${base}/api/v1/transcribe/estimate`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({
+      sourceType,
+      fileSizeBytes: file.size,
+    }),
+  });
+
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<PointsEstimate>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `estimate failed (${res.status})`));
   }
   return json.data;
 }

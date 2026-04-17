@@ -10,7 +10,7 @@ import TextPanels from '@/features/translate/components/text-panels';
 import TranslateButton from '@/features/translate/components/translate-button';
 import { LANGUAGES } from '@/lib/constants';
 import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
-import { translateText } from '@/lib/translate-api';
+import { translateEstimatePoints, translateText, type PointsEstimate } from '@/lib/translate-api';
 
 function languageLabel(code: string): string {
   return LANGUAGES.find((l) => l.code === code)?.name ?? code;
@@ -26,6 +26,9 @@ export default function TranslatePage() {
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
 
   useEffect(() => {
     const resolve = () => setIsSignedIn(Boolean(getStoredAccessToken()));
@@ -53,6 +56,32 @@ export default function TranslatePage() {
     setSourceText(translatedText);
     setTranslatedText(sourceText);
   };
+
+  useEffect(() => {
+    const text = sourceText.trim();
+    if (!text) {
+      setEstimate(null);
+      setEstimateError(null);
+      setEstimateLoading(false);
+      return;
+    }
+    setEstimateLoading(true);
+    setEstimateError(null);
+    const tmr = setTimeout(() => {
+      translateEstimatePoints(text)
+        .then((d) => {
+          setEstimate(d);
+          setEstimateLoading(false);
+        })
+        .catch((e) => {
+          const raw = e instanceof Error ? e.message : String(e);
+          setEstimate(null);
+          setEstimateError(toUserSafeError(raw));
+          setEstimateLoading(false);
+        });
+    }, 450);
+    return () => clearTimeout(tmr);
+  }, [sourceText]);
 
   const handleTranslate = async () => {
     setError(null);
@@ -135,6 +164,18 @@ export default function TranslatePage() {
               <p className="text-sm text-destructive" role="alert">
                 {error}
               </p>
+            ) : null}
+
+            {estimateLoading || estimate || estimateError ? (
+              <div className="rounded-xl border border-glass-border bg-glass/60 px-4 py-3 text-sm text-muted backdrop-blur-sm">
+                {estimateLoading
+                  ? 'Estimating points…'
+                  : estimate
+                    ? `Estimated cost: ~${estimate.reserveCostPoints} points`
+                    : estimateError
+                      ? `Estimate unavailable: ${estimateError}`
+                      : null}
+              </div>
             ) : null}
 
             <TranslateButton

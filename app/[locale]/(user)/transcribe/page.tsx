@@ -14,6 +14,8 @@ import {
   transcribeUploadToSignedUrl,
   transcribeCompleteUpload,
   openGenerationJobSseStream,
+  transcribeEstimatePoints,
+  type PointsEstimate,
 } from '@/lib/transcribe-api';
 import {
   extractTranscriptTextFromOutputData,
@@ -36,6 +38,9 @@ export default function TranscribePage() {
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('');
   const [progress, setProgress] = useState<{ percent: number; label: string } | null>(null);
+  const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
 
   const toUserSafeError = (raw: string): string => {
     const msg = (raw ?? '').trim();
@@ -101,6 +106,38 @@ export default function TranscribePage() {
       if (t) clearTimeout(t);
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!uploadedFile) {
+      setEstimate(null);
+      setEstimateError(null);
+      setEstimateLoading(false);
+      return;
+    }
+    setEstimateLoading(true);
+    setEstimateError(null);
+    void withTimeout(
+      transcribeEstimatePoints(uploadedFile),
+      12000,
+      'Estimate timed out. Please try again.',
+    )
+      .then((d) => {
+        if (cancelled) return;
+        setEstimate(d);
+        setEstimateLoading(false);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : String(e);
+        setEstimate(null);
+        setEstimateError(toUserSafeError(msg));
+        setEstimateLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [uploadedFile]);
 
   const handleTranscribe = async () => {
     if (!uploadedFile) return;
@@ -205,8 +242,22 @@ export default function TranscribePage() {
                   setTranscribedText('');
                   setStatus('');
                   setProgress(null);
+                  setEstimate(null);
+                  setEstimateError(null);
                 }}
               />
+
+              <div className="rounded-xl border border-card-border bg-card px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  {estimateLoading
+                    ? 'Estimating points…'
+                    : estimate
+                      ? `Estimated cost: ~${estimate.reserveCostPoints} points`
+                      : estimateError
+                        ? `Estimate unavailable: ${estimateError}`
+                        : 'Select a file to estimate points.'}
+                </p>
+              </div>
 
               <TranscribeButton
                 onClick={handleTranscribe}
