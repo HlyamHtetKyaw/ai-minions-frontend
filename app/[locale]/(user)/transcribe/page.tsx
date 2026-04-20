@@ -2,8 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CircleHelp, Mic } from 'lucide-react';
-import PageHeader from '@/components/layout/page-header';
+import { Mic } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
 import TranscribeButton from '@/features/transcribe/components/transcribe-button';
@@ -41,6 +40,23 @@ export default function TranscribePage() {
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
+
+  /** Blob URL for the side preview column on md+ (UploadZone keeps its own URL below md). */
+  const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!uploadedFile) {
+      setSplitPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(uploadedFile);
+    setSplitPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [uploadedFile]);
+
+  const isVideoFile = Boolean(uploadedFile?.type.startsWith('video/'));
+  const isAudioFile = Boolean(uploadedFile?.type.startsWith('audio/'));
+  const useMediaSplitColumn = Boolean(uploadedFile && (isVideoFile || isAudioFile));
+  const splitLayoutActive = useMediaSplitColumn && Boolean(splitPreviewUrl);
 
   const toUserSafeError = (raw: string): string => {
     const msg = (raw ?? '').trim();
@@ -213,23 +229,37 @@ export default function TranscribePage() {
         <LoginGate />
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          <div className="mx-auto w-full max-w-2xl">
-            <div className="transcribe-shell space-y-6">
-              <PageHeader
-                icon={
-                  <PageHeader.Icon tileClassName="transcribe-icon-tile">
-                    <Mic className="h-6 w-6" strokeWidth={2.25} />
-                  </PageHeader.Icon>
-                }
-                title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
-                action={
-                  <PageHeader.IconButton aria-label={t('page.helpAria')}>
-                    <CircleHelp className="h-5 w-5" />
-                  </PageHeader.IconButton>
-                }
-                subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
-              />
+          <div className="mx-auto w-full min-w-0 max-w-7xl md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,26rem)] md:items-start md:gap-8 lg:gap-10 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,28rem)] xl:gap-12">
+            <div className="hidden min-w-0 flex-col gap-4 md:flex md:sticky md:top-24">
+              {splitLayoutActive ? (
+                <>
+                  {isVideoFile ? (
+                    <div className="flex max-h-[min(70vh,520px)] w-full justify-center overflow-hidden rounded-xl border border-card-border bg-black/5">
+                      <video
+                        src={splitPreviewUrl}
+                        controls
+                        playsInline
+                        className="max-h-[min(70vh,520px)] w-auto max-w-full object-contain"
+                      />
+                    </div>
+                  ) : null}
+                  {isAudioFile ? (
+                    <div className="rounded-xl border border-card-border bg-card p-4">
+                      <audio src={splitPreviewUrl} controls className="w-full" />
+                    </div>
+                  ) : null}
+                </>
+              ) : (
+                <div className="flex min-h-[min(36vh,280px)] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-card-border bg-card/40 px-4 py-10 text-center">
+                  <Mic className="h-10 w-10 text-muted" strokeWidth={1.75} />
+                  <p className="max-w-56 text-sm leading-relaxed text-muted-foreground">
+                    {t('layout.previewPlaceholder')}
+                  </p>
+                </div>
+              )}
+            </div>
 
+            <div className="transcribe-shell min-w-0 space-y-6">
               <UploadZone
                 accept="audio/*,video/*"
                 kicker={t('uploadZone.kicker')}
@@ -237,6 +267,7 @@ export default function TranscribePage() {
                 instructionSecondary={t('uploadZone.formats')}
                 dropzoneClassName="transcribe-dropzone"
                 className="space-y-2"
+                mediaPreviewClassName="md:hidden"
                 onFileChange={(f) => {
                   setUploadedFile(f);
                   setTranscribedText('');

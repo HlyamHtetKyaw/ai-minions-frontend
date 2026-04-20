@@ -38,8 +38,8 @@ export default async function LandingTrust() {
   const tHome = await getTranslations('home');
 
   return (
-    <section className="mb-24 sm:mb-28 lg:mb-32" aria-labelledby="trust-heading">
-      <div className="mx-auto mb-12 max-w-2xl text-center sm:mb-16 lg:mb-20">
+    <section className="mb-12 sm:mb-16 lg:mb-20" aria-labelledby="trust-heading">
+      <div className="mx-auto mb-8 max-w-2xl text-center sm:mb-10 lg:mb-12">
         <h2
           id="trust-heading"
           className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl"
@@ -79,7 +79,7 @@ export default async function LandingTrust() {
         })}
       </ul>
 
-      <p className="mx-auto mt-14 max-w-2xl text-center text-sm text-muted sm:mt-16 sm:text-base">
+      <p className="mx-auto mt-8 max-w-2xl text-center text-sm text-muted sm:mt-10 sm:text-base">
         {tHome('landing.trust.socialProof')}
       </p>
     </section>

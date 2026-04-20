@@ -8,7 +8,6 @@
     "brandTitle": "Your AI Minions",
     "home": "မူလ",
     "pricing": "စျေးနှုန်း",
-    "aiModels": "AI မော်ဒယ်များ",
     "pointsBadge": "ပွိုင့် ၁၂၀",
     "pointsWithBalance": "ပွိုင့် {count}",
     "pointsGuestBadge": "ပွိုင့်",
@@ -622,6 +621,9 @@
     }
   },
   "transcribe": {
+    "layout": {
+      "previewPlaceholder": "ဖိုင်ရွေးချယ်ပြီးနောက် အသံ သို့မဟုတ် ဗီဒီယို အစမ်းကြည့်ရှုမှုကို ဤနေရာတွင် ပြသပါမည်။"
+    },
     "page": {
       "title": "မှတ်တမ်းတင်ခြင်း",
       "subtitle": "အသံ သို့မဟုတ် ဗီဒီယိုကို စာသားသို့ ပြောင်းပါ",
@@ -711,6 +713,7 @@
     "translatedText": "ပြန်ဆိုထားသော စာသား",
     "sourcePlaceholder": "ပြန်ဆိုရန် စာသားထည့်ပါ…",
     "translatedPlaceholder": "ပြန်ဆိုချက်သည် ဤနေရာတွင် ပေါ်လာမည်…",
+    "sourceTextStats": "{chars, plural, =0 {စာလုံး ၀} one {စာလုံး #} other {စာလုံး #}} · {words, plural, =0 {စကားလုံး ၀} one {စကားလုံး #} other {စကားလုံး #}}",
     "swap": "လဲလှယ်",
     "swapAria": "ရင်းမြစ်နှင့် ပန်းတိုင် ဘာသာစကားနှင့် စာသား လဲလှယ်ရန်",
     "action": "ဘာသာပြန်ရန်",

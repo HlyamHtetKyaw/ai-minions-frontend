@@ -7,7 +7,7 @@ export default async function LandingCta() {
 
   return (
     <section
-      className="relative py-20 sm:py-24 lg:py-28"
+      className="relative py-12 sm:py-16 lg:py-20"
       aria-labelledby="landing-cta-heading"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
@@ -27,7 +27,7 @@ export default async function LandingCta() {
           {tHome('landing.cta.subtitle')}
         </p>
 
-        <div className="mt-12 flex flex-col items-center justify-center gap-4 sm:mt-14 sm:flex-row sm:gap-7 lg:mt-16 lg:gap-8">
+        <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:mt-10 sm:flex-row sm:gap-6 lg:mt-12 lg:gap-7">
           <Link
             href="/signup"
             className="inline-flex items-center gap-2 rounded-lg border-2 border-accent-gold bg-transparent px-6 py-3 text-sm font-semibold text-foreground outline-none transition hover:bg-accent-gold/10 focus-visible:ring-2 focus-visible:ring-accent-purple/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"

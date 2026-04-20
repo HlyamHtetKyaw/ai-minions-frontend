@@ -17,13 +17,11 @@ export default function HeaderShell({
   dashboardLabel,
   brandTitle,
   languageLabel,
-  toolsLabel,
   homeLabel,
   workspaceLabel,
   pricingLabel,
 }: Props) {
   const navLabels: HeaderNavLabels = {
-    toolsLabel,
     homeLabel,
     workspaceLabel,
     pricingLabel,

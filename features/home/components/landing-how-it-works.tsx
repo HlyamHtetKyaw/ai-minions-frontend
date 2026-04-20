@@ -18,12 +18,12 @@ export default async function LandingHowItWorks() {
 
   return (
     <section
-      className="mb-20 scroll-mt-24 px-6 py-16 sm:mb-24 sm:px-10 sm:py-20 lg:mb-28 lg:px-14 lg:py-24"
+      className="mb-12 scroll-mt-20 px-6 py-10 sm:mb-16 sm:px-10 sm:py-14 lg:mb-20 lg:px-14 lg:py-16"
       id="how-it-works"
       aria-labelledby="how-it-works-heading"
     >
       <div className="mx-auto max-w-7xl">
-        <header className="mx-auto mb-14 max-w-2xl text-center sm:mb-16 lg:mb-20 lg:max-w-3xl">
+        <header className="mx-auto mb-8 max-w-2xl text-center sm:mb-10 lg:mb-12 lg:max-w-3xl">
           <h2
             id="how-it-works-heading"
             className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl lg:text-[2.5rem] lg:leading-tight"
@@ -35,7 +35,7 @@ export default async function LandingHowItWorks() {
           </p>
         </header>
 
-        <ol className="grid list-none grid-cols-1 gap-14 md:grid-cols-3 md:gap-x-8 md:gap-y-0 lg:gap-x-12">
+        <ol className="grid list-none grid-cols-1 gap-10 md:grid-cols-3 md:gap-x-6 md:gap-y-0 lg:gap-x-10">
           {STEP_KEYS.map((key, index) => {
             const { src, width, height } = STEP_IMAGES[index];
             const title = tWorkflow(`steps.${key}.name`);
@@ -46,8 +46,8 @@ export default async function LandingHowItWorks() {
                 key={key}
                 className="group flex flex-col items-center text-center [&::marker]:hidden"
               >
-                <div className="mb-8 w-full overflow-hidden">
-                  <div className="relative flex aspect-5/4 w-full items-center justify-center p-4 sm:p-5 lg:p-6">
+                <div className="mb-2 w-full overflow-hidden">
+                  <div className="relative flex aspect-1295/816 w-full items-end justify-center px-4 pt-4 pb-0 sm:px-5 sm:pt-5 lg:px-6 lg:pt-6">
                     <Image
                       src={src}
                       alt=""
@@ -55,7 +55,7 @@ export default async function LandingHowItWorks() {
                       width={width}
                       height={height}
                       unoptimized
-                      className="h-full w-full object-contain object-center transition-transform duration-300 ease-out motion-reduce:transition-none group-hover:scale-[1.02]"
+                      className="h-full w-full object-contain object-bottom transition-transform duration-300 ease-out motion-reduce:transition-none group-hover:scale-[1.02]"
                       sizes="(min-width: 1024px) 28vw, (min-width: 768px) 30vw, 100vw"
                     />
                   </div>

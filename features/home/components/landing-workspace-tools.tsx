@@ -123,8 +123,8 @@ export default async function LandingWorkspaceTools() {
   const flowLine = `${flowLead} ${flowParts.join(' → ')}`;
 
   return (
-    <section className="mb-24 sm:mb-28 lg:mb-32" aria-labelledby="tool-preview-heading">
-      <div className="mx-auto mb-10 max-w-2xl text-center sm:mb-12">
+    <section className="mb-12 sm:mb-16 lg:mb-20" aria-labelledby="tool-preview-heading">
+      <div className="mx-auto mb-6 max-w-2xl text-center sm:mb-8">
         <h2
           id="tool-preview-heading"
           className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl"
@@ -143,20 +143,20 @@ export default async function LandingWorkspaceTools() {
       </div>
 
       <p
-        className="mb-14 text-center text-sm font-semibold tracking-tight text-amber-500 sm:mb-16 sm:text-base dark:text-[#e8c96a]"
+        className="mb-8 text-center text-sm font-semibold tracking-tight text-amber-500 sm:mb-10 sm:text-base dark:text-[#e8c96a]"
         aria-label={flowLine}
       >
         {flowLine}
       </p>
 
-      <div className="flex flex-col gap-14 sm:gap-16 lg:gap-20">
+      <div className="flex flex-col gap-8 sm:gap-10 lg:gap-12">
         {SECTIONS.map(({ sectionKey, toolKeys }) => {
           const startHereFeature =
             sectionKey === 'startHere' ? FEATURE_BY_KEY[toolKeys[0]] : undefined;
 
           return (
             <div key={sectionKey}>
-            <h3 className="mb-5 text-lg font-bold tracking-tight text-foreground sm:mb-6 sm:text-xl">
+            <h3 className="mb-3 text-lg font-bold tracking-tight text-foreground sm:mb-4 sm:text-xl">
               {tHome(`landing.workspaceTools.sections.${sectionKey}.title`)}
             </h3>
 
