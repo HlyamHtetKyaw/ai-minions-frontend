@@ -31,7 +31,7 @@ export default function LoginPage() {
           return;
         }
       }
-      router.push('/');
+      router.push('/tools');
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
@@ -185,6 +185,14 @@ export default function LoginPage() {
                       placeholder="••••••••"
                       className="w-full rounded-xl border border-card-border bg-surface/80 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/25 dark:bg-surface/50"
                     />
+                    <div className="flex justify-end">
+                      <Link
+                        href="/forgot-password"
+                        className="text-xs font-medium text-accent-gold underline-offset-4 hover:underline"
+                      >
+                        Forgot password?
+                      </Link>
+                    </div>
                   </div>
                 </>
               )}
@@ -204,7 +212,7 @@ export default function LoginPage() {
                       : 'Sign in'}
                 </span>
                 <span
-                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100 dark:via-white/5"
+                  className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100 dark:via-white/5"
                   aria-hidden
                 />
               </button>

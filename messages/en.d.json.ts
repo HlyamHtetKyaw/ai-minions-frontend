@@ -19,7 +19,10 @@ declare const messages: {
     "pointsHint": "Reward points balance",
     "signedInAs": "Signed in as",
     "account": "Account",
-    "logout": "Logout"
+    "logout": "Logout",
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "navigationLabel": "Site navigation"
   },
   "verify": {
     "metaTitle": "Verify email — AI Minions",
@@ -120,7 +123,13 @@ declare const messages: {
     "signedInStatus": "Signed in as Creator",
     "allTools": "Workspace tools",
     "available": "Available",
-    "openCardLink": "Open studio",
+    "openCardLink": "Open tool",
+    "toolsPage": {
+      "metaTitle": "Workspace tools — AI Minions",
+      "metaDescription": "Your dashboard for transcription, captions, voice-over, translation, and the rest of your AI media workflow.",
+      "heroTitle": "Your AI media workspace",
+      "heroDescription": "Transcribe, caption, generate, and polish from one dashboard — pick a tool below or open Caption Studio to start."
+    },
     "overview": {
       "title": "Overview",
       "subtitle": "Today's workspace",
@@ -141,6 +150,95 @@ declare const messages: {
           "headline": "Auto",
           "description": "Turn briefs into ready-to-post updates in one pass."
         }
+      }
+    },
+    "landing": {
+      "howItWorks": {
+        "title": "How it works",
+        "subtitle": "Follow a clear path from upload to finished edit — no guesswork, just the tools you need in order."
+      },
+      "trust": {
+        "title": "Why creators use AI Minions",
+        "subtitle": "A focused studio experience with transparent limits and room to grow.",
+        "socialProof": "Trusted by 10,000+ creators.",
+        "items": {
+          "speed": {
+            "title": "Fast iteration",
+            "description": "Jump between transcription, content, and edits without leaving the workspace."
+          },
+          "workflow": {
+            "title": "One connected flow",
+            "description": "Each step hands off cleanly to the next so you spend less time tab-hopping."
+          },
+          "fairUse": {
+            "title": "Credits you understand",
+            "description": "See pricing and tiers up front, then use credits where they matter most."
+          }
+        }
+      },
+      "faq": {
+        "title": "Frequently asked questions",
+        "subtitle": "Quick answers about the studio, credits, files, and signing up.",
+        "items": {
+          "studio": {
+            "question": "What is AI Minions?",
+            "answer": "AI Minions is an AI-powered media studio for captions, transcription, content generation, voice-over, translation, and video workflows — designed as one cohesive dashboard."
+          },
+          "credits": {
+            "question": "How do credits and plans work?",
+            "answer": "You choose a membership tier or top-up pack on the pricing page. Credits apply when you run AI jobs; details and fair-use notes are shown there too."
+          },
+          "formats": {
+            "question": "What files can I upload?",
+            "answer": "Video upload accepts common formats like MP4, MOV, and AVI. Clear audio improves transcription quality; check each tool’s tips for the best results."
+          },
+          "signup": {
+            "question": "Do I need an account?",
+            "answer": "Yes. Create a free account to save your balance, run tools securely, and access your workspace from any signed-in device."
+          }
+        }
+      },
+      "workspaceTools": {
+        "subtitle": "Create, edit, and process your videos with AI",
+        "dashboardLink": "Open dashboard",
+        "recommended": "Recommended",
+        "ctaStart": "Start",
+        "flow": {
+          "leadMark": "↑",
+          "steps": {
+            "upload": "Upload",
+            "transcribe": "Transcribe",
+            "translate": "Translate",
+            "edit": "Edit",
+            "voiceOver": "Voice Over"
+          }
+        },
+        "sections": {
+          "startHere": {
+            "title": "Start here"
+          },
+          "process": {
+            "title": "Process"
+          },
+          "createEdit": {
+            "title": "Create & edit"
+          }
+        },
+        "descriptions": {
+          "viral-shorts": "Upload long-form video and surface viral-ready moments with AI.",
+          "video-upload": "Upload your video to begin",
+          "transcribe": "Turn video/audio into text",
+          "translate": "Translate captions or scripts",
+          "video-edit": "Trim and enhance your video",
+          "voice-over": "Add AI narration",
+          "content-generation": "Create scripts or posts"
+        }
+      },
+      "cta": {
+        "title": "Ready to ship your next video?",
+        "subtitle": "Create an account, pick a plan when you’re ready, and open any studio tool from the dashboard.",
+        "primary": "Create free account",
+        "secondary": "View pricing"
       }
     }
   },
@@ -172,6 +270,10 @@ declare const messages: {
     "heading": "Workflow",
     "tipHeading": "Tip",
     "steps": {
+      "viral-shorts": {
+        "name": "Viral Shorts",
+        "description": "Find clips from long-form video"
+      },
       "video-upload": {
         "name": "Video Upload",
         "description": "Upload your video file"
@@ -202,6 +304,7 @@ declare const messages: {
       }
     },
     "tips": {
+      "viral-shorts": "Use a stable master file (1080p or 4K MP4/WebM). Clear speech and visible subjects help the model pick stronger moments.",
       "video-upload": "Upload MP4, MOV, or AVI files. Clear audio gives the best transcription accuracy.",
       "transcribe": "AI transcription works best with clear audio and minimal background noise.",
       "transcript": "Review and correct the transcript before generating content for better results.",
@@ -217,15 +320,15 @@ declare const messages: {
       "description": "Manage users, pricing, and platform settings."
     },
     "content-generation": {
-      "name": "Content Generation",
-      "description": "Generate scripts, posts, and marketing content with AI.",
-      "category": "Content studio",
+      "name": "Generate content",
+      "description": "Turn ideas into scripts, posts, and marketing copy with AI.",
+      "category": "Create content",
       "cardLetter": "C"
     },
     "transcribe": {
-      "name": "Transcribe",
-      "description": "Convert audio and video speech to accurate text.",
-      "category": "Auto caption",
+      "name": "Convert speech to text",
+      "description": "Turn speech in your audio or video into editable text.",
+      "category": "Process media",
       "cardLetter": "T"
     },
     "transcript": {
@@ -235,28 +338,34 @@ declare const messages: {
       "cardLetter": "R"
     },
     "video-edit": {
-      "name": "Video Edit",
-      "description": "Edit, trim, and enhance video content with AI.",
-      "category": "Studio editor",
+      "name": "Edit video",
+      "description": "Trim, adjust, and polish your video in the editor.",
+      "category": "Edit & finalize",
       "cardLetter": "E"
     },
     "video-upload": {
-      "name": "Video Upload",
-      "description": "Upload and manage video files for processing.",
-      "category": "Pipeline",
+      "name": "Upload video",
+      "description": "Upload videos to start editing or processing.",
+      "category": "Process media",
       "cardLetter": "V"
     },
     "voice-over": {
-      "name": "Voice Over",
-      "description": "Add AI voice-over narration to your videos.",
-      "category": "Dubbing",
+      "name": "Add voice over",
+      "description": "Add natural AI narration to your project.",
+      "category": "Create content",
       "cardLetter": "D"
     },
     "translate": {
-      "name": "Translate",
-      "description": "Multi-language translation for scripts and captions.",
-      "category": "Language",
+      "name": "Translate text",
+      "description": "Translate scripts and captions into other languages.",
+      "category": "Process media",
       "cardLetter": "A"
+    },
+    "viral-shorts": {
+      "name": "Viral Shorts",
+      "description": "Turn long videos into vertical 9:16 clips with AI-picked highlights.",
+      "category": "Edit & finalize",
+      "cardLetter": "S"
     }
   },
   "voice-over": {
@@ -282,6 +391,116 @@ declare const messages: {
     "uploadZone": {
       "label": "Upload your video to start editing",
       "kicker": "Upload video"
+    },
+    "projects": {
+      "title": "My projects",
+      "subtitle": "All your video edits in one place",
+      "newProject": "New project",
+      "stats": {
+        "totalProjects": "Total projects",
+        "exportedVideos": "Exported videos",
+        "storageUsed": "Storage used"
+      },
+      "recent": "Recent projects",
+      "filtersAria": "Filter projects",
+      "filters": {
+        "all": "All",
+        "drafts": "Drafts",
+        "exported": "Exported"
+      },
+      "timeAgo": {
+        "twoDays": "2 days ago",
+        "oneWeek": "1 week ago",
+        "threeDays": "3 days ago"
+      },
+      "status": {
+        "exported": "Exported",
+        "processing": "Processing",
+        "draft": "Draft"
+      },
+      "loadMore": "Load more",
+      "editProject": "Edit project",
+      "deleteProject": "Delete project"
+    },
+    "workspace": {
+      "returnToDashboard": "Return to dashboard",
+      "aspectToggleAria": "Canvas aspect ratio",
+      "aspect": {
+        "ratio16_9": "16:9",
+        "ratio9_16": "9:16",
+        "ratio1_1": "1:1",
+        "ratio4_3": "4:3"
+      },
+      "exportVideo": "Export video",
+      "tools": {
+        "media": "media",
+        "text": "text",
+        "blur": "blur",
+        "image": "image",
+        "crop": "crop",
+        "speed": "speed",
+        "subs": "subs",
+        "trim": "trim",
+        "audio": "audio"
+      },
+      "tabs": {
+        "properties": "properties"
+      },
+      "font": "Font",
+      "position": "Position",
+      "opacity": "Opacity",
+      "timing": "Timing",
+      "timeIn": "in",
+      "timeOut": "out",
+      "deleteLayer": "Delete layer",
+      "subs": {
+        "uploadTitle": "Upload .srt file",
+        "uploadHint": "Imported captions will be converted to text layers which you can edit freely.",
+        "invalidFile": "Please choose a .srt file.",
+        "empty": "No subtitles found in this file."
+      },
+      "canvasAria": "Edit canvas",
+      "canvasSampleText": "Hello world",
+      "timeAtPlayhead": "{current} / {total}",
+      "timeline": {
+        "emptyUpload": "Upload a video to see the timeline.",
+        "preparing": "Preparing timeline…",
+        "tracks": {
+          "video": "video",
+          "text": "text",
+          "blur": "blur",
+          "image": "image",
+          "subtitle": "subtitle",
+          "audio": "audio"
+        },
+        "clips": {
+          "uploadedVideo": "Video",
+          "summerReel": "Summer reel.mp4",
+          "helloWorld": "Hello world",
+          "blurLayer": "Blur layer",
+          "autoSubs": "Auto subtitles",
+          "backgroundMp3": "background.mp3"
+        },
+        "trim": {
+          "splitAtPlayhead": "Split here",
+          "splitAtPlayheadAria": "Divide the video clip at the playhead into two segments; nothing is removed",
+          "deleteSegment": "Delete clip",
+          "deleteSegmentAria": "Remove the selected video segment from the timeline (requires at least two segments)"
+        }
+      },
+      "playback": {
+        "prev": "Previous frame",
+        "next": "Next frame",
+        "play": "Play",
+        "pause": "Pause",
+        "speed": "Speed",
+        "speedAria": "Playback speed",
+        "volume": "Volume",
+        "mute": "Mute",
+        "unmute": "Unmute",
+        "fullscreenEnter": "Enter fullscreen",
+        "fullscreenExit": "Exit fullscreen"
+      }
     }
   },
   "transcript": {
@@ -380,6 +599,31 @@ declare const messages: {
       "loading": "Generating…"
     }
   },
+  "viralShorts": {
+    "page": {
+      "title": "Viral Shorts",
+      "subtitle": "Upload long-form video up to 1 hour 30 min (e.g. podcast, event, interview). AI finds viral moments; trim, preview, download, or combine any two segments into a 9:16 vertical.",
+      "helpAria": "Help with Viral Shorts"
+    },
+    "uploadCard": {
+      "title": "Upload long-form video"
+    },
+    "uploadZone": {
+      "instruction": "Click or drop a video (MP4/WebM, max 1 hour 30 min)"
+    },
+    "continue": {
+      "label": "Upload & continue",
+      "loading": "Preparing…"
+    },
+    "analyze": {
+      "status": "Video uploaded. Run AI to detect viral moments.",
+      "primary": {
+        "label": "Analyze for viral clips",
+        "loading": "Analyzing…"
+      },
+      "back": "Back"
+    }
+  },
   "transcribe": {
     "page": {
       "title": "Transcribe",
@@ -433,6 +677,12 @@ declare const messages: {
       "textOnly": "Scripts, captions, and posts without an image.",
       "imageOnly": "A single image asset from your brief."
     },
+    "logoUpload": {
+      "kicker": "Brand logo",
+      "label": "Upload logo (optional)",
+      "instruction": "Click to upload your logo",
+      "formats": "PNG, JPG, WEBP, SVG"
+    },
     "topicLabel": "Topic or description",
     "topicPlaceholder": "Describe what you want to create content about… Example: A video about AI tools for content creators",
     "toneLabel": "Tone",
@@ -467,7 +717,12 @@ declare const messages: {
     "swap": "Swap",
     "swapAria": "Swap source and target languages and text",
     "action": "Translate",
-    "translating": "Translating…"
+    "translating": "Translating…",
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "unauthorized": "Your session expired. Please sign in again.",
+      "verificationRequired": "Please verify your email to use translation."
+    }
   },
   "shared": {
     "uploadZone": {
@@ -494,6 +749,101 @@ declare const messages: {
       "defaultMessage": "Sign in to use this feature",
       "signIn": "Sign in"
     }
+  },
+  "landing": {
+    "hero": {
+      "headline": "Create Viral Videos in Minutes — No Video Editing Skills Required",
+      "subheadline": "AI-powered transcription, captions, voice-overs, and translations. Turn your raw footage into scroll-stopping content.",
+      "cta": "Start Free",
+      "socialProof": "50,000+ videos processed"
+    },
+    "problemSolution": {
+      "title": "Stop Wasting Time on Manual Work",
+      "painPoints": {
+        "title": "The Problem",
+        "editing": "Editing takes hours",
+        "captions": "Captions are tedious",
+        "voiceTalent": "Finding voice talent is expensive"
+      },
+      "solutions": {
+        "title": "The Solution",
+        "editing": "Spend 10x less time editing",
+        "captions": "Auto-generate perfect captions in 50+ languages",
+        "voiceTalent": "AI voice-overs for free"
+      },
+      "howItWorks": {
+        "title": "How It Works",
+        "step1": "Upload your video",
+        "step2": "AI processes (transcribe, translate, generate voice)",
+        "step3": "Download ready-to-post content"
+      }
+    },
+    "socialProof": {
+      "usersCount": "50,000+ videos processed",
+      "rating": "4.8/5 rating",
+      "testimonial1": "AI Minions cut my editing time by 80%. I went from 4 hours to 30 minutes per video.",
+      "testimonial2": "The auto-caption feature is a game-changer. My TikTok views doubled in a week.",
+      "testimonial3": "Finally, a tool that understands creators. The Burmese translation is seamless.",
+      "companies": "Trusted by creators at"
+    },
+    "trust": {
+      "freePlan": "Free forever plan",
+      "noCard": "No credit card required",
+      "secure": "Secure authentication",
+      "privacy": "Your data is private"
+    },
+    "features": {
+      "title": "Powerful Features for Creators",
+      "captions": {
+        "title": "Stop Manual Captioning",
+        "description": "Auto-captions in 50+ languages with viral-style formatting",
+        "features": ["Auto-captions in 50+ languages", "Viral-style formatting", "One-click SRT export"]
+      },
+      "dubbing": {
+        "title": "Dubbing Made Easy",
+        "description": "AI voice generation with 40+ voice options",
+        "features": ["AI voice generation", "40+ voice options", "Match video timeline"]
+      },
+      "translate": {
+        "title": "Translate to Any Language",
+        "description": "Auto-translate captions to reach global audiences",
+        "features": ["Auto-translate captions", "Lip-sync dubbing", "100+ language pairs"]
+      },
+      "content": {
+        "title": "Create Content Faster",
+        "description": "Generate scripts, hooks, and captions from topics",
+        "features": ["Script generation from topics", "Hook & caption writer", "Hashtag suggestions"]
+      }
+    },
+    "faq": {
+      "title": "Frequently Asked Questions",
+      "q1": "How much does it cost?",
+      "a1": "We offer a free forever plan with no credit card required. Paid plans start from 5,000 MMK/month for extra features.",
+      "q2": "How long to set up?",
+      "a2": "Sign up takes just 30 seconds. No credit card or installation required.",
+      "q3": "Is my content secure?",
+      "a3": "Yes, we use enterprise-grade encryption. Your content is stored securely and never shared with third parties.",
+      "q4": "Can I cancel anytime?",
+      "a4": "Yes, no lock-in contracts. Cancel your plan anytime from your account settings.",
+      "q5": "What support is available?",
+      "a5": "We offer email and live chat support. Our team typically responds within 2 hours."
+    },
+    "cta": {
+      "getStarted": "Get Started",
+      "startFree": "Start Free"
+    }
+  },
+  "footer": {
+    "tagline": "AI-powered media creation for everyone",
+    "quickLinks": "Quick Links",
+    "legal": "Legal",
+    "home": "Home",
+    "pricing": "Pricing",
+    "tools": "Tools",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "cta": "Start Free",
+    "copyright": "© 2024 AI Minions. All rights reserved."
   },
   "tools": {
     "caption-studio": {

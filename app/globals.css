@@ -19,6 +19,10 @@
   --status-available: #34d399;
   --status-live: #a78bfa;
   --nav-pill: rgba(0, 0, 0, 0.06);
+  /* Home / landing primary buttons — use with arbitrary Tailwind or .landing-home-primary */
+  --landing-home-primary-bg: #e6c978;
+  --landing-home-primary-fg: #0a1128;
+  --landing-home-primary-hover: #efd589;
 }
 
 .dark {
@@ -40,6 +44,23 @@
   --status-available: #34d399;
   --status-live: #a78bfa;
   --nav-pill: rgba(255, 255, 255, 0.08);
+  --landing-home-primary-bg: #e6c978;
+  --landing-home-primary-fg: #0f1128;
+  --landing-home-primary-hover: #efd589;
+}
+
+.dark select {
+  color-scheme: dark;
+}
+
+.dark select option {
+  background-color: #0f172a;
+  color: #f8fafc;
+}
+
+.dark select optgroup {
+  background-color: #0f172a;
+  color: #f8fafc;
 }
 
 @theme inline {
@@ -63,6 +84,19 @@
   --color-nav-pill: var(--nav-pill);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+}
+
+/* Solid primary CTA for home + landing (avoids Tailwind @theme issues with multi-part color names) */
+.landing-home-primary {
+  background-color: var(--landing-home-primary-bg);
+  color: var(--landing-home-primary-fg);
+  transition: background-color 0.15s ease;
+}
+.landing-home-primary:hover {
+  background-color: var(--landing-home-primary-hover);
+}
+.group:hover .landing-home-primary--group {
+  background-color: var(--landing-home-primary-hover);
 }
 
 html {
@@ -387,6 +421,225 @@ button.video-edit-export-card .video-edit-export-card-desc {
 .transcribe-dropzone-active {
   border-color: #3b82f6 !important;
   background: rgba(59, 130, 246, 0.08) !important;
+}
+
+/* Viral Shorts — reference layout: dark tile + gold icon, one upload card, gold CTA */
+.viral-shorts-icon-tile {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  flex-shrink: 0;
+  border-radius: 12px;
+  color: var(--accent-gold);
+  background: linear-gradient(160deg, rgba(15, 23, 42, 0.98) 0%, rgba(30, 41, 59, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+}
+
+.light .viral-shorts-icon-tile {
+  color: var(--accent-gold);
+  background: linear-gradient(160deg, #f1f5f9 0%, #e2e8f0 100%);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+}
+
+.viral-shorts-upload-panel {
+  border-radius: 22px;
+  padding: 1.5rem 1.5rem 1.65rem;
+  border: 1px solid var(--card-border);
+  transition: box-shadow 0.2s ease;
+}
+
+.dark .viral-shorts-upload-panel {
+  background: rgba(22, 28, 45, 0.94);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.42);
+}
+
+.light .viral-shorts-upload-panel {
+  background: var(--card);
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.06);
+}
+
+.viral-shorts-dropzone {
+  border-radius: 16px;
+  border-style: dashed;
+  border-width: 1px;
+  border-color: rgba(148, 163, 184, 0.28);
+  background: rgba(0, 0, 0, 0.12);
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.light .viral-shorts-upload-panel .viral-shorts-dropzone {
+  border-color: var(--card-border);
+  background: var(--subtle);
+}
+
+.dark .viral-shorts-upload-panel .viral-shorts-dropzone {
+  border-color: rgba(148, 163, 184, 0.22);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.viral-shorts-dropzone:hover,
+.viral-shorts-dropzone:focus-visible {
+  border-color: var(--accent-gold);
+}
+
+.dark .viral-shorts-upload-panel .viral-shorts-dropzone:hover,
+.dark .viral-shorts-upload-panel .viral-shorts-dropzone:focus-visible {
+  border-color: rgba(232, 201, 106, 0.55);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.viral-shorts-dropzone-active {
+  border-color: var(--accent-gold) !important;
+  background: var(--accent-gold-muted) !important;
+}
+
+/* Instruction line: muted like reference (UploadZone uses text-foreground on primary line) */
+.dark .viral-shorts-upload-panel .viral-shorts-dropzone .text-center .text-foreground {
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.light .viral-shorts-upload-panel .viral-shorts-dropzone .text-center .text-foreground {
+  color: var(--muted);
+  font-weight: 500;
+}
+
+button.btn-viral-shorts {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.25rem;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(180deg, var(--accent-gold) 0%, #b8892a 100%);
+  box-shadow: 0 6px 22px rgba(212, 168, 83, 0.35);
+  transition: box-shadow 0.15s ease, transform 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+}
+
+.dark button.btn-viral-shorts {
+  box-shadow: 0 8px 28px rgba(232, 201, 106, 0.22);
+}
+
+button.btn-viral-shorts:hover:not(:disabled) {
+  filter: brightness(1.06);
+  box-shadow: 0 10px 32px rgba(212, 168, 83, 0.42);
+  transform: translateY(-1px);
+}
+
+button.btn-viral-shorts:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+button.btn-viral-shorts-analyze {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.9rem 1.25rem;
+  border-radius: 14px;
+  font-weight: 600;
+  font-size: 0.9375rem;
+  line-height: 1.25;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  background: linear-gradient(135deg, #9333ea 0%, #7c3aed 42%, #5b21b6 100%);
+  box-shadow: 0 8px 28px rgba(124, 58, 237, 0.45);
+  transition: box-shadow 0.15s ease, transform 0.15s ease, opacity 0.15s ease, filter 0.15s ease;
+}
+
+button.btn-viral-shorts-analyze:hover:not(:disabled) {
+  filter: brightness(1.05);
+  box-shadow: 0 10px 34px rgba(124, 58, 237, 0.55);
+  transform: translateY(-1px);
+}
+
+button.btn-viral-shorts-analyze:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+/* Viral Shorts — mock analysis UI (progress, dots, spin) */
+@keyframes viral-shorts-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes viral-shorts-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: scale(0.85);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.viral-shorts-analyze-spin {
+  animation: viral-shorts-spin 0.9s linear infinite;
+}
+
+.viral-shorts-analyze-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: #534ab7;
+  animation: viral-shorts-dot-pulse 1.05s ease-in-out infinite;
+}
+
+.viral-shorts-analyze-dot:nth-child(1) {
+  animation-delay: 0ms;
+}
+
+.viral-shorts-analyze-dot:nth-child(2) {
+  animation-delay: 150ms;
+}
+
+.viral-shorts-analyze-dot:nth-child(3) {
+  animation-delay: 300ms;
+}
+
+.viral-shorts-clip-shake {
+  animation: viral-shorts-card-shake 0.45s ease;
+}
+
+@keyframes viral-shorts-card-shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-6px);
+  }
+  40% {
+    transform: translateX(6px);
+  }
+  60% {
+    transform: translateX(-4px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
 }
 
 .btn-transcribe {
@@ -734,4 +987,10 @@ button.video-edit-export-card .video-edit-export-card-desc {
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+}
+
+/* Video-edit timeline: WaveSurfer v7 Shadow DOM — `::part` must target the host (first child) per https://wavesurfer.xyz/docs/ CSS styling */
+.timeline-waveform-host > div::part(scroll),
+.timeline-waveform-host > div::part(wrapper) {
+  min-height: 40px;
 }

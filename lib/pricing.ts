@@ -1,4 +1,4 @@
-const baseUrl = process.env.NEXT_PUBLIC_API_URL;
+import { getPublicApiBaseUrl } from "./api-base";
 
 export type PublicPricingPackage = {
   id: number;
@@ -18,6 +18,7 @@ export type PublicPricingData = {
  * Server-friendly fetch for GET /api/v1/public/pricing (no auth).
  */
 export async function getPublicPricing(): Promise<PublicPricingData | null> {
+  const baseUrl = getPublicApiBaseUrl();
   if (!baseUrl) return null;
   try {
     const res = await fetch(`${baseUrl}/api/v1/public/pricing`, {

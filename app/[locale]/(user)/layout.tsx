@@ -8,9 +8,6 @@ const AUTH_COOKIE_NAMES = [
   SESSION_HINT_COOKIE,
   'access_token',
   'refresh_token',
-  'session',
-  'token',
-  'auth',
 ];
 
 export default async function UserLayout({ children }: { children: React.ReactNode }) {

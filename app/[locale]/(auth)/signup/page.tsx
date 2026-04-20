@@ -2,19 +2,84 @@
 
 import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import { signup } from '@/lib/auth';
+
+type PasswordStrength = {
+  score: number;
+  label: 'Weak' | 'Fair' | 'Good' | 'Strong';
+  hint: string;
+};
+
+function getPasswordStrength(value: string): PasswordStrength {
+  const checks = [
+    value.length >= 8,
+    /[a-z]/.test(value),
+    /[A-Z]/.test(value),
+    /[0-9]/.test(value),
+    /[^A-Za-z0-9]/.test(value),
+  ];
+  const score = checks.filter(Boolean).length;
+
+  if (score <= 2) {
+    return {
+      score,
+      label: 'Weak',
+      hint: 'Use at least 8 chars with uppercase, lowercase, number, and symbol.',
+    };
+  }
+  if (score === 3) {
+    return {
+      score,
+      label: 'Fair',
+      hint: 'Add more variety (uppercase, number, or symbol) for better security.',
+    };
+  }
+  if (score === 4) {
+    return {
+      score,
+      label: 'Good',
+      hint: 'Good password. Adding a symbol or extra length makes it stronger.',
+    };
+  }
+
+  return {
+    score,
+    label: 'Strong',
+    hint: 'Strong password.',
+  };
+}
 
 export default function SignupPage() {
   const router = useRouter();
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const passwordStrength = getPasswordStrength(password);
+  const passwordsMatch = password === confirmPassword;
+  const canSubmit =
+    passwordStrength.score >= 4 &&
+    password.length > 0 &&
+    confirmPassword.length > 0 &&
+    passwordsMatch &&
+    !loading;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+    if (passwordStrength.score < 4) {
+      setError('Please choose a stronger password before continuing.');
+      return;
+    }
+    if (!passwordsMatch) {
+      setError('Passwords do not match.');
+      return;
+    }
     setLoading(true);
     try {
       await signup(username, email, password);
@@ -85,21 +150,90 @@ export default function SignupPage() {
             <label htmlFor="password" className="text-sm font-medium text-foreground">
               Password
             </label>
-            <input
-              id="password"
-              type="password"
-              required
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              className="w-full rounded-lg border border-card-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-accent-gold focus:outline-none transition-colors"
-            />
+            <div className="relative">
+              <input
+                id="password"
+                type={showPassword ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full rounded-lg border border-card-border bg-surface px-3 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted focus:border-accent-gold focus:outline-none transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
+                aria-label={showPassword ? 'Hide password' : 'Show password'}
+              >
+                {showPassword ? (
+                  <EyeOff className="mx-auto h-4 w-4" />
+                ) : (
+                  <Eye className="mx-auto h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {password.length > 0 && (
+              <div className="space-y-1">
+                <p className="text-xs text-muted">
+                  Strength: <span className="font-medium text-foreground">{passwordStrength.label}</span>
+                </p>
+                <div className="h-1.5 w-full rounded-full bg-card-border/70">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      passwordStrength.score <= 2
+                        ? 'bg-red-500'
+                        : passwordStrength.score === 3
+                          ? 'bg-amber-500'
+                          : passwordStrength.score === 4
+                            ? 'bg-yellow-500'
+                            : 'bg-emerald-500'
+                    }`}
+                    style={{ width: `${Math.max(20, passwordStrength.score * 20)}%` }}
+                  />
+                </div>
+                <p className="text-xs text-muted">{passwordStrength.hint}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
+              Confirm password
+            </label>
+            <div className="relative">
+              <input
+                id="confirmPassword"
+                type={showConfirmPassword ? 'text' : 'password'}
+                required
+                autoComplete="new-password"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+                className="w-full rounded-lg border border-card-border bg-surface px-3 py-2.5 pr-10 text-sm text-foreground placeholder:text-muted focus:border-accent-gold focus:outline-none transition-colors"
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((prev) => !prev)}
+                className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
+                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+              >
+                {showConfirmPassword ? (
+                  <EyeOff className="mx-auto h-4 w-4" />
+                ) : (
+                  <Eye className="mx-auto h-4 w-4" />
+                )}
+              </button>
+            </div>
+            {confirmPassword.length > 0 && (
+              <p className={`text-xs ${passwordsMatch ? 'text-emerald-400' : 'text-red-400'}`}>
+                {passwordsMatch ? 'Passwords match.' : 'Passwords do not match.'}
+              </p>
+            )}
           </div>
 
           <button
             type="submit"
-            disabled={loading}
+            disabled={!canSubmit}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loading ? 'Creating account…' : 'Create account'}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { Upload, X } from 'lucide-react';
 
@@ -18,6 +18,8 @@ type Props = {
   dropzoneClassName?: string;
   /** Applied while dragging when using a custom `dropzoneClassName` (defaults to transcribe active style) */
   dropzoneActiveClassName?: string;
+  /** Omit the large upload icon above the instruction text */
+  hideDropzoneIcon?: boolean;
 };
 
 export default function UploadZone({
@@ -30,6 +32,7 @@ export default function UploadZone({
   className,
   dropzoneClassName,
   dropzoneActiveClassName = 'transcribe-dropzone-active',
+  hideDropzoneIcon = false,
 }: Props) {
   const t = useTranslations('shared.uploadZone');
   const [file, setFile] = useState<File | null>(null);
@@ -38,7 +41,17 @@ export default function UploadZone({
 
   const isVideo = file?.type.startsWith('video/');
   const isAudio = file?.type.startsWith('audio/');
-  const objectUrl = file ? URL.createObjectURL(file) : null;
+  /** Stable blob URL per file only — avoids new URL every parent re-render (e.g. SSE ticks), which reloads video and can scroll the page. */
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!file) {
+      setPreviewUrl(null);
+      return;
+    }
+    const url = URL.createObjectURL(file);
+    setPreviewUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
 
   const handleFile = useCallback(
     (f: File | null) => {
@@ -105,7 +118,7 @@ export default function UploadZone({
                 }`
           }
         >
-          <Upload className="h-8 w-8 text-muted" />
+          {!hideDropzoneIcon && <Upload className="h-8 w-8 text-muted" />}
           <div className="text-center space-y-1">
             <p className="text-sm font-medium text-foreground">{line1}</p>
             {showLine2 && line2 !== undefined && (
@@ -139,11 +152,18 @@ export default function UploadZone({
             </button>
           </div>
 
-          {isVideo && objectUrl && (
-            <video src={objectUrl} controls className="w-full rounded-xl" />
+          {isVideo && previewUrl && (
+            <div className="mx-auto flex max-h-[min(50vh,420px)] w-full max-w-md justify-center overflow-hidden rounded-xl border border-card-border bg-black/5">
+              <video
+                src={previewUrl}
+                controls
+                playsInline
+                className="max-h-[min(50vh,420px)] w-auto max-w-full object-contain"
+              />
+            </div>
           )}
-          {isAudio && objectUrl && (
-            <audio src={objectUrl} controls className="w-full" />
+          {isAudio && previewUrl && (
+            <audio src={previewUrl} controls className="w-full" />
           )}
         </div>
       )}
