@@ -20,6 +20,8 @@ type Props = {
   dropzoneActiveClassName?: string;
   /** Omit the large upload icon above the instruction text */
   hideDropzoneIcon?: boolean;
+  /** Extra classes on the audio/video preview wrapper (e.g. `lg:hidden` when preview is shown elsewhere on large screens) */
+  mediaPreviewClassName?: string;
 };
 
 export default function UploadZone({
@@ -33,6 +35,7 @@ export default function UploadZone({
   dropzoneClassName,
   dropzoneActiveClassName = 'transcribe-dropzone-active',
   hideDropzoneIcon = false,
+  mediaPreviewClassName,
 }: Props) {
   const t = useTranslations('shared.uploadZone');
   const [file, setFile] = useState<File | null>(null);
@@ -153,7 +156,9 @@ export default function UploadZone({
           </div>
 
           {isVideo && previewUrl && (
-            <div className="mx-auto flex max-h-[min(50vh,420px)] w-full max-w-md justify-center overflow-hidden rounded-xl border border-card-border bg-black/5">
+            <div
+              className={`mx-auto flex max-h-[min(50vh,420px)] w-full max-w-md justify-center overflow-hidden rounded-xl border border-card-border bg-black/5 ${mediaPreviewClassName ?? ''}`}
+            >
               <video
                 src={previewUrl}
                 controls
@@ -163,7 +168,11 @@ export default function UploadZone({
             </div>
           )}
           {isAudio && previewUrl && (
-            <audio src={previewUrl} controls className="w-full" />
+            <audio
+              src={previewUrl}
+              controls
+              className={`w-full ${mediaPreviewClassName ?? ''}`}
+            />
           )}
         </div>
       )}

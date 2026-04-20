@@ -2,9 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ArrowLeftRight, CircleHelp, Languages } from 'lucide-react';
+import { ArrowLeftRight } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
-import PageHeader from '@/components/layout/page-header';
 import LanguageSelector from '@/features/translate/components/language-selector';
 import TextPanels from '@/features/translate/components/text-panels';
 import TranslateButton from '@/features/translate/components/translate-button';
@@ -106,25 +105,10 @@ export default function TranslatePage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          <div className="mx-auto w-full max-w-7xl space-y-8">
-            <PageHeader
-              icon={
-                <PageHeader.Icon tileClassName="transcribe-icon-tile">
-                  <Languages className="h-6 w-6" strokeWidth={2.25} />
-                </PageHeader.Icon>
-              }
-              title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
-              action={
-                <PageHeader.IconButton aria-label={t('page.helpAria')}>
-                  <CircleHelp className="h-5 w-5" />
-                </PageHeader.IconButton>
-              }
-              subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
-            />
-
-            <div className="flex items-center gap-3">
-              <div className="flex-1">
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-4 sm:px-6 sm:py-6">
+          <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 md:space-y-8">
+            <div className="flex w-full min-w-0 flex-nowrap items-center gap-2">
+              <div className="min-w-0 flex-[1_1_0%]">
                 <LanguageSelector
                   label={t('sourceLanguage')}
                   value={sourceLang}
@@ -135,12 +119,12 @@ export default function TranslatePage() {
               <button
                 type="button"
                 onClick={handleSwap}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-glass-border bg-glass/80 text-muted backdrop-blur-sm transition-colors hover:bg-glass hover:text-foreground"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-glass-border bg-glass/80 text-muted backdrop-blur-sm transition-colors hover:bg-glass hover:text-foreground sm:h-10 sm:w-10"
                 aria-label={t('swapAria')}
               >
                 <ArrowLeftRight className="h-4 w-4" />
               </button>
-              <div className="flex-1">
+              <div className="min-w-0 flex-[1_1_0%]">
                 <LanguageSelector
                   label={t('targetLanguage')}
                   value={targetLang}
@@ -158,6 +142,7 @@ export default function TranslatePage() {
               translatedLabel={t('translatedText')}
               translatedValue={translatedText}
               translatedPlaceholder={t('translatedPlaceholder')}
+              rows={5}
             />
 
             {error ? (

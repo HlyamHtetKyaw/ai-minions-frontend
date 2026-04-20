@@ -14,8 +14,8 @@ export default async function HomePage() {
   const tHome = await getTranslations('home');
 
   return (
-    <div className="mx-auto min-w-0 max-w-7xl px-4 pb-24 pt-10 sm:px-6 sm:pb-32 sm:pt-14">
-      <section className="mb-20 sm:mb-28 lg:mb-32">
+    <div className="mx-auto min-w-0 max-w-7xl px-4 pb-16 pt-8 sm:px-6 sm:pb-24 sm:pt-12">
+      <section className="mb-12 sm:mb-16 lg:mb-20">
         <div className="mx-auto flex w-full min-w-0 max-w-5xl flex-col items-center text-center lg:max-w-6xl">
           <h1
             className={`${landingHeroTitleFont.className} w-full max-w-full text-balance text-4xl font-bold leading-[1.1] tracking-tight text-foreground sm:text-5xl sm:leading-[1.08] lg:text-6xl lg:leading-[1.06] xl:text-7xl`}
@@ -43,7 +43,7 @@ export default async function HomePage() {
           </div>
         </div>
 
-        <div className="relative mx-auto mt-16 w-full max-w-[min(100%,72rem)] sm:mt-20 lg:mt-28">
+        <div className="relative mx-auto mt-10 w-full max-w-[min(100%,72rem)] sm:mt-14 lg:mt-16">
           <div className="relative aspect-4/3 overflow-hidden rounded-[1.75rem] border border-card-border bg-card shadow-[0_24px_80px_-24px_rgba(0,0,0,0.35)] sm:aspect-video sm:rounded-4xl">
             <Image
               src={LandingImage}

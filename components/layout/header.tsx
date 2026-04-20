@@ -18,7 +18,6 @@ export default function Header() {
         dashboardLabel={t('dashboardLabel')}
         brandTitle={t('brandTitle')}
         languageLabel={t('languageLabel')}
-        toolsLabel={t('aiModels')}
         homeLabel={t('home')}
         workspaceLabel={t('tools')}
         pricingLabel={t('pricing')}

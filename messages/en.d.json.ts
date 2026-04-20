@@ -11,7 +11,6 @@ declare const messages: {
     "brandTitle": "Your AI Minions",
     "home": "Home",
     "pricing": "Pricing",
-    "aiModels": "AI Models",
     "pointsBadge": "Points 120",
     "pointsWithBalance": "Points {count}",
     "pointsGuestBadge": "Points",
@@ -625,6 +624,9 @@ declare const messages: {
     }
   },
   "transcribe": {
+    "layout": {
+      "previewPlaceholder": "Your audio or video preview will appear here after you choose a file."
+    },
     "page": {
       "title": "Transcribe",
       "subtitle": "Convert audio or video to text",
@@ -714,6 +716,7 @@ declare const messages: {
     "translatedText": "Translated text",
     "sourcePlaceholder": "Enter text to translate…",
     "translatedPlaceholder": "Translation will appear here…",
+    "sourceTextStats": "{chars, plural, =0 {0 characters} one {# character} other {# characters}} · {words, plural, =0 {0 words} one {# word} other {# words}}",
     "swap": "Swap",
     "swapAria": "Swap source and target languages and text",
     "action": "Translate",

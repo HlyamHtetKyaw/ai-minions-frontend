@@ -7,8 +7,8 @@ export default async function LandingFaq() {
   const tHome = await getTranslations('home');
 
   return (
-    <section className="mb-24 scroll-mt-24 sm:mb-28 lg:mb-32" id="faq" aria-labelledby="faq-heading">
-      <header className="mx-auto mb-12 max-w-2xl text-center sm:mb-14 lg:mb-16">
+    <section className="mb-12 scroll-mt-20 sm:mb-16 lg:mb-20" id="faq" aria-labelledby="faq-heading">
+      <header className="mx-auto mb-8 max-w-2xl text-center sm:mb-9 lg:mb-10">
         <h2
           id="faq-heading"
           className="text-balance text-2xl font-bold tracking-tight text-foreground sm:text-3xl lg:text-4xl"

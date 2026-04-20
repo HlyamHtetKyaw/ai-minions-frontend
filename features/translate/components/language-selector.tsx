@@ -29,14 +29,19 @@ export default function LanguageSelector({ label, value, options, onChange }: Pr
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex w-full cursor-pointer items-center gap-3 rounded-xl border border-glass-border bg-glass/80 px-3 py-2 backdrop-blur-sm transition-colors hover:bg-glass"
+        className="flex w-full min-w-0 cursor-pointer items-center gap-2 rounded-xl border border-glass-border bg-glass/80 px-2.5 py-2 backdrop-blur-sm transition-colors hover:bg-glass sm:gap-3 sm:px-3"
       >
-        <Languages className="h-8 w-8 shrink-0 rounded-lg bg-foreground/10 p-1.5 text-foreground" />
+        <Languages
+          className="hidden h-8 w-8 shrink-0 rounded-lg bg-foreground/10 p-1.5 text-foreground sm:block"
+          aria-hidden
+        />
         <div className="flex min-w-0 flex-1 flex-col text-left leading-tight">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-violet-400">
             {label}
           </span>
-          <span className="truncate text-sm font-medium text-foreground">{currentName}</span>
+          <span className="truncate text-sm font-medium text-foreground" title={currentName}>
+            {currentName}
+          </span>
         </div>
         <ChevronDown
           className={`ml-1 h-4 w-4 shrink-0 text-foreground/60 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
