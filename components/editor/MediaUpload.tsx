@@ -6,6 +6,7 @@ import {
   applyVideoFileToEditor,
   VIDEO_FILE_ACCEPT_ATTR,
 } from '@/components/editor/video-file';
+import { uploadVideoEditorFile } from '@/lib/video-editor-workspace-api';
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -39,7 +40,7 @@ export function MediaUpload({ variant = 'default', fileInputId }: MediaUploadPro
   }, []);
 
   const applyFile = useCallback(
-    (file: File) => {
+    async (file: File) => {
       if (!applyVideoFileToEditor(file, setVideoSrc)) return;
 
       clearProgressTimer();
@@ -49,7 +50,7 @@ export function MediaUpload({ variant = 'default', fileInputId }: MediaUploadPro
 
       progressTimerRef.current = setInterval(() => {
         setProgress((p) => {
-          const next = Math.min(100, p + 6);
+          const next = Math.min(92, p + 6);
           if (next >= 100 && progressTimerRef.current != null) {
             clearInterval(progressTimerRef.current);
             progressTimerRef.current = null;
@@ -57,6 +58,23 @@ export function MediaUpload({ variant = 'default', fileInputId }: MediaUploadPro
           return next;
         });
       }, 45);
+
+      try {
+        const uploaded = await uploadVideoEditorFile(file);
+        if (uploaded.storageUrl.startsWith('http://') || uploaded.storageUrl.startsWith('https://')) {
+          const current = useEditorStore.getState().videoSrc;
+          if (typeof current === 'string' && current.startsWith('blob:')) {
+            URL.revokeObjectURL(current);
+          }
+          const withWorkspaceKey = `${uploaded.storageUrl}#wk=${encodeURIComponent(uploaded.s3Key)}`;
+          useEditorStore.setState({ videoSrc: withWorkspaceKey });
+        }
+        setProgress(100);
+      } catch (error) {
+        console.warn('[video-editor] file upload failed', error);
+      } finally {
+        clearProgressTimer();
+      }
     },
     [clearProgressTimer, setVideoSrc],
   );

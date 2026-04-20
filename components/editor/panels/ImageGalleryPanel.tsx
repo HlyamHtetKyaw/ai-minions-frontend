@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 import {
   encodeGalleryImageDragPayload,
@@ -8,6 +8,8 @@ import {
 } from '@/lib/galleryImageDrag';
 import { useEditorStore } from '@/store/editorStore';
 import type { GalleryImage } from '@/store/editorStore';
+import { uploadVideoEditorFile } from '@/lib/video-editor-workspace-api';
+import { fetchDeveloperGalleryImages } from '@/lib/developer-image-gallery-api';
 
 const ACCEPT =
   'image/png,image/jpeg,image/jpg,image/webp,image/svg+xml,image/gif,.png,.jpg,.jpeg,.webp,.svg,.gif';
@@ -34,7 +36,11 @@ function UploadIcon() {
   );
 }
 
-export function ImageGalleryPanel() {
+type ImageGalleryPanelProps = {
+  developerSourceOnly?: boolean;
+};
+
+export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryPanelProps) {
   const galleryImages = useEditorStore((s) => s.galleryImages);
   const addGalleryImage = useEditorStore((s) => s.addGalleryImage);
   const deleteGalleryImage = useEditorStore((s) => s.deleteGalleryImage);
@@ -42,6 +48,34 @@ export function ImageGalleryPanel() {
 
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!developerSourceOnly) return;
+    let cancelled = false;
+    setBusy(true);
+    setLoadError(null);
+    void fetchDeveloperGalleryImages()
+      .then((images) => {
+        if (cancelled) return;
+        useEditorStore.setState((state) => ({
+          ...state,
+          galleryImages: images,
+        }));
+      })
+      .catch((error) => {
+        if (cancelled) return;
+        setLoadError(error instanceof Error ? error.message : 'Failed to load gallery images');
+      })
+      .finally(() => {
+        if (cancelled) return;
+        setBusy(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [developerSourceOnly]);
 
   const ingestFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -52,6 +86,7 @@ export function ImageGalleryPanel() {
         for (const file of list) {
           try {
             await addGalleryImage(file);
+            await uploadVideoEditorFile(file);
           } catch {
             // Skip invalid images; optional: toast
           }
@@ -89,41 +124,49 @@ export function ImageGalleryPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
-      <div
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            inputRef.current?.click();
-          }
-        }}
-        onDragOver={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-        }}
-        onDrop={onDrop}
-        onClick={() => inputRef.current?.click()}
-        className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-600 bg-zinc-900/40 px-3 py-6 text-center transition-colors hover:border-zinc-500 hover:bg-zinc-900/70"
-      >
-        <UploadIcon />
-        <span className="text-xs font-medium text-zinc-300">Drop images here</span>
-        <span className="text-[10px] text-zinc-500">PNG · JPG · WebP · SVG</span>
-        {busy && <span className="text-[10px] text-zinc-500">Uploading…</span>}
-      </div>
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ACCEPT}
-        multiple
-        className="sr-only"
-        aria-hidden
-        onChange={(e) => {
-          const f = e.target.files;
-          if (f?.length) void ingestFiles(f);
-          e.target.value = '';
-        }}
-      />
+      {developerSourceOnly ? (
+        <div className="rounded-lg border border-zinc-700/70 bg-zinc-900/40 px-3 py-2 text-[11px] text-zinc-400">
+          Images are loaded from developer gallery.
+        </div>
+      ) : (
+        <>
+          <div
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                inputRef.current?.click();
+              }
+            }}
+            onDragOver={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onDrop={onDrop}
+            onClick={() => inputRef.current?.click()}
+            className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-600 bg-zinc-900/40 px-3 py-6 text-center transition-colors hover:border-zinc-500 hover:bg-zinc-900/70"
+          >
+            <UploadIcon />
+            <span className="text-xs font-medium text-zinc-300">Drop images here</span>
+            <span className="text-[10px] text-zinc-500">PNG · JPG · WebP · SVG</span>
+            {busy && <span className="text-[10px] text-zinc-500">Uploading…</span>}
+          </div>
+          <input
+            ref={inputRef}
+            type="file"
+            accept={ACCEPT}
+            multiple
+            className="sr-only"
+            aria-hidden
+            onChange={(e) => {
+              const f = e.target.files;
+              if (f?.length) void ingestFiles(f);
+              e.target.value = '';
+            }}
+          />
+        </>
+      )}
 
       {/* cqw = this width; row ≈ col + p-1 + square(col−0.5rem) + mt-1 + 9px line + pb; +2×gap-2 + grid pb-1 */}
       <div className="@container w-full min-w-0 shrink-0">
@@ -132,7 +175,11 @@ export function ImageGalleryPanel() {
           role="region"
           aria-label="Uploaded images"
         >
-        {galleryImages.length === 0 ? (
+        {loadError ? (
+          <p className="py-2 text-center text-xs text-rose-400">{loadError}</p>
+        ) : busy && galleryImages.length === 0 ? (
+          <p className="py-2 text-center text-xs text-zinc-500">Loading images...</p>
+        ) : galleryImages.length === 0 ? (
           <p className="py-2 text-center text-xs text-zinc-500">No images yet</p>
         ) : (
           <div className="grid grid-cols-2 gap-2 pb-1">
@@ -173,18 +220,20 @@ export function ImageGalleryPanel() {
                     >
                       <Plus className="h-4 w-4" />
                     </button>
-                    <button
-                      type="button"
-                      title="Remove from gallery"
-                      draggable={false}
-                      className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-100 ring-1 ring-zinc-600 hover:bg-red-900/80"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onDeleteGallery(img.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {!developerSourceOnly ? (
+                      <button
+                        type="button"
+                        title="Remove from gallery"
+                        draggable={false}
+                        className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-100 ring-1 ring-zinc-600 hover:bg-red-900/80"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onDeleteGallery(img.id);
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    ) : null}
                   </div>
                 </div>
                 <p className="mt-1 truncate px-0.5 text-[9px] text-zinc-500" title={img.name}>

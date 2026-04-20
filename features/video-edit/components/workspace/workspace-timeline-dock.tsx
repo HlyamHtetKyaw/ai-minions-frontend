@@ -85,6 +85,8 @@ function WorkspaceTextTimelineClip({
   const updateTextLayer = useEditorStore((s) => s.updateTextLayer);
   const startTime = clip.start * durationSec;
   const endTime = (clip.start + clip.width) * durationSec;
+  const lane = clip.verticalLane ?? 0;
+  const topPx = 4 + lane * 6;
 
   const onClipUpdate = useCallback(
     (patch: { startTime?: number; endTime?: number }) => {
@@ -114,9 +116,11 @@ function WorkspaceTextTimelineClip({
     <>
       <div
         data-timeline-clip
-        className={`absolute top-1 flex h-[calc(100%-0.5rem)] min-w-8 touch-none items-center overflow-hidden rounded px-2 text-[10px] font-medium text-white ring-1 ring-inset ${toneClass[clip.tone]}`}
+        className={`absolute z-5 flex min-w-8 touch-none items-center overflow-hidden rounded px-2 text-[10px] font-medium text-white ring-1 ring-inset ${toneClass[clip.tone]}`}
         style={{
           ...clipStyle,
+          top: topPx,
+          bottom: 4,
           boxSizing: 'border-box',
           border: selected ? '2px solid #5DCAA5' : 'none',
         }}
@@ -845,7 +849,7 @@ export function WorkspaceTimelineDock({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-white/10 bg-black/90">
-      <div className="flex shrink-0 flex-wrap items-center gap-3 border-b border-white/5 px-3 py-2">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/5 px-2 py-2 sm:gap-3 sm:px-3">
         <div
           className={`flex items-center gap-1 ${transportDisabled ? 'pointer-events-none opacity-40' : ''}`}
         >
@@ -990,10 +994,10 @@ export function WorkspaceTimelineDock({
 
       {phase === 'ready' && (
         <WorkspaceTimelineDragGuideContext.Provider value={setClipDragGuideRatios}>
-          <div className="flex min-h-0 flex-1 flex-col overflow-x-hidden overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto">
             <div
               ref={timelineRef}
-              className="relative flex min-w-0 flex-col bg-black/25"
+              className="relative flex min-w-[720px] flex-col bg-black/25"
               role="presentation"
             >
               <div
