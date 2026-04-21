@@ -68,7 +68,7 @@ export default function VerifyClient() {
         const me = await fetchMe();
         if (cancelled) return;
         if (me?.isVerified) {
-          router.replace('/tools');
+          router.replace('/');
           return;
         }
         if (me) {
@@ -104,7 +104,7 @@ export default function VerifyClient() {
         sessionStorage.removeItem('aiminions_verify_email');
         window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));
       }
-      router.push('/tools');
+      router.push('/');
       router.refresh();
     } catch (err) {
       const raw = err instanceof Error ? err.message : t('errorGeneric');

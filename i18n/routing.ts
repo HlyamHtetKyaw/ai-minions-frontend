@@ -4,13 +4,9 @@ const locales = ['en', 'mm'] as const;
 
 const pathnames = {
   '/': '/',
-  '/tools': '/tools',
-  '/landing': '/landing',
   '/login': '/login',
   '/signup': '/signup',
   '/verify': '/verify',
-  '/forgot-password': '/forgot-password',
-  '/reset-password': '/reset-password',
   '/pricing': '/pricing',
   '/account': '/account',
   '/account/password': '/account/password',
@@ -20,11 +16,8 @@ const pathnames = {
   '/content-generation': '/content-generation',
   '/voice-over': '/voice-over',
   '/video-edit': '/video-edit',
-  '/video-edit/work-space': '/video-edit/work-space',
-  '/editor': '/editor',
   '/translate': '/translate',
-  '/admin': '/admin',
-  '/viral-shorts': '/viral-shorts',
+  '/admin': '/admin'
 } as const satisfies Pathnames<typeof locales>;
 
 export type AppPathname = keyof typeof pathnames;

@@ -4,8 +4,8 @@ import { config as contentGeneration } from './content-generation/config';
 import { config as transcribe } from './transcribe/config';
 import { config as translate } from './translate/config';
 import { config as videoEdit } from './video-edit/config';
+import { config as videoUpload } from './video-upload/config';
 import { config as voiceOver } from './voice-over/config';
-import { config as viralShorts } from './viral-shorts/config';
 
 export type { AppPathname };
 
@@ -18,7 +18,7 @@ export type FeatureConfig = {
 };
 
 export const FEATURES: FeatureConfig[] = [
-  viralShorts,
+  videoUpload,
   transcribe,
   contentGeneration,
   voiceOver,

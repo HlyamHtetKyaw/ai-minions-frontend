@@ -10,15 +10,10 @@
   },
   "dependencies": {
     "lucide-react": "^1.7.0",
-    "nanoid": "^5.1.7",
     "next": "16.2.2",
     "next-intl": "^4.9.0",
     "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "react-easy-crop": "^5.5.7",
-    "react-rnd": "^10.5.3",
-    "wavesurfer.js": "^7.12.6",
-    "zustand": "^5.0.12"
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

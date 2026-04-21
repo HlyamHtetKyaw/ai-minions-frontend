@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeftRight, CircleHelp, Languages } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
@@ -9,43 +9,18 @@ import LanguageSelector from '@/features/translate/components/language-selector'
 import TextPanels from '@/features/translate/components/text-panels';
 import TranslateButton from '@/features/translate/components/translate-button';
 import { LANGUAGES } from '@/lib/constants';
-import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
-import { translateText } from '@/lib/translate-api';
 
-function languageLabel(code: string): string {
-  return LANGUAGES.find((l) => l.code === code)?.name ?? code;
-}
+// TODO: replace with real auth state
+const isSignedIn = true;
 
 export default function TranslatePage() {
   const t = useTranslations('translation');
 
-  const [isSignedIn, setIsSignedIn] = useState(false);
   const [sourceLang, setSourceLang] = useState(LANGUAGES[0].code);
   const [targetLang, setTargetLang] = useState(LANGUAGES[1].code);
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const resolve = () => setIsSignedIn(Boolean(getStoredAccessToken()));
-    resolve();
-    window.addEventListener(AUTH_CHANGED_EVENT, resolve);
-    return () => window.removeEventListener(AUTH_CHANGED_EVENT, resolve);
-  }, []);
-
-  const toUserSafeError = (raw: string): string => {
-    const msg = (raw ?? '').trim();
-    if (!msg) return t('errors.generic');
-    const lower = msg.toLowerCase();
-    if (lower.includes('full authentication is required') || lower.includes('401')) {
-      return t('errors.unauthorized');
-    }
-    if (lower.includes('email verification required') || lower.includes('verification required')) {
-      return t('errors.verificationRequired');
-    }
-    return msg;
-  };
 
   const handleSwap = () => {
     setSourceLang(targetLang);
@@ -55,18 +30,9 @@ export default function TranslatePage() {
   };
 
   const handleTranslate = async () => {
-    setError(null);
     setIsLoading(true);
     try {
-      const result = await translateText({
-        text: sourceText.trim(),
-        sourceLanguage: languageLabel(sourceLang),
-        targetLanguage: languageLabel(targetLang),
-      });
-      setTranslatedText(result.translatedText);
-    } catch (e) {
-      const raw = e instanceof Error ? e.message : String(e);
-      setError(toUserSafeError(raw));
+      // TODO: call translation API
     } finally {
       setIsLoading(false);
     }
@@ -130,12 +96,6 @@ export default function TranslatePage() {
               translatedValue={translatedText}
               translatedPlaceholder={t('translatedPlaceholder')}
             />
-
-            {error ? (
-              <p className="text-sm text-destructive" role="alert">
-                {error}
-              </p>
-            ) : null}
 
             <TranslateButton
               onClick={handleTranslate}
