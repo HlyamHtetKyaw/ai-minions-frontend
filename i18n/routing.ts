@@ -16,6 +16,7 @@ const pathnames = {
   '/account/password': '/account/password',
   '/video-upload': '/video-upload',
   '/transcribe': '/transcribe',
+  '/subtitles': '/subtitles',
   '/transcript': '/transcript',
   '/content-generation': '/content-generation',
   '/voice-over': '/voice-over',

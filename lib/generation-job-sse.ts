@@ -56,7 +56,17 @@ export type GenerationJobSseHandlers = {
  * - Main-service hello: `{ status: "subscribed", generationId, jobId, featureName?, … }`
  * - Processing-service: `{ status: "processing", stage, jobId, generationId }` (see {@code GenerationStatusPublisher})
  */
-export function parseGenerationSseProgressPayload(raw: string): { percent: number; label: string } | null {
+export type GenerationSseProgressLabelOverrides = {
+  /** Optional overrides for known `stage` values from processing-service. */
+  stages?: Partial<Record<string, { percent: number; label: string }>>;
+  /** Optional override for the initial SSE hello (`status=subscribed`). */
+  subscribedLabel?: string;
+};
+
+export function parseGenerationSseProgressPayload(
+  raw: string,
+  overrides?: GenerationSseProgressLabelOverrides,
+): { percent: number; label: string } | null {
   try {
     const o = JSON.parse(raw) as Record<string, unknown>;
     const statusRaw = String(o.status ?? '').toLowerCase();
@@ -66,6 +76,9 @@ export function parseGenerationSseProgressPayload(raw: string): { percent: numbe
       (typeof o.step === 'string' && o.step.trim() ? o.step : null);
 
     if (statusRaw === 'subscribed') {
+      if (overrides?.subscribedLabel && overrides.subscribedLabel.trim()) {
+        return { percent: 38, label: overrides.subscribedLabel.trim() };
+      }
       const rawName =
         typeof o.featureName === 'string' && o.featureName.trim()
           ? o.featureName.trim().toLowerCase()
@@ -89,7 +102,14 @@ export function parseGenerationSseProgressPayload(raw: string): { percent: numbe
         normalize_audio: { percent: 48, label: 'Normalizing audio' },
         silence_removal: { percent: 58, label: 'Removing silence' },
         ai_transcription: { percent: 78, label: 'Transcribing with AI' },
+        segment_audio: { percent: 62, label: 'Segmenting audio' },
+        ai_subtitles: { percent: 80, label: 'Generating subtitles with AI' },
+        upload_srt: { percent: 92, label: 'Uploading SRT' },
       };
+      const overrideHit = overrides?.stages?.[stage];
+      if (overrideHit) {
+        return { percent: overrideHit.percent, label: overrideHit.label };
+      }
       const hit = stages[stage];
       if (hit) {
         return { percent: hit.percent, label: hit.label };

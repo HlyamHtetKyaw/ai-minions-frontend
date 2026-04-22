@@ -330,6 +330,12 @@ declare const messages: {
       "category": "Process media",
       "cardLetter": "T"
     },
+    "subtitles": {
+      "name": "Subtitle generator",
+      "description": "Create Myanmar .srt subtitles with timestamps from your audio or video.",
+      "category": "Process media",
+      "cardLetter": "B"
+    },
     "transcript": {
       "name": "Transcript",
       "description": "View and manage your generated transcripts.",
@@ -647,6 +653,74 @@ declare const messages: {
       "copy": "Copy",
       "copied": "Copied!",
       "download": "Download .txt"
+    }
+  },
+  "subtitlesPage": {
+    "hero": {
+      "kicker": "Subtitles",
+      "description": "Upload an audio or video file to generate a Myanmar .srt with timestamps."
+    },
+    "uploadZone": {
+      "kicker": "Upload",
+      "instructionPrimary": "Drop your audio/video file here",
+      "instructionSecondary": "We’ll generate an .srt with timestamps"
+    },
+    "estimate": {
+      "loading": "Estimating points…",
+      "cost": "Estimated cost: ~{points} points",
+      "unavailable": "Estimate unavailable: {message}",
+      "prompt": "Select a file to estimate points."
+    },
+    "generateButton": {
+      "label": "Generate subtitles (SRT)",
+      "loading": "Generating…"
+    },
+    "progress": {
+      "preparingUpload": "Preparing upload…",
+      "uploading": "Uploading…",
+      "startingJob": "Starting subtitle job…",
+      "finished": "Finished"
+    },
+    "timeouts": {
+      "estimate": "Estimate timed out. Please try again.",
+      "prepareUpload": "Prepare upload timed out.",
+      "upload": "Upload timed out.",
+      "startJob": "Starting job timed out.",
+      "preview": "Preview load timed out."
+    },
+    "errors": {
+      "generic": "Something went wrong. Please try again.",
+      "sessionExpired": "Your session expired. Please sign in again.",
+      "insufficientPoints": "Not enough points to generate subtitles. Please top up and try again.",
+      "serviceUnavailable": "Service is temporarily unavailable. Please try again in a moment.",
+      "jobFailed": "Subtitle job failed.",
+      "generationFailed": "Subtitle generation failed."
+    },
+    "sse": {
+      "subscribed": "Hang tight — we’re generating your subtitles."
+    },
+    "stages": {
+      "download": "Downloading media",
+      "extract_audio": "Extracting audio",
+      "normalize_audio": "Normalizing audio",
+      "segment_audio": "Segmenting audio",
+      "ai_subtitles": "Generating subtitles with AI",
+      "upload_srt": "Uploading SRT"
+    },
+    "result": {
+      "heading": "Result"
+    },
+    "download": {
+      "title": "Your SRT is ready",
+      "description": "Download the generated subtitle file.",
+      "button": "Download .srt"
+    },
+    "preview": {
+      "title": "Preview",
+      "description": "Quick look at the first cues (timestamps + text). Download the file for the full SRT.",
+      "loading": "Loading preview…",
+      "truncated": "Preview may be truncated for very large files — download still contains the full SRT.",
+      "empty": "No cues parsed for preview."
     }
   },
   "contentGeneration": {

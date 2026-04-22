@@ -236,7 +236,7 @@ export default function TranscribePage() {
                   {isVideoFile ? (
                     <div className="flex max-h-[min(70vh,520px)] w-full justify-center overflow-hidden rounded-xl border border-card-border bg-black/5">
                       <video
-                        src={splitPreviewUrl}
+                        src={splitPreviewUrl ?? undefined}
                         controls
                         playsInline
                         className="max-h-[min(70vh,520px)] w-auto max-w-full object-contain"
@@ -245,7 +245,7 @@ export default function TranscribePage() {
                   ) : null}
                   {isAudioFile ? (
                     <div className="rounded-xl border border-card-border bg-card p-4">
-                      <audio src={splitPreviewUrl} controls className="w-full" />
+                      <audio src={splitPreviewUrl ?? undefined} controls className="w-full" />
                     </div>
                   ) : null}
                 </>
