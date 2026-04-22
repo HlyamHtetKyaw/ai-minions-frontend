@@ -1,40 +1,320 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ArrowLeft, Loader2, Play, Subtitles } from 'lucide-react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
+import {
+  transcribeEstimatePointsFromExisting,
+  transcribeFromExisting,
+  type PointsEstimate,
+} from '@/lib/transcribe-api';
+import { translateEstimatePoints, translateText, type PointsEstimate as TranslatePointsEstimate } from '@/lib/translate-api';
+import {
+  openVoiceOverSse,
+  voiceOverEstimatePoints,
+  voiceOverPresignRead,
+  voiceOverStart,
+  type PointsEstimate as VoiceOverPointsEstimate,
+} from '@/lib/voice-over-api';
+import {
+  extractTranscriptTextFromOutputData,
+  openGenerationJobSseStream,
+  parseGenerationSseProgressPayload,
+} from '@/lib/generation-job-sse';
+import { balancedSyncAccept, balancedSyncEstimate, balancedSyncReject, balancedSyncStart } from '@/lib/balanced-sync-api';
 
 type TranslateTone = 'narrative' | 'formal' | 'informal';
 type VoiceOption = 'woman-kore' | 'man';
 
+const MIN_SYNC_RATE = 0.8;
+const MAX_SYNC_RATE = 1.25;
+// Testing: allow up to 5x so it's obvious (production should likely be <= 1.4x).
+const MAX_SYNC_RATE_STRONG = 5;
+
 type Props = {
   videoUrl: string;
   videoName: string;
-  onBackToUpload: () => void;
+  initialBalancedSyncGenerationId?: number | null;
+  initialBalancedSyncPreviewUrl?: string;
+  initialBalancedSyncPreviewS3Key?: string;
+  initialTranscriptText?: string;
+  initialTranslatedText?: string;
+  initialTone?: TranslateTone;
+  initialVoiceOverAudioUrl?: string;
+  initialVoiceOverS3Key?: string;
+  initialVoiceOverVoice?: VoiceOption;
+  initialVoiceOverEnabled?: boolean;
+  initialOriginalAudioEnabled?: boolean;
+  initialVoiceOverPlaybackRate?: number;
+  initialAllowStrongerSync?: boolean;
+  initialProtectFlip?: boolean;
+  initialProtectHueDeg?: number;
+  onTranscriptTextChange?: (text: string) => void;
+  onTranslatedTextChange?: (text: string) => void;
+  onToneChange?: (tone: TranslateTone) => void;
+  onVoiceOverAudioUrlChange?: (url: string) => void;
+  onVoiceOverS3KeyChange?: (key: string) => void;
+  onVoiceOverVoiceChange?: (voice: VoiceOption) => void;
+  onVoiceOverEnabledChange?: (enabled: boolean) => void;
+  onOriginalAudioEnabledChange?: (enabled: boolean) => void;
+  onVoiceOverPlaybackRateChange?: (rate: number) => void;
+  onAllowStrongerSyncChange?: (enabled: boolean) => void;
+  onProtectFlipChange?: (enabled: boolean) => void;
+  onProtectHueDegChange?: (deg: number) => void;
+  onBalancedSyncGenerationIdChange?: (id: number | null) => void;
+  onBalancedSyncPreviewUrlChange?: (url: string) => void;
+  onBalancedSyncPreviewS3KeyChange?: (key: string) => void;
+  onVideoUrlChange?: (url: string) => void;
+  onVideoNameChange?: (name: string) => void;
+  onDiscardWorkspace?: () => void;
 };
 
-const BASE_ENGLISH_TRANSCRIPT =
-  'This clip explains a simple routine you can do every day to build strength and stay consistent. Keep your pace steady and focus on breathing.';
+export default function CreationStudio({
+  videoUrl,
+  videoName,
+  initialBalancedSyncGenerationId,
+  initialBalancedSyncPreviewUrl,
+  initialBalancedSyncPreviewS3Key,
+  initialTranscriptText,
+  initialTranslatedText,
+  initialTone,
+  initialVoiceOverAudioUrl,
+  initialVoiceOverS3Key,
+  initialVoiceOverVoice,
+  initialVoiceOverEnabled,
+  initialOriginalAudioEnabled,
+  initialVoiceOverPlaybackRate,
+  initialAllowStrongerSync,
+  initialProtectFlip,
+  initialProtectHueDeg,
+  onTranscriptTextChange,
+  onTranslatedTextChange,
+  onToneChange,
+  onVoiceOverAudioUrlChange,
+  onVoiceOverS3KeyChange,
+  onVoiceOverVoiceChange,
+  onVoiceOverEnabledChange,
+  onOriginalAudioEnabledChange,
+  onVoiceOverPlaybackRateChange,
+  onAllowStrongerSyncChange,
+  onProtectFlipChange,
+  onProtectHueDegChange,
+  onBalancedSyncGenerationIdChange,
+  onBalancedSyncPreviewUrlChange,
+  onBalancedSyncPreviewS3KeyChange,
+  onVideoUrlChange,
+  onVideoNameChange,
+  onDiscardWorkspace,
+}: Props) {
+  const [showTranscribeConfirm, setShowTranscribeConfirm] = useState(false);
+  const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
+  const [transcribeProgress, setTranscribeProgress] = useState<{ percent: number; label: string } | null>(null);
+  const [transcribeError, setTranscribeError] = useState<string | null>(null);
 
-const BURMESE_BY_TONE: Record<TranslateTone, string> = {
-  narrative:
-    'ဒီကလစ်မှာ နေ့စဉ်လုပ်နိုင်တဲ့ ရိုးရှင်းသော လေ့ကျင့်ခန်းလုပ်ထုံးလုပ်နည်းကို ရှင်းပြထားပါတယ်။ အရှိန်ကို တည်ငြိမ်စွာ ထိန်းပြီး အသက်ရှူသဘောတရားကို အာရုံစိုက်ပါ။',
-  formal:
-    'ဤဗီဒီယိုအပိုင်းတွင် နေ့စဉ်ဆောင်ရွက်နိုင်သော လေ့ကျင့်ခန်းနည်းလမ်းတစ်ရပ်ကို ရှင်းလင်းဖော်ပြထားပါသည်။ လှုပ်ရှားနှုန်းကို တည်ငြိမ်စွာ ထိန်းသိမ်း၍ အသက်ရှူစနစ်အား အာရုံစိုက်ပါ။',
-  informal:
-    'ဒီဗီဒီယိုအပိုင်းက နေ့တိုင်းလုပ်လို့ရတဲ့ လေ့ကျင့်ခန်းလေးကို ပြောပြထားတာပါ။ အရှိန်မမြန်ဘဲ လုပ်ပြီး အသက်ရှူတာကိုပဲ သေချာဂရုစိုက်လိုက်ပါ။',
-};
+  const [showTranslateConfirm, setShowTranslateConfirm] = useState(false);
+  const [translateEstimate, setTranslateEstimate] = useState<TranslatePointsEstimate | null>(null);
+  const [translateEstimateError, setTranslateEstimateError] = useState<string | null>(null);
+  const [translateEstimateLoading, setTranslateEstimateLoading] = useState(false);
 
-export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: Props) {
-  const [tone, setTone] = useState<TranslateTone>('narrative');
-  const [voice, setVoice] = useState<VoiceOption>('woman-kore');
+  const [showVoiceOverConfirm, setShowVoiceOverConfirm] = useState(false);
+  const [voiceOverEstimate, setVoiceOverEstimate] = useState<VoiceOverPointsEstimate | null>(null);
+  const [voiceOverEstimateError, setVoiceOverEstimateError] = useState<string | null>(null);
+  const [voiceOverEstimateLoading, setVoiceOverEstimateLoading] = useState(false);
+  const [voiceOverProgress, setVoiceOverProgress] = useState<{ percent: number; label: string } | null>(null);
+  const [voiceOverError, setVoiceOverError] = useState<string | null>(null);
+
+  const [balancedSyncProgress, setBalancedSyncProgress] = useState<{ percent: number; label: string } | null>(null);
+  const [balancedSyncError, setBalancedSyncError] = useState<string | null>(null);
+  const [showBalancedSyncConfirm, setShowBalancedSyncConfirm] = useState(false);
+  const [balancedSyncPointsEstimate, setBalancedSyncPointsEstimate] = useState<{ reserveCostPoints: number } | null>(
+    null,
+  );
+  const [balancedSyncEstimateLoading, setBalancedSyncEstimateLoading] = useState(false);
+  const [balancedSyncEstimateError, setBalancedSyncEstimateError] = useState<string | null>(null);
+  const [balancedSyncGenerationId, setBalancedSyncGenerationId] = useState<number | null>(() =>
+    typeof initialBalancedSyncGenerationId === 'number' && Number.isFinite(initialBalancedSyncGenerationId)
+      ? initialBalancedSyncGenerationId
+      : null,
+  );
+  const [balancedSyncPreviewUrl, setBalancedSyncPreviewUrl] = useState(() =>
+    typeof initialBalancedSyncPreviewUrl === 'string' ? initialBalancedSyncPreviewUrl : '',
+  );
+  const [balancedSyncPreviewS3Key, setBalancedSyncPreviewS3Key] = useState(() =>
+    typeof initialBalancedSyncPreviewS3Key === 'string' ? initialBalancedSyncPreviewS3Key : '',
+  );
+  const [showBalancedPreview, setShowBalancedPreview] = useState(false);
+  const prevAudioModeRef = useRef<{
+    voiceOverEnabled: boolean;
+    originalAudioEnabled: boolean;
+    voiceOverPlaybackRate: number;
+  } | null>(null);
+
+  const [tone, setTone] = useState<TranslateTone>(() => initialTone ?? 'narrative');
+  const [voice, setVoice] = useState<VoiceOption>(() => initialVoiceOverVoice ?? 'woman-kore');
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranscribed, setIsTranscribed] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isTranslated, setIsTranslated] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
-  const [scriptText, setScriptText] = useState('');
+  const [transcriptText, setTranscriptText] = useState(() =>
+    typeof initialTranscriptText === 'string' ? initialTranscriptText : '',
+  );
+  const [translatedText, setTranslatedText] = useState(() =>
+    typeof initialTranslatedText === 'string' ? initialTranslatedText : '',
+  );
+  const [voiceOverAudioUrl, setVoiceOverAudioUrl] = useState(() =>
+    typeof initialVoiceOverAudioUrl === 'string' ? initialVoiceOverAudioUrl : '',
+  );
+  const [voiceOverPlayableUrl, setVoiceOverPlayableUrl] = useState('');
+  const [voiceOverS3Key, setVoiceOverS3Key] = useState(() =>
+    typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key : '',
+  );
+  const [voiceOverEnabled, setVoiceOverEnabled] = useState(() => Boolean(initialVoiceOverEnabled));
+  const [originalAudioEnabled, setOriginalAudioEnabled] = useState(() =>
+    initialOriginalAudioEnabled == null ? true : Boolean(initialOriginalAudioEnabled),
+  );
+  const [voiceOverPlaybackRate, setVoiceOverPlaybackRate] = useState(() => {
+    const n = typeof initialVoiceOverPlaybackRate === 'number' ? initialVoiceOverPlaybackRate : 1;
+    const max = Boolean(initialAllowStrongerSync) ? MAX_SYNC_RATE_STRONG : MAX_SYNC_RATE;
+    return Number.isFinite(n) ? Math.max(MIN_SYNC_RATE, Math.min(max, n)) : 1;
+  });
+  const [allowStrongerSync, setAllowStrongerSync] = useState(() => Boolean(initialAllowStrongerSync));
+  const [protectFlip, setProtectFlip] = useState(() => Boolean(initialProtectFlip));
+  const [protectHueDeg, setProtectHueDeg] = useState(() => {
+    const n = typeof initialProtectHueDeg === 'number' ? initialProtectHueDeg : 0;
+    return Number.isFinite(n) ? Math.max(0, Math.min(180, n)) : 0;
+  });
+  const [syncUi, setSyncUi] = useState<{ kind: 'idle' | 'working' | 'ok' | 'warn' | 'error'; message: string }>({
+    kind: 'idle',
+    message: '',
+  });
+  const [videoBufferPct, setVideoBufferPct] = useState(0);
+  const [audioBufferPct, setAudioBufferPct] = useState(0);
+  const [videoFullyLoaded, setVideoFullyLoaded] = useState(false);
+  const [voiceFullyLoaded, setVoiceFullyLoaded] = useState(false);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
+  const voiceRef = useRef<HTMLAudioElement | null>(null);
+  const voiceObjectUrlRef = useRef<string | null>(null);
+
+  // Normalize audio mode: never allow both (or neither).
+  useEffect(() => {
+    if (voiceOverEnabled && originalAudioEnabled) {
+      setOriginalAudioEnabled(false);
+    } else if (!voiceOverEnabled && !originalAudioEnabled) {
+      setOriginalAudioEnabled(true);
+    }
+  }, [originalAudioEnabled, voiceOverEnabled]);
+
+  // Track buffering progress (used for Sync gating + UX, but should NOT block normal playback).
+  useEffect(() => {
+    setVideoBufferPct(0);
+    setVideoFullyLoaded(false);
+
+    const v = videoRef.current;
+    if (!v) return;
+
+    const calc = () => {
+      const d = v.duration;
+      if (!Number.isFinite(d) || d <= 0) return;
+      let end = 0;
+      try {
+        if (v.buffered && v.buffered.length > 0) {
+          end = v.buffered.end(v.buffered.length - 1);
+        }
+      } catch {
+        end = 0;
+      }
+      const pct = Math.max(0, Math.min(1, end / d));
+      setVideoBufferPct(pct);
+      if (pct >= 0.995) {
+        setVideoFullyLoaded(true);
+      }
+    };
+
+    const onProgress = () => calc();
+    const onMeta = () => calc();
+    const onCanPlayThrough = () => {
+      // Some browsers signal this when it *expects* full playback without buffering.
+      // We still prefer buffered check, but this is a good hint.
+      calc();
+      if (videoBufferPct >= 0.995) setVideoFullyLoaded(true);
+    };
+
+    v.addEventListener('progress', onProgress);
+    v.addEventListener('loadedmetadata', onMeta);
+    v.addEventListener('durationchange', onMeta);
+    v.addEventListener('canplaythrough', onCanPlayThrough);
+    const tmr = window.setInterval(calc, 400);
+    calc();
+
+    return () => {
+      window.clearInterval(tmr);
+      v.removeEventListener('progress', onProgress);
+      v.removeEventListener('loadedmetadata', onMeta);
+      v.removeEventListener('durationchange', onMeta);
+      v.removeEventListener('canplaythrough', onCanPlayThrough);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [videoUrl]);
+
+  useEffect(() => {
+    setAudioBufferPct(0);
+    setVoiceFullyLoaded(false);
+    if (!voiceOverPlayableUrl && !voiceOverAudioUrl) return;
+
+    const a = voiceRef.current;
+    if (!a) return;
+
+    const calc = () => {
+      const d = a.duration;
+      if (!Number.isFinite(d) || d <= 0) return;
+      let end = 0;
+      try {
+        if (a.buffered && a.buffered.length > 0) {
+          end = a.buffered.end(a.buffered.length - 1);
+        }
+      } catch {
+        end = 0;
+      }
+      const pct = Math.max(0, Math.min(1, end / d));
+      setAudioBufferPct(pct);
+      if (pct >= 0.995) {
+        setVoiceFullyLoaded(true);
+      }
+    };
+
+    const onProgress = () => calc();
+    const onMeta = () => calc();
+    const onCanPlayThrough = () => {
+      calc();
+      if (audioBufferPct >= 0.995) setVoiceFullyLoaded(true);
+    };
+
+    a.addEventListener('progress', onProgress);
+    a.addEventListener('loadedmetadata', onMeta);
+    a.addEventListener('durationchange', onMeta);
+    a.addEventListener('canplaythrough', onCanPlayThrough);
+    const tmr = window.setInterval(calc, 400);
+    calc();
+
+    return () => {
+      window.clearInterval(tmr);
+      a.removeEventListener('progress', onProgress);
+      a.removeEventListener('loadedmetadata', onMeta);
+      a.removeEventListener('durationchange', onMeta);
+      a.removeEventListener('canplaythrough', onCanPlayThrough);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceOverAudioUrl, voiceOverPlayableUrl]);
+
+  const [scriptText, setScriptText] = useState(() => {
+    const t = typeof initialTranslatedText === 'string' ? initialTranslatedText : '';
+    if (t.trim()) return t;
+    return typeof initialTranscriptText === 'string' ? initialTranscriptText : '';
+  });
 
   const voiceLabel = useMemo(() => (voice === 'woman-kore' ? 'Woman (Kore)' : 'Man'), [voice]);
   const transcriptRows = useMemo(() => {
@@ -53,32 +333,805 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
     });
   }, [scriptText]);
 
-  const handleTranscribe = async () => {
+  const workspaceS3Key = useMemo(() => {
+    // Stored as `${storageUrl}#wk=${encodeURIComponent(s3Key)}`.
+    const url = String(videoUrl ?? '');
+    const idx = url.indexOf('#');
+    if (idx < 0) return '';
+    const frag = url.slice(idx + 1);
+    const params = new URLSearchParams(frag);
+    const k = params.get('wk');
+    try {
+      return k ? decodeURIComponent(k) : '';
+    } catch {
+      return k ?? '';
+    }
+  }, [videoUrl]);
+
+  const isBalancedPreviewMode = Boolean(balancedSyncPreviewUrl && balancedSyncPreviewS3Key);
+
+  useEffect(() => {
+    // If we are showing the combined balanced preview, force video audio ON and stop voice-over audio.
+    if (!isBalancedPreviewMode) return;
+    const v = videoRef.current;
+    const a = voiceRef.current;
+    try {
+      if (v) v.muted = false;
+    } catch {
+      /* ignore */
+    }
+    try {
+      a?.pause();
+      if (a) a.currentTime = 0;
+    } catch {
+      /* ignore */
+    }
+  }, [isBalancedPreviewMode]);
+
+  useEffect(() => {
+    if (typeof onBalancedSyncGenerationIdChange === 'function') {
+      onBalancedSyncGenerationIdChange(balancedSyncGenerationId);
+    }
+  }, [balancedSyncGenerationId, onBalancedSyncGenerationIdChange]);
+
+  useEffect(() => {
+    if (typeof onBalancedSyncPreviewUrlChange === 'function') {
+      onBalancedSyncPreviewUrlChange(balancedSyncPreviewUrl);
+    }
+  }, [balancedSyncPreviewUrl, onBalancedSyncPreviewUrlChange]);
+
+  useEffect(() => {
+    if (typeof onBalancedSyncPreviewS3KeyChange === 'function') {
+      onBalancedSyncPreviewS3KeyChange(balancedSyncPreviewS3Key);
+    }
+  }, [balancedSyncPreviewS3Key, onBalancedSyncPreviewS3KeyChange]);
+
+  useEffect(() => {
+    // Reset derived state when switching videos.
+    const restoredTranscript = typeof initialTranscriptText === 'string' ? initialTranscriptText : '';
+    const restoredTranslated = typeof initialTranslatedText === 'string' ? initialTranslatedText : '';
+    setTranscriptText(restoredTranscript);
+    setTranslatedText(restoredTranslated);
+    setIsTranscribed(Boolean(restoredTranscript.trim()));
+    setIsTranslated(Boolean(restoredTranslated.trim()));
+    setIsGenerated(false);
+    setScriptText(restoredTranslated.trim() ? restoredTranslated : restoredTranscript);
+    setTranscribeError(null);
+    setTranscribeProgress(null);
+    setEstimate(null);
+    setEstimateError(null);
+    setShowTranscribeConfirm(false);
+    setShowTranslateConfirm(false);
+    setTranslateEstimate(null);
+    setTranslateEstimateError(null);
+    setTranslateEstimateLoading(false);
+    setShowVoiceOverConfirm(false);
+    setVoiceOverEstimate(null);
+    setVoiceOverEstimateError(null);
+    setVoiceOverEstimateLoading(false);
+    setVoiceOverProgress(null);
+    setVoiceOverError(null);
+    if (initialTone) setTone(initialTone);
+    if (initialVoiceOverVoice) setVoice(initialVoiceOverVoice);
+    setVoiceOverAudioUrl(typeof initialVoiceOverAudioUrl === 'string' ? initialVoiceOverAudioUrl : '');
+    setVoiceOverS3Key(typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key : '');
+    setVoiceOverEnabled(Boolean(initialVoiceOverEnabled));
+    setOriginalAudioEnabled(initialOriginalAudioEnabled == null ? true : Boolean(initialOriginalAudioEnabled));
+    const r = typeof initialVoiceOverPlaybackRate === 'number' ? initialVoiceOverPlaybackRate : 1;
+    {
+      const max = Boolean(initialAllowStrongerSync) ? MAX_SYNC_RATE_STRONG : MAX_SYNC_RATE;
+      setVoiceOverPlaybackRate(Number.isFinite(r) ? Math.max(MIN_SYNC_RATE, Math.min(max, r)) : 1);
+    }
+    setAllowStrongerSync(Boolean(initialAllowStrongerSync));
+    if (!workspaceS3Key) return;
+
+    setEstimateLoading(true);
+    (async () => {
+      try {
+        const est = await transcribeEstimatePointsFromExisting(workspaceS3Key, 'video');
+        setEstimate(est);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setEstimateError(msg);
+      } finally {
+        setEstimateLoading(false);
+      }
+    })();
+  }, [workspaceS3Key]);
+
+  useEffect(() => {
+    if (typeof onTranscriptTextChange === 'function') {
+      onTranscriptTextChange(transcriptText);
+    }
+  }, [onTranscriptTextChange, transcriptText]);
+
+  useEffect(() => {
+    if (typeof onTranslatedTextChange === 'function') {
+      onTranslatedTextChange(translatedText);
+    }
+  }, [onTranslatedTextChange, translatedText]);
+
+  useEffect(() => {
+    if (typeof onToneChange === 'function') {
+      onToneChange(tone);
+    }
+  }, [onToneChange, tone]);
+
+  useEffect(() => {
+    if (typeof onVoiceOverAudioUrlChange === 'function') {
+      onVoiceOverAudioUrlChange(voiceOverAudioUrl);
+    }
+  }, [onVoiceOverAudioUrlChange, voiceOverAudioUrl]);
+
+  // Download full voice-over audio and play from a blob URL to avoid "1s loop" streaming issues.
+  useEffect(() => {
+    let cancelled = false;
+
+    const prev = voiceObjectUrlRef.current;
+    if (prev) {
+      try {
+        URL.revokeObjectURL(prev);
+      } catch {
+        /* ignore */
+      }
+      voiceObjectUrlRef.current = null;
+    }
+    setVoiceOverPlayableUrl('');
+
+    if (!voiceOverAudioUrl) return;
+
+    (async () => {
+      try {
+        let url = voiceOverAudioUrl;
+        // If we have a stable key, refresh presigned URL once before downloading.
+        if (voiceOverS3Key) {
+          try {
+            url = await voiceOverPresignRead(voiceOverS3Key);
+            if (!cancelled && url && url !== voiceOverAudioUrl) {
+              setVoiceOverAudioUrl(url);
+            }
+          } catch {
+            // ignore
+          }
+        }
+
+        const res = await fetch(url, { method: 'GET' });
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(`Voice over download failed (${res.status}) ${text}`.trim());
+        }
+        const blob = await res.blob();
+        if (cancelled) return;
+        const objectUrl = URL.createObjectURL(blob);
+        voiceObjectUrlRef.current = objectUrl;
+        setVoiceOverPlayableUrl(objectUrl);
+        setVoiceFullyLoaded(true);
+        setAudioBufferPct(1);
+      } catch (e) {
+        if (cancelled) return;
+        const msg = e instanceof Error ? e.message : String(e);
+        setVoiceOverError(msg || 'Failed to load voice over audio');
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [voiceOverAudioUrl, voiceOverS3Key]);
+
+  useEffect(() => {
+    if (typeof onVoiceOverS3KeyChange === 'function') {
+      onVoiceOverS3KeyChange(voiceOverS3Key);
+    }
+  }, [onVoiceOverS3KeyChange, voiceOverS3Key]);
+
+  useEffect(() => {
+    if (typeof onVoiceOverVoiceChange === 'function') {
+      onVoiceOverVoiceChange(voice);
+    }
+  }, [onVoiceOverVoiceChange, voice]);
+
+  useEffect(() => {
+    if (typeof onVoiceOverEnabledChange === 'function') {
+      onVoiceOverEnabledChange(voiceOverEnabled);
+    }
+  }, [onVoiceOverEnabledChange, voiceOverEnabled]);
+
+  useEffect(() => {
+    if (typeof onOriginalAudioEnabledChange === 'function') {
+      onOriginalAudioEnabledChange(originalAudioEnabled);
+    }
+  }, [onOriginalAudioEnabledChange, originalAudioEnabled]);
+
+  useEffect(() => {
+    if (typeof onVoiceOverPlaybackRateChange === 'function') {
+      onVoiceOverPlaybackRateChange(voiceOverPlaybackRate);
+    }
+  }, [onVoiceOverPlaybackRateChange, voiceOverPlaybackRate]);
+
+  useEffect(() => {
+    if (typeof onAllowStrongerSyncChange === 'function') {
+      onAllowStrongerSyncChange(allowStrongerSync);
+    }
+  }, [allowStrongerSync, onAllowStrongerSyncChange]);
+
+  useEffect(() => {
+    if (typeof onProtectFlipChange === 'function') {
+      onProtectFlipChange(protectFlip);
+    }
+  }, [onProtectFlipChange, protectFlip]);
+
+  useEffect(() => {
+    if (typeof onProtectHueDegChange === 'function') {
+      onProtectHueDegChange(protectHueDeg);
+    }
+  }, [onProtectHueDegChange, protectHueDeg]);
+
+  // Voice-over playback (simple + stable):
+  // - Sync speed means: apply `voiceOverPlaybackRate` to the voice track.
+  // - Video is the controller (play/pause/seek). No drift correction, no extra coupling.
+  useEffect(() => {
+    const v = videoRef.current;
+    const a = voiceRef.current;
+    if (!v) return;
+
+    if (isBalancedPreviewMode) {
+      // Combined preview contains its own audio track; do not let voice-over logic mute or play anything.
+      try {
+        v.muted = false;
+      } catch {
+        /* ignore */
+      }
+      try {
+        a?.pause();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    const wantVoice = Boolean(voiceOverAudioUrl) && voiceOverEnabled && !originalAudioEnabled;
+    v.muted = wantVoice;
+    if (!a) return;
+
+    if (!wantVoice) {
+      try {
+        a.pause();
+      } catch {
+        /* ignore */
+      }
+      return;
+    }
+
+    // Ensure audible output.
+    try {
+      a.muted = false;
+      a.volume = 1;
+    } catch {
+      /* ignore */
+    }
+
+    const hardSyncToVideo = () => {
+      try {
+        a.currentTime = v.currentTime;
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const applyVoiceRate = () => {
+      try {
+        a.playbackRate = voiceOverPlaybackRate;
+      } catch {
+        /* ignore */
+      }
+    };
+
+    const onPlay = () => {
+      hardSyncToVideo();
+      applyVoiceRate();
+      // Don't spam play() calls — only try when paused.
+      if (a.paused) {
+        void a.play().catch(() => {});
+      }
+    };
+    const onPause = () => {
+      try {
+        a.pause();
+      } catch {
+        /* ignore */
+      }
+    };
+    const onSeeked = () => {
+      hardSyncToVideo();
+      applyVoiceRate();
+      if (!v.paused && a.paused) void a.play().catch(() => {});
+    };
+    const onEnded = () => {
+      // Ensure voice-over doesn't keep playing after video completes.
+      try {
+        a.pause();
+        a.currentTime = v.duration || a.duration || a.currentTime;
+      } catch {
+        /* ignore */
+      }
+    };
+    const onRateChange = () => {
+      // Keep voice rate stable even if user changes video speed.
+      applyVoiceRate();
+    };
+
+    // Prime audio element
+    try {
+      applyVoiceRate();
+      hardSyncToVideo();
+    } catch {
+      /* ignore */
+    }
+
+    v.addEventListener('play', onPlay);
+    v.addEventListener('pause', onPause);
+    v.addEventListener('seeked', onSeeked);
+    v.addEventListener('ratechange', onRateChange);
+    v.addEventListener('ended', onEnded);
+
+    // Do NOT auto-resync during playback.
+    // Any hard seek while playing can cause audible repeats ("da da da...") on some browsers/decoders.
+    // We only sync on explicit user actions (play/seek) and rely on the base playbackRate.
+
+    // If video already playing, start voice immediately (toggle case)
+    if (!v.paused) {
+      onPlay();
+    }
+
+    return () => {
+      v.removeEventListener('play', onPlay);
+      v.removeEventListener('pause', onPause);
+      v.removeEventListener('seeked', onSeeked);
+      v.removeEventListener('ratechange', onRateChange);
+      v.removeEventListener('ended', onEnded);
+    };
+  }, [originalAudioEnabled, voiceOverAudioUrl, voiceOverEnabled, voiceOverPlaybackRate]);
+
+  const handleSyncVoiceToVideo = async () => {
+    setSyncUi({ kind: 'working', message: 'Syncing…' });
+    const v = videoRef.current;
+    const a = voiceRef.current;
+    if (!v || !a || !voiceOverAudioUrl) {
+      setVoiceOverError('Generate voice over first, then sync.');
+      setSyncUi({ kind: 'error', message: 'Generate voice over first, then sync.' });
+      return;
+    }
+
+    const waitForDuration = (el: HTMLMediaElement, timeoutMs: number): Promise<number> => {
+      const current = el.duration;
+      if (Number.isFinite(current) && current > 0) return Promise.resolve(current);
+      return new Promise((resolve, reject) => {
+        const tmr = window.setTimeout(() => {
+          cleanup();
+          reject(new Error('duration timeout'));
+        }, timeoutMs);
+        const onMeta = () => {
+          const d = el.duration;
+          if (Number.isFinite(d) && d > 0) {
+            cleanup();
+            resolve(d);
+          }
+        };
+        const cleanup = () => {
+          window.clearTimeout(tmr);
+          el.removeEventListener('loadedmetadata', onMeta);
+          el.removeEventListener('durationchange', onMeta);
+          el.removeEventListener('canplay', onMeta);
+        };
+        el.addEventListener('loadedmetadata', onMeta);
+        el.addEventListener('durationchange', onMeta);
+        el.addEventListener('canplay', onMeta);
+        onMeta();
+      });
+    };
+
+    let vd = v.duration;
+    let ad = a.duration;
+    if (!Number.isFinite(vd) || vd <= 0) {
+      try {
+        vd = await waitForDuration(v, 2500);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!Number.isFinite(ad) || ad <= 0) {
+      try {
+        ad = await waitForDuration(a, 2500);
+      } catch {
+        /* ignore */
+      }
+    }
+    if (!Number.isFinite(vd) || !Number.isFinite(ad) || vd <= 0 || ad <= 0) {
+      setVoiceOverError('Video/audio duration not ready yet. Try playing both once, then Sync again.');
+      setSyncUi({ kind: 'error', message: 'Duration not ready. Try playing once, then Sync again.' });
+      return;
+    }
+    // Want (ad / rate) ~= vd  =>  rate = ad / vd
+    const desired = ad / vd;
+    const max = allowStrongerSync ? MAX_SYNC_RATE_STRONG : MAX_SYNC_RATE;
+    const clamped = Math.max(MIN_SYNC_RATE, Math.min(max, desired));
+    setVoiceOverPlaybackRate(clamped);
+    if (Math.abs(desired - clamped) > 0.001) {
+      setVoiceOverError('Sync applied with safe limits. If it still feels off, shorten script or trim video.');
+      setSyncUi({
+        kind: 'warn',
+        message: `Sync applied: video ${vd.toFixed(1)}s, voice ${ad.toFixed(1)}s → ${clamped.toFixed(2)}× (limited).`,
+      });
+    } else {
+      setVoiceOverError(null);
+      setSyncUi({ kind: 'ok', message: `Synced: video ${vd.toFixed(1)}s, voice ${ad.toFixed(1)}s → ${clamped.toFixed(2)}×.` });
+    }
+    try {
+      a.playbackRate = (v.playbackRate || 1) * clamped;
+    } catch {
+      /* ignore */
+    }
+    // If voiceover mode is active and video playing, resync immediately.
+    if (voiceOverEnabled && !originalAudioEnabled && !v.paused) {
+      try {
+        a.currentTime = v.currentTime;
+      } catch {
+        /* ignore */
+      }
+      void a.play().catch(() => {});
+    }
+
+    // Auto-clear the message after a bit.
+    window.setTimeout(() => {
+      setSyncUi((prev) => (prev.kind === 'working' ? prev : { kind: 'idle', message: '' }));
+    }, 3500);
+  };
+
+  const handleStartBalancedSync = async () => {
+    setBalancedSyncError(null);
+    setBalancedSyncProgress({ percent: 8, label: 'Starting balanced sync…' });
+    try {
+      if (!workspaceS3Key) {
+        throw new Error('Video key is missing. Please re-upload the video.');
+      }
+      if (!voiceOverS3Key) {
+        throw new Error('Voice over key is missing. Generate voice over again.');
+      }
+      const v = videoRef.current;
+      const a = voiceRef.current;
+      const vd = v?.duration;
+      const ad = a?.duration;
+      if (!vd || !ad || !Number.isFinite(vd) || !Number.isFinite(ad) || vd <= 0 || ad <= 0) {
+        throw new Error('Duration not ready yet. Play the video once and try again.');
+      }
+      const started = await balancedSyncStart({
+        videoS3Key: workspaceS3Key,
+        voiceOverS3Key,
+        videoDurationSec: vd,
+        voiceDurationSec: ad,
+        protectFlip,
+        protectHueDeg,
+      });
+      setBalancedSyncGenerationId(started.generationId);
+
+      openGenerationJobSseStream(started.generationId, {
+        onOpen: () => {
+          setBalancedSyncProgress({ percent: 12, label: 'Connected…' });
+        },
+        onStatus: (raw) => {
+          const p = parseGenerationSseProgressPayload(raw);
+          if (p) setBalancedSyncProgress(p);
+        },
+        onTerminal: (payload) => {
+          if (payload.status !== 'completed') {
+            throw new Error(payload.message || 'Balanced sync failed');
+          }
+          const out = payload.outputData;
+          let o: any = out;
+          if (typeof out === 'string') {
+            try {
+              o = JSON.parse(out);
+            } catch {
+              o = null;
+            }
+          }
+          const readUrl = o?.result?.readUrl ?? o?.result?.audioUrl ?? null;
+          const s3Key = o?.result?.s3Key ?? null;
+          if (typeof readUrl !== 'string' || !readUrl.trim() || typeof s3Key !== 'string' || !s3Key.trim()) {
+            throw new Error('Balanced sync finished but no video URL was returned.');
+          }
+
+          // Stop any playing voice-over audio and ensure combined video audio is used.
+          try {
+            voiceRef.current?.pause();
+            if (voiceRef.current) voiceRef.current.currentTime = 0;
+          } catch {
+            /* ignore */
+          }
+          try {
+            if (videoRef.current) videoRef.current.muted = false;
+          } catch {
+            /* ignore */
+          }
+
+          // Temporarily force preview mode to use the combined MP4 audio (rollback on Reject).
+          prevAudioModeRef.current = {
+            voiceOverEnabled,
+            originalAudioEnabled,
+            voiceOverPlaybackRate,
+          };
+          setVoiceOverEnabled(false);
+          setOriginalAudioEnabled(true);
+          setVoiceOverPlaybackRate(1);
+
+          setBalancedSyncPreviewUrl(String(readUrl));
+          setBalancedSyncPreviewS3Key(String(s3Key));
+          setBalancedSyncProgress({ percent: 100, label: 'Balanced preview ready' });
+          setShowBalancedPreview(true);
+        },
+        onError: (message) => {
+          setBalancedSyncError(message || 'Balanced sync stream error');
+          setBalancedSyncProgress(null);
+        },
+        onDone: () => {
+          // no-op
+        },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBalancedSyncError(msg || 'Balanced sync failed');
+      setBalancedSyncProgress(null);
+    }
+  };
+
+  const handleBalancedSyncClick = async () => {
+    setBalancedSyncEstimateError(null);
+    setBalancedSyncPointsEstimate(null);
+    setBalancedSyncEstimateLoading(true);
+    try {
+      if (!workspaceS3Key) throw new Error('Video key is missing. Please re-upload the video.');
+      if (!voiceOverS3Key) throw new Error('Voice over key is missing. Generate voice over again.');
+      const est = await balancedSyncEstimate({ videoS3Key: workspaceS3Key, voiceOverS3Key });
+      const reserve = Number(est.reserveCostPoints);
+      setBalancedSyncPointsEstimate({ reserveCostPoints: Number.isFinite(reserve) ? reserve : 0 });
+      setShowBalancedSyncConfirm(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBalancedSyncEstimateError(msg || 'Failed to estimate points');
+    } finally {
+      setBalancedSyncEstimateLoading(false);
+    }
+  };
+
+  const handleRejectBalancedSync = async () => {
+    setBalancedSyncError(null);
+    if (!balancedSyncPreviewS3Key) return;
+    try {
+      await balancedSyncReject({ balancedVideoS3Key: balancedSyncPreviewS3Key });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBalancedSyncError(msg || 'Failed to discard balanced preview');
+      return;
+    }
+    setBalancedSyncGenerationId(null);
+    setBalancedSyncPreviewUrl('');
+    setBalancedSyncPreviewS3Key('');
+    setBalancedSyncProgress(null);
+    setShowBalancedPreview(false);
+    const prev = prevAudioModeRef.current;
+    prevAudioModeRef.current = null;
+    if (prev) {
+      setVoiceOverEnabled(prev.voiceOverEnabled);
+      setOriginalAudioEnabled(prev.originalAudioEnabled);
+      setVoiceOverPlaybackRate(prev.voiceOverPlaybackRate);
+    }
+  };
+
+  const handleAcceptBalancedSync = async () => {
+    setBalancedSyncError(null);
+    if (!balancedSyncPreviewUrl || !balancedSyncPreviewS3Key) return;
+    if (!workspaceS3Key || !voiceOverS3Key) {
+      setBalancedSyncError('Original keys are missing; cannot accept.');
+      return;
+    }
+    try {
+      await balancedSyncAccept({
+        originalVideoS3Key: workspaceS3Key,
+        voiceOverS3Key,
+        balancedVideoS3Key: balancedSyncPreviewS3Key,
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setBalancedSyncError(msg || 'Failed to accept balanced preview');
+      return;
+    }
+
+    const urlWithKey = `${balancedSyncPreviewUrl}#wk=${encodeURIComponent(balancedSyncPreviewS3Key)}`;
+    onVideoUrlChange?.(urlWithKey);
+    onVideoNameChange?.('balanced-sync.mp4');
+    onVoiceOverAudioUrlChange?.('');
+    onVoiceOverS3KeyChange?.('');
+    onVoiceOverEnabledChange?.(false);
+    onOriginalAudioEnabledChange?.(true);
+    onVoiceOverPlaybackRateChange?.(1);
+
+    setBalancedSyncGenerationId(null);
+    setBalancedSyncPreviewUrl('');
+    setBalancedSyncPreviewS3Key('');
+    setBalancedSyncProgress(null);
+    setShowBalancedPreview(false);
+    prevAudioModeRef.current = null;
+  };
+  const ensureTranslateEstimate = async () => {
+    const text = transcriptText.trim();
+    if (!text) return;
+    if (translateEstimate || translateEstimateLoading) return;
+    setTranslateEstimateLoading(true);
+    setTranslateEstimateError(null);
+    try {
+      const est = await translateEstimatePoints(text);
+      setTranslateEstimate(est);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTranslateEstimateError(msg);
+    } finally {
+      setTranslateEstimateLoading(false);
+    }
+  };
+
+  const startTranscribe = async () => {
+    if (!workspaceS3Key) return;
     setIsTranscribing(true);
     setIsGenerated(false);
-    await new Promise((resolve) => setTimeout(resolve, 1400));
-    setIsTranscribed(true);
-    setIsTranslated(false);
-    setScriptText(BASE_ENGLISH_TRANSCRIPT);
-    setIsTranscribing(false);
+    setTranscribeError(null);
+    setTranscribeProgress({ percent: 10, label: 'Preparing upload…' });
+    try {
+      setTranscribeProgress({ percent: 35, label: 'Starting transcription…' });
+      const complete = await transcribeFromExisting({
+        s3Key: workspaceS3Key,
+        sourceType: 'video',
+        contentType: 'video/mp4',
+        originalFileName: videoName || null,
+      });
+
+      openGenerationJobSseStream(complete.jobId, {
+        onStatus: (raw) => {
+          const p = parseGenerationSseProgressPayload(raw);
+          if (p) setTranscribeProgress(p);
+        },
+        onDone: () => {},
+        onError: (msg) => {
+          setTranscribeError(msg);
+          setTranscribeProgress(null);
+        },
+        onTerminal: (payload) => {
+          const text = extractTranscriptTextFromOutputData(payload.outputData);
+          if (text) {
+            setIsTranscribed(true);
+            setIsTranslated(false);
+            setTranscriptText(text);
+            setTranslatedText('');
+            setScriptText(text);
+            setTranscribeProgress({ percent: 100, label: 'Finished' });
+          } else {
+            const raw = payload.message ?? 'No transcript text returned.';
+            setTranscribeError(raw);
+            setTranscribeProgress(null);
+          }
+        },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setTranscribeError(msg);
+      setTranscribeProgress(null);
+    } finally {
+      setIsTranscribing(false);
+    }
+  };
+
+  const handleTranscribeClick = () => {
+    if (isTranscribing || !workspaceS3Key) return;
+    // If we have an estimate, show a confirmation modal before spending points.
+    if (estimate && !estimateLoading && !estimateError) {
+      setShowTranscribeConfirm(true);
+      return;
+    }
+    void startTranscribe();
   };
 
   const handleTranslate = async () => {
     if (!isTranscribed) return;
     setIsTranslating(true);
     setIsGenerated(false);
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    setScriptText(BURMESE_BY_TONE[tone]);
-    setIsTranslated(true);
-    setIsTranslating(false);
+    try {
+      const result = await translateText({
+        text: transcriptText.trim(),
+        sourceLanguage: 'English',
+        targetLanguage: 'Burmese',
+        style: tone,
+      });
+      const out = result.translatedText ?? '';
+      setTranslatedText(out);
+      setScriptText(out);
+      setIsTranslated(Boolean(out.trim()));
+    } finally {
+      setIsTranslating(false);
+    }
+  };
+
+  const handleTranslateClick = () => {
+    if (!isTranscribed || isTranslating) return;
+    setShowTranslateConfirm(true);
+    void ensureTranslateEstimate();
   };
 
   const handleGenerate = async () => {
     if (!isTranslated) return;
+    // Voice-over uses the translated script (current `scriptText`).
+    setShowVoiceOverConfirm(true);
+    const text = scriptText.trim();
+    if (!text) return;
+    if (!voiceOverEstimate && !voiceOverEstimateLoading) {
+      setVoiceOverEstimateLoading(true);
+      setVoiceOverEstimateError(null);
+      try {
+        const est = await voiceOverEstimatePoints(text);
+        setVoiceOverEstimate(est);
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        setVoiceOverEstimateError(msg);
+      } finally {
+        setVoiceOverEstimateLoading(false);
+      }
+    }
+  };
+
+  const startVoiceOver = async () => {
+    const text = scriptText.trim();
+    if (!text) return;
     setIsGenerating(true);
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    setIsGenerating(false);
-    setIsGenerated(true);
+    setIsGenerated(false);
+    setVoiceOverError(null);
+    setVoiceOverProgress({ percent: 10, label: 'Starting voice over…' });
+    try {
+      const started = await voiceOverStart({ text, style: voice });
+      openVoiceOverSse(started.jobId, {
+        onStatus: (raw) => {
+          const p = parseGenerationSseProgressPayload(raw);
+          if (p) setVoiceOverProgress(p);
+        },
+        onDone: () => {},
+        onError: (msg) => {
+          setVoiceOverError(msg);
+          setVoiceOverProgress(null);
+        },
+        onTerminal: (payload) => {
+          if (payload.status === 'completed' && payload.data && typeof payload.data === 'object') {
+            const d = payload.data as Record<string, unknown>;
+            const url = typeof d.audioUrl === 'string' ? d.audioUrl : '';
+            const key = typeof d.s3Key === 'string' ? d.s3Key : '';
+            if (url) {
+              setVoiceOverAudioUrl(url);
+              if (key) setVoiceOverS3Key(key);
+              setIsGenerated(true);
+              setVoiceOverProgress({ percent: 100, label: 'Finished' });
+              setVoiceOverEnabled(true);
+              setOriginalAudioEnabled(false);
+              return;
+            }
+          }
+          setVoiceOverError(payload.message ?? 'Voice over failed');
+          setVoiceOverProgress(null);
+        },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setVoiceOverError(msg);
+      setVoiceOverProgress(null);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -88,14 +1141,25 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
           <Subtitles className="h-4 w-4 text-[#b9a4ff]" aria-hidden />
           AI Video Editor
         </div>
-        <ActionButton
-          onClick={() => void handleGenerate()}
-          isLoading={isGenerating}
-          disabled={!isTranslated || isGenerating}
-          label="Final Export"
-          loadingLabel="Generating..."
-          className="h-8 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
-        />
+        <div className="flex items-center gap-2">
+          {typeof onDiscardWorkspace === 'function' ? (
+            <button
+              type="button"
+              onClick={onDiscardWorkspace}
+              className="h-8 rounded-md border border-red-500/30 bg-transparent px-3 text-xs font-semibold text-red-300 transition-colors hover:border-red-400/60 hover:bg-red-500/10"
+            >
+              Discard workspace
+            </button>
+          ) : null}
+          <ActionButton
+            onClick={() => void handleGenerate()}
+            isLoading={isGenerating}
+            disabled={!isTranslated || isGenerating}
+            label="Final Export"
+            loadingLabel="Generating..."
+            className="h-8 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+          />
+        </div>
       </header>
 
       <div className="grid min-h-[640px] grid-cols-1 lg:grid-cols-[280px_1fr]">
@@ -103,12 +1167,22 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
           <div className="space-y-2">
             <button
               type="button"
-              onClick={() => void handleTranscribe()}
-              disabled={isTranscribing}
+              onClick={handleTranscribeClick}
+              disabled={isTranscribing || !workspaceS3Key}
               className="btn-transcribe"
             >
               {isTranscribing ? 'Transcribing...' : '1. Transcribe Video'}
             </button>
+            {transcribeProgress ? (
+              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
+                {transcribeProgress.label} ({transcribeProgress.percent}%)
+              </div>
+            ) : null}
+            {transcribeError ? (
+              <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
+                {transcribeError}
+              </div>
+            ) : null}
           </div>
 
           <div className="mt-6 rounded-md border border-card-border bg-card p-2">
@@ -124,7 +1198,15 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
               ) : null}
               <textarea
                 value={scriptText}
-                onChange={(e) => setScriptText(e.target.value)}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setScriptText(v);
+                  if (isTranslated) {
+                    setTranslatedText(v);
+                  } else {
+                    setTranscriptText(v);
+                  }
+                }}
                 placeholder="Click Transcribe to generate script."
                 className="min-h-[220px] w-full resize-y rounded border border-card-border bg-subtle/30 px-2 py-2 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
               />
@@ -143,7 +1225,7 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
               <option value="informal">Informal</option>
             </select>
             <ActionButton
-              onClick={() => void handleTranslate()}
+              onClick={handleTranslateClick}
               isLoading={isTranslating}
               disabled={!isTranscribed || isTranslating}
               label="Translate"
@@ -169,10 +1251,81 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
             />
             <button
               type="button"
+              onClick={() => void handleSyncVoiceToVideo()}
+              disabled={!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
               className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
             >
               Sync Voice Length to Audio
             </button>
+            <button
+              type="button"
+              onClick={() => void handleBalancedSyncClick()}
+              disabled={
+                isBalancedPreviewMode ||
+                !voiceOverAudioUrl ||
+                !voiceOverS3Key ||
+                !videoFullyLoaded ||
+                !voiceFullyLoaded ||
+                Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100) ||
+                balancedSyncEstimateLoading
+              }
+              className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+            >
+              Balanced Sync (Render & Combine)
+            </button>
+            {balancedSyncEstimateError ? (
+              <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
+                {balancedSyncEstimateError}
+              </div>
+            ) : null}
+            {balancedSyncProgress ? (
+              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
+                {balancedSyncProgress.label} ({balancedSyncProgress.percent}%)
+              </div>
+            ) : null}
+            {balancedSyncError ? (
+              <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
+                {balancedSyncError}
+              </div>
+            ) : null}
+            {!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded) ? (
+              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
+                Loading media… Video {Math.round(videoBufferPct * 100)}%
+                {voiceOverAudioUrl ? ` · Voice ${Math.round(audioBufferPct * 100)}%` : ''}
+              </div>
+            ) : null}
+            <label className="flex items-center gap-2 text-[10px] text-muted">
+              <input
+                type="checkbox"
+                checked={allowStrongerSync}
+                onChange={(e) => setAllowStrongerSync(e.target.checked)}
+              />
+              Allow stronger sync (may sound less natural)
+            </label>
+            <button
+              type="button"
+              onClick={() => {
+                const next = !(protectFlip || protectHueDeg > 0);
+                setProtectFlip(next);
+                setProtectHueDeg(next ? 25 : 0);
+              }}
+              className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
+            >
+              Protection (Flip + Hue)
+            </button>
+            {syncUi.kind !== 'idle' ? (
+              <div
+                className={`rounded border px-2 py-1.5 text-[10px] ${
+                  syncUi.kind === 'error'
+                    ? 'border-red-500/30 bg-red-500/10 text-red-200'
+                    : syncUi.kind === 'warn'
+                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                      : 'border-card-border bg-subtle/20 text-muted'
+                }`}
+              >
+                {syncUi.message}
+              </div>
+            ) : null}
             <button
               type="button"
               className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
@@ -182,21 +1335,329 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
           </div>
         </aside>
 
+        {showTranscribeConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm transcription"
+            onMouseDown={() => setShowTranscribeConfirm(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Transcribe this video?</p>
+              <p className="mt-2 text-sm text-muted">
+                This will use{' '}
+                <span className="font-semibold text-foreground">{estimate?.reserveCostPoints ?? '—'}</span> points to
+                generate a transcript for your viral workspace.
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => setShowTranscribeConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={isTranscribing || !workspaceS3Key}
+                  onClick={() => {
+                    setShowTranscribeConfirm(false);
+                    void startTranscribe();
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showTranslateConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm translation"
+            onMouseDown={() => setShowTranslateConfirm(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Translate this transcript?</p>
+              <p className="mt-2 text-sm text-muted">
+                This will translate your transcript and use{' '}
+                <span className="font-semibold text-foreground">
+                  {translateEstimateLoading ? '…' : translateEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {translateEstimateError ? (
+                <p className="mt-2 text-sm text-red-300">{translateEstimateError}</p>
+              ) : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => setShowTranslateConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={!isTranscribed || isTranslating || translateEstimateLoading}
+                  onClick={() => {
+                    setShowTranslateConfirm(false);
+                    void handleTranslate();
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showVoiceOverConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm voice over"
+            onMouseDown={() => setShowVoiceOverConfirm(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Generate voice over?</p>
+              <p className="mt-2 text-sm text-muted">
+                This will generate an audio voice over for your script and use{' '}
+                <span className="font-semibold text-foreground">
+                  {voiceOverEstimateLoading ? '…' : voiceOverEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {voiceOverEstimateError ? (
+                <p className="mt-2 text-sm text-red-300">{voiceOverEstimateError}</p>
+              ) : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => setShowVoiceOverConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={!isTranslated || isGenerating || voiceOverEstimateLoading}
+                  onClick={() => {
+                    setShowVoiceOverConfirm(false);
+                    void startVoiceOver();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showBalancedSyncConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm balanced sync"
+            onMouseDown={() => setShowBalancedSyncConfirm(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Render balanced sync?</p>
+              <p className="mt-2 text-sm text-muted">
+                This will create a combined video preview and use{' '}
+                <span className="font-semibold text-foreground">
+                  {balancedSyncEstimateLoading ? '…' : balancedSyncPointsEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {balancedSyncEstimateError ? (
+                <p className="mt-2 text-sm text-red-300">{balancedSyncEstimateError}</p>
+              ) : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => setShowBalancedSyncConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={balancedSyncEstimateLoading}
+                  onClick={() => {
+                    setShowBalancedSyncConfirm(false);
+                    void handleStartBalancedSync();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showBalancedPreview && isBalancedPreviewMode ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Balanced sync preview"
+          >
+            <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-card-border bg-card shadow-[0_25px_80px_rgba(0,0,0,0.55)]">
+              <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Balanced sync preview</p>
+                  <p className="mt-0.5 text-xs text-muted">Listen carefully — accept only if it feels aligned.</p>
+                </div>
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => void handleRejectBalancedSync()}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="bg-black p-3">
+                <video
+                  src={balancedSyncPreviewUrl}
+                  controls
+                  playsInline
+                  preload="auto"
+                  className="mx-auto h-[420px] w-full max-w-[900px] rounded-lg object-contain"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-card-border px-4 py-3">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => void handleRejectBalancedSync()}
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                  onClick={() => void handleAcceptBalancedSync()}
+                >
+                  Accept
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="flex flex-col bg-background/20">
           <div className="flex items-center justify-between border-b border-card-border px-3 py-2 text-[11px] text-muted">
             <span>Editing Mode</span>
             <span>{isGenerated ? `Voiceover ready: ${voiceLabel}` : 'No Project Loaded'}</span>
           </div>
           <div className="flex min-h-[420px] items-center justify-center border-b border-card-border bg-subtle/20 px-5 py-4">
-            <div className="overflow-hidden rounded-lg border border-card-border bg-black">
+            <div className="relative overflow-hidden rounded-lg border border-card-border bg-black">
               <video
-                src={videoUrl}
+                ref={videoRef}
+                src={isBalancedPreviewMode ? balancedSyncPreviewUrl : videoUrl}
                 controls
                 playsInline
+                preload="auto"
                 className="h-[360px] w-[min(56vw,640px)] object-contain"
+                style={{
+                  transform: protectFlip ? 'scaleX(-1)' : undefined,
+                  filter: protectHueDeg ? `hue-rotate(${protectHueDeg}deg)` : undefined,
+                }}
               />
+              {isBalancedPreviewMode ? (
+                <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
+                  <span className="font-semibold">Balanced preview ready</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowBalancedPreview(true)}
+                    className="h-7 rounded-md bg-[#7c5cff] px-2 font-semibold text-white hover:bg-[#6b4bff]"
+                  >
+                    Preview & Accept
+                  </button>
+                </div>
+              ) : null}
             </div>
           </div>
+
+          {voiceOverAudioUrl && !isBalancedPreviewMode ? (
+            <div className="border-b border-card-border px-3 py-3 text-[11px] text-muted">
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="viral-audio-mode"
+                    checked={originalAudioEnabled}
+                    onChange={() => {
+                      setOriginalAudioEnabled(true);
+                      setVoiceOverEnabled(false);
+                    }}
+                  />
+                  Original sound
+                </label>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="viral-audio-mode"
+                    checked={voiceOverEnabled}
+                    disabled={!voiceOverAudioUrl}
+                    onChange={() => {
+                      setVoiceOverEnabled(true);
+                      setOriginalAudioEnabled(false);
+                    }}
+                  />
+                  Voice over
+                </label>
+                {voiceOverEnabled ? (
+                  <span className="text-[10px] text-muted">Voice speed: {voiceOverPlaybackRate.toFixed(2)}×</span>
+                ) : null}
+              </div>
+              {/* Single source of truth: this audio element is BOTH the visible player and the synced track. */}
+              <audio
+                ref={voiceRef}
+                src={voiceOverPlayableUrl || voiceOverAudioUrl}
+                preload="auto"
+                controls
+                className="mt-3 w-full"
+                onError={async () => {
+                  // If the presigned URL expired while user stays on page, refresh it using the stable s3Key.
+                  if (!voiceOverS3Key) return;
+                  try {
+                    const fresh = await voiceOverPresignRead(voiceOverS3Key);
+                    if (fresh && fresh !== voiceOverAudioUrl) {
+                      setVoiceOverAudioUrl(fresh);
+                      setVoiceOverError(null);
+                    }
+                  } catch (e) {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    setVoiceOverError(msg || 'Failed to refresh voice over URL');
+                  }
+                }}
+              />
+            </div>
+          ) : null}
 
           <div className="border-b border-card-border px-3 py-3 text-[11px] text-muted">
             Edit the script directly in the left Script panel.
@@ -218,22 +1679,21 @@ export default function CreationStudio({ videoUrl, videoName, onBackToUpload }: 
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
               )}
             </div>
+            {voiceOverProgress ? (
+              <div className="mb-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
+                {voiceOverProgress.label} ({voiceOverProgress.percent}%)
+              </div>
+            ) : null}
+            {voiceOverError ? (
+              <div className="mb-2 rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
+                {voiceOverError}
+              </div>
+            ) : null}
             <div className="h-1.5 w-full rounded-full bg-subtle">
               <div className="h-1.5 w-[35%] rounded-full bg-foreground" />
             </div>
           </div>
         </div>
-      </div>
-
-      <div className="border-t border-card-border px-3 py-2">
-        <button
-          type="button"
-          onClick={onBackToUpload}
-          className="inline-flex cursor-pointer items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-foreground"
-        >
-          <ArrowLeft className="h-4 w-4" aria-hidden />
-          Back to upload
-        </button>
       </div>
     </section>
   );

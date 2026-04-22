@@ -225,7 +225,6 @@ export function VideoWorkspaceShell() {
   const historyFutureRef = useRef<WorkspaceHistorySnapshot[]>([]);
   const isApplyingHistoryRef = useRef(false);
   const lastHistorySignatureRef = useRef('');
-
   useEffect(() => {
     const initial = createWorkspaceHistorySnapshot(useEditorStore.getState());
     historyPastRef.current = [initial];

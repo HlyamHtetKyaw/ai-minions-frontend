@@ -20,6 +20,13 @@ export type TranscribeCompleteData = {
   storageUrl: string;
 };
 
+export type TranscribeFromExistingRequest = {
+  s3Key: string;
+  sourceType: 'audio' | 'video';
+  contentType?: string | null;
+  originalFileName?: string | null;
+};
+
 export type PointsEstimate = {
   baseCostPoints: number;
   reserveCostPoints: number;
@@ -157,6 +164,31 @@ export async function transcribeEstimatePoints(file: File): Promise<PointsEstima
   return json.data;
 }
 
+export async function transcribeEstimatePointsFromExisting(
+  s3Key: string,
+  sourceType: 'audio' | 'video',
+): Promise<PointsEstimate> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set (NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)');
+
+  const res = await fetchWithAuthRetry(`${base}/api/v1/transcribe/estimate-existing`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({ s3Key, sourceType }),
+  });
+
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<PointsEstimate>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `estimate-existing failed (${res.status})`));
+  }
+  return json.data;
+}
+
 /** Phase 2 — call after PUT to the presigned URL succeeds; returns {@code jobId} and publishes Redis job. */
 export async function transcribeCompleteUpload(uploadSessionId: string): Promise<TranscribeCompleteData> {
   const base = getPublicApiBaseUrl();
@@ -170,6 +202,23 @@ export async function transcribeCompleteUpload(uploadSessionId: string): Promise
   const json = (await res.json().catch(() => ({}))) as ApiEnvelope<TranscribeCompleteData>;
   if (!res.ok || !json.success || !json.data) {
     throw new Error(errorMessageFromBody(json, `complete-upload failed (${res.status})`));
+  }
+  return json.data;
+}
+
+/** Start transcription from an already-uploaded object (no re-upload needed). */
+export async function transcribeFromExisting(req: TranscribeFromExistingRequest): Promise<TranscribeCompleteData> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set');
+  const res = await fetchWithAuthRetry(`${base}/api/v1/transcribe/from-existing`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...authHeaders() },
+    body: JSON.stringify(req),
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<TranscribeCompleteData>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `from-existing failed (${res.status})`));
   }
   return json.data;
 }
