@@ -41,6 +41,10 @@ export default function ViralShortsPage() {
   const [balancedSyncGenerationId, setBalancedSyncGenerationId] = useState<number | null>(null);
   const [balancedSyncPreviewUrl, setBalancedSyncPreviewUrl] = useState('');
   const [balancedSyncPreviewS3Key, setBalancedSyncPreviewS3Key] = useState('');
+  const [subtitlesGenerationId, setSubtitlesGenerationId] = useState<number | null>(null);
+  const [subtitlesSrtKey, setSubtitlesSrtKey] = useState('');
+  const [subtitlesDownloadUrl, setSubtitlesDownloadUrl] = useState('');
+  const [subtitlesSrtText, setSubtitlesSrtText] = useState('');
   const [error, setError] = useState<string | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const canContinue = useMemo(() => Boolean(file) && step !== 'uploading', [file, step]);
@@ -80,6 +84,10 @@ export default function ViralShortsPage() {
           balancedSyncGenerationId?: number | null;
           balancedSyncPreviewUrl?: string | null;
           balancedSyncPreviewS3Key?: string | null;
+          subtitlesGenerationId?: number | null;
+          subtitlesSrtKey?: string | null;
+          subtitlesDownloadUrl?: string | null;
+          subtitlesSrtText?: string | null;
           transcript?: string | null; // legacy
           scriptText?: string | null; // legacy
         };
@@ -130,6 +138,14 @@ export default function ViralShortsPage() {
           setBalancedSyncPreviewS3Key(
             typeof parsed.balancedSyncPreviewS3Key === 'string' ? parsed.balancedSyncPreviewS3Key : '',
           );
+          setSubtitlesGenerationId(
+            typeof parsed.subtitlesGenerationId === 'number' && Number.isFinite(parsed.subtitlesGenerationId)
+              ? parsed.subtitlesGenerationId
+              : null,
+          );
+          setSubtitlesSrtKey(typeof parsed.subtitlesSrtKey === 'string' ? parsed.subtitlesSrtKey : '');
+          setSubtitlesDownloadUrl(typeof parsed.subtitlesDownloadUrl === 'string' ? parsed.subtitlesDownloadUrl : '');
+          setSubtitlesSrtText(typeof parsed.subtitlesSrtText === 'string' ? parsed.subtitlesSrtText : '');
           const t = (typeof parsed.tone === 'string' ? parsed.tone : '').toLowerCase();
           if (t === 'formal' || t === 'informal' || t === 'narrative') {
             setTranslateTone(t);
@@ -172,6 +188,10 @@ export default function ViralShortsPage() {
       setBalancedSyncGenerationId(null);
       setBalancedSyncPreviewUrl('');
       setBalancedSyncPreviewS3Key('');
+      setSubtitlesGenerationId(null);
+      setSubtitlesSrtKey('');
+      setSubtitlesDownloadUrl('');
+      setSubtitlesSrtText('');
       setStep('studio');
 
       // Persist as the "current" viral workspace.
@@ -194,6 +214,10 @@ export default function ViralShortsPage() {
           balancedSyncGenerationId: null,
           balancedSyncPreviewUrl: '',
           balancedSyncPreviewS3Key: '',
+          subtitlesGenerationId: null,
+          subtitlesSrtKey: '',
+          subtitlesDownloadUrl: '',
+          subtitlesSrtText: '',
           step: 'studio',
         }),
       );
@@ -231,6 +255,10 @@ export default function ViralShortsPage() {
           balancedSyncGenerationId,
           balancedSyncPreviewUrl,
           balancedSyncPreviewS3Key,
+          subtitlesGenerationId,
+          subtitlesSrtKey,
+          subtitlesDownloadUrl,
+          subtitlesSrtText,
           step: 'studio',
         }),
       ).catch(() => {});
@@ -258,6 +286,10 @@ export default function ViralShortsPage() {
     balancedSyncGenerationId,
     balancedSyncPreviewUrl,
     balancedSyncPreviewS3Key,
+    subtitlesGenerationId,
+    subtitlesSrtKey,
+    subtitlesDownloadUrl,
+    subtitlesSrtText,
     videoName,
     videoUrl,
   ]);
@@ -281,6 +313,10 @@ export default function ViralShortsPage() {
     setBalancedSyncGenerationId(null);
     setBalancedSyncPreviewUrl('');
     setBalancedSyncPreviewS3Key('');
+    setSubtitlesGenerationId(null);
+    setSubtitlesSrtKey('');
+    setSubtitlesDownloadUrl('');
+    setSubtitlesSrtText('');
     setStep('upload');
   }, []);
 
@@ -379,6 +415,10 @@ export default function ViralShortsPage() {
                 initialBalancedSyncGenerationId={balancedSyncGenerationId}
                 initialBalancedSyncPreviewUrl={balancedSyncPreviewUrl}
                 initialBalancedSyncPreviewS3Key={balancedSyncPreviewS3Key}
+                initialSubtitlesGenerationId={subtitlesGenerationId}
+                initialSubtitlesSrtKey={subtitlesSrtKey}
+                initialSubtitlesDownloadUrl={subtitlesDownloadUrl}
+                initialSubtitlesSrtText={subtitlesSrtText}
                 onTranscriptTextChange={setTranscriptText}
                 onTranslatedTextChange={setTranslatedText}
                 onToneChange={setTranslateTone}
@@ -394,6 +434,10 @@ export default function ViralShortsPage() {
                 onBalancedSyncGenerationIdChange={setBalancedSyncGenerationId}
                 onBalancedSyncPreviewUrlChange={setBalancedSyncPreviewUrl}
                 onBalancedSyncPreviewS3KeyChange={setBalancedSyncPreviewS3Key}
+                onSubtitlesGenerationIdChange={setSubtitlesGenerationId}
+                onSubtitlesSrtKeyChange={setSubtitlesSrtKey}
+                onSubtitlesDownloadUrlChange={setSubtitlesDownloadUrl}
+                onSubtitlesSrtTextChange={setSubtitlesSrtText}
                 onVideoUrlChange={(next) => setVideoUrl(next)}
                 onVideoNameChange={(next) => setVideoName(next)}
                 onDiscardWorkspace={() => void handleDiscardWorkspace()}

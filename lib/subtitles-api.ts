@@ -95,6 +95,50 @@ export async function subtitlesEstimatePoints(file: File): Promise<PointsEstimat
   return json.data;
 }
 
+export async function subtitlesEstimatePointsFromExisting(params: {
+  s3Key: string;
+  sourceType: 'video' | 'audio';
+}): Promise<PointsEstimate> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set');
+  const res = await fetchWithAuthRetry(`${base}/api/v1/subtitles/estimate-existing`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify(params),
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<PointsEstimate>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `subtitles estimate-existing failed (${res.status})`));
+  }
+  return json.data;
+}
+
+export async function subtitlesFromExisting(params: {
+  s3Key: string;
+  sourceType: 'video' | 'audio';
+  targetLanguage?: string;
+  style?: string;
+}): Promise<SubtitlesCompleteData> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set');
+  const res = await fetchWithAuthRetry(`${base}/api/v1/subtitles/from-existing`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
+    body: JSON.stringify(params),
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<SubtitlesCompleteData>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `subtitles from-existing failed (${res.status})`));
+  }
+  return json.data;
+}
+
 export async function subtitlesCompleteUpload(uploadSessionId: string): Promise<SubtitlesCompleteData> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set');

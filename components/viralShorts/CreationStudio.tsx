@@ -17,10 +17,19 @@ import {
   type PointsEstimate as VoiceOverPointsEstimate,
 } from '@/lib/voice-over-api';
 import {
+  fetchSubtitleDownloadUrl,
+  fetchSubtitleSrtText,
+  subtitlesEstimatePointsFromExisting,
+  subtitlesFromExisting,
+  type PointsEstimate as SubtitlesPointsEstimate,
+} from '@/lib/subtitles-api';
+import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
+import {
   extractTranscriptTextFromOutputData,
   openGenerationJobSseStream,
   parseGenerationSseProgressPayload,
 } from '@/lib/generation-job-sse';
+import { videoEditorExportEstimateExisting, videoEditorExportWorkspace } from '@/lib/video-editor-api';
 import { balancedSyncAccept, balancedSyncEstimate, balancedSyncReject, balancedSyncStart } from '@/lib/balanced-sync-api';
 
 type TranslateTone = 'narrative' | 'formal' | 'informal';
@@ -31,12 +40,96 @@ const MAX_SYNC_RATE = 1.25;
 // Testing: allow up to 5x so it's obvious (production should likely be <= 1.4x).
 const MAX_SYNC_RATE_STRONG = 5;
 
+type EditableSrtCue = SrtCue & { id: string };
+
+function pad2(n: number): string {
+  return String(Math.floor(Math.max(0, n))).padStart(2, '0');
+}
+
+function pad3(n: number): string {
+  return String(Math.floor(Math.max(0, n))).padStart(3, '0');
+}
+
+function formatSrtTimestamp(seconds: number): string {
+  const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
+  const totalMs = Math.round(s * 1000);
+  const hh = Math.floor(totalMs / 3600_000);
+  const mm = Math.floor((totalMs % 3600_000) / 60_000);
+  const ss = Math.floor((totalMs % 60_000) / 1000);
+  const ms = totalMs % 1000;
+  return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)},${pad3(ms)}`;
+}
+
+function parseTimeInput(raw: string): number | null {
+  const t = (raw ?? '').trim();
+  if (!t) return null;
+  // seconds float
+  if (/^\d+(\.\d+)?$/.test(t)) {
+    const n = Number(t);
+    return Number.isFinite(n) ? n : null;
+  }
+  // mm:ss(.ms) or hh:mm:ss(.ms)
+  const parts = t.split(':').map((p) => p.trim());
+  if (parts.length === 2 || parts.length === 3) {
+    const nums = parts.map((p) => Number(p.replace(',', '.')));
+    if (!nums.every(Number.isFinite)) return null;
+    const [a, b, c] = nums;
+    if (parts.length === 2) {
+      const mm = a ?? 0;
+      const ss = b ?? 0;
+      return mm * 60 + ss;
+    }
+    const hh = a ?? 0;
+    const mm = b ?? 0;
+    const ss = c ?? 0;
+    return hh * 3600 + mm * 60 + ss;
+  }
+  // SRT timestamp "HH:MM:SS,mmm"
+  const m = t.match(/^(\d{2}):(\d{2}):(\d{2})[,.](\d{1,3})$/);
+  if (m) {
+    const hh = Number(m[1]);
+    const mm = Number(m[2]);
+    const ss = Number(m[3]);
+    const ms = Number(String(m[4]).padEnd(3, '0').slice(0, 3));
+    if (![hh, mm, ss, ms].every(Number.isFinite)) return null;
+    return hh * 3600 + mm * 60 + ss + ms / 1000;
+  }
+  return null;
+}
+
+function cuesToSrt(cues: EditableSrtCue[]): string {
+  const sorted = [...cues]
+    .filter((c) => c && Number.isFinite(c.startTime) && Number.isFinite(c.endTime))
+    .map((c) => ({
+      ...c,
+      startTime: Math.max(0, c.startTime),
+      endTime: Math.max(c.endTime, c.startTime + 0.05),
+      content: String(c.content ?? '').trim(),
+    }))
+    .filter((c) => c.content.length > 0)
+    .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime);
+
+  return sorted
+    .map((c, idx) => {
+      const start = formatSrtTimestamp(c.startTime);
+      const end = formatSrtTimestamp(c.endTime);
+      return `${idx + 1}\n${start} --> ${end}\n${c.content}\n`;
+    })
+    .join('\n')
+    .trim()
+    .concat('\n');
+}
+
 type Props = {
   videoUrl: string;
   videoName: string;
   initialBalancedSyncGenerationId?: number | null;
   initialBalancedSyncPreviewUrl?: string;
   initialBalancedSyncPreviewS3Key?: string;
+  initialSubtitlesGenerationId?: number | null;
+  initialSubtitlesSrtKey?: string;
+  initialSubtitlesDownloadUrl?: string;
+  initialSubtitlesSrtText?: string;
   initialTranscriptText?: string;
   initialTranslatedText?: string;
   initialTone?: TranslateTone;
@@ -66,6 +159,10 @@ type Props = {
   onBalancedSyncPreviewS3KeyChange?: (key: string) => void;
   onVideoUrlChange?: (url: string) => void;
   onVideoNameChange?: (name: string) => void;
+  onSubtitlesGenerationIdChange?: (id: number | null) => void;
+  onSubtitlesSrtKeyChange?: (key: string) => void;
+  onSubtitlesDownloadUrlChange?: (url: string) => void;
+  onSubtitlesSrtTextChange?: (text: string) => void;
   onDiscardWorkspace?: () => void;
 };
 
@@ -75,6 +172,10 @@ export default function CreationStudio({
   initialBalancedSyncGenerationId,
   initialBalancedSyncPreviewUrl,
   initialBalancedSyncPreviewS3Key,
+  initialSubtitlesGenerationId,
+  initialSubtitlesSrtKey,
+  initialSubtitlesDownloadUrl,
+  initialSubtitlesSrtText,
   initialTranscriptText,
   initialTranslatedText,
   initialTone,
@@ -104,6 +205,10 @@ export default function CreationStudio({
   onBalancedSyncPreviewS3KeyChange,
   onVideoUrlChange,
   onVideoNameChange,
+  onSubtitlesGenerationIdChange,
+  onSubtitlesSrtKeyChange,
+  onSubtitlesDownloadUrlChange,
+  onSubtitlesSrtTextChange,
   onDiscardWorkspace,
 }: Props) {
   const [showTranscribeConfirm, setShowTranscribeConfirm] = useState(false);
@@ -124,6 +229,15 @@ export default function CreationStudio({
   const [voiceOverEstimateLoading, setVoiceOverEstimateLoading] = useState(false);
   const [voiceOverProgress, setVoiceOverProgress] = useState<{ percent: number; label: string } | null>(null);
   const [voiceOverError, setVoiceOverError] = useState<string | null>(null);
+
+  const [showExportConfirm, setShowExportConfirm] = useState(false);
+  const [exportEstimate, setExportEstimate] = useState<{ reserveCostPoints: number } | null>(null);
+  const [exportEstimateLoading, setExportEstimateLoading] = useState(false);
+  const [exportEstimateError, setExportEstimateError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
+  const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
+  const autoDownloadRef = useRef<string>('');
 
   const [balancedSyncProgress, setBalancedSyncProgress] = useState<{ percent: number; label: string } | null>(null);
   const [balancedSyncError, setBalancedSyncError] = useState<string | null>(null);
@@ -150,6 +264,54 @@ export default function CreationStudio({
     originalAudioEnabled: boolean;
     voiceOverPlaybackRate: number;
   } | null>(null);
+
+  const [showSubtitlesConfirm, setShowSubtitlesConfirm] = useState(false);
+  const [subtitlesEstimate, setSubtitlesEstimate] = useState<SubtitlesPointsEstimate | null>(null);
+  const [subtitlesEstimateError, setSubtitlesEstimateError] = useState<string | null>(null);
+  const [subtitlesEstimateLoading, setSubtitlesEstimateLoading] = useState(false);
+  const [subtitlesProgress, setSubtitlesProgress] = useState<{ percent: number; label: string } | null>(null);
+  const [subtitlesError, setSubtitlesError] = useState<string | null>(null);
+  const [subtitlesGenerationId, setSubtitlesGenerationId] = useState<number | null>(() =>
+    typeof initialSubtitlesGenerationId === 'number' && Number.isFinite(initialSubtitlesGenerationId)
+      ? initialSubtitlesGenerationId
+      : null,
+  );
+  const [subtitlesSrtKey, setSubtitlesSrtKey] = useState(() =>
+    typeof initialSubtitlesSrtKey === 'string' ? initialSubtitlesSrtKey : '',
+  );
+  const [subtitlesDownloadUrl, setSubtitlesDownloadUrl] = useState(() =>
+    typeof initialSubtitlesDownloadUrl === 'string' ? initialSubtitlesDownloadUrl : '',
+  );
+  const [subtitlesSrtText, setSubtitlesSrtText] = useState(() =>
+    typeof initialSubtitlesSrtText === 'string' ? initialSubtitlesSrtText : '',
+  );
+  const [leftTab, setLeftTab] = useState<'script' | 'srt'>(() => (subtitlesSrtText.trim() ? 'srt' : 'script'));
+  const [showSubtitlesOverlay, setShowSubtitlesOverlay] = useState(true);
+  const [activeSubtitleText, setActiveSubtitleText] = useState('');
+
+  const srtSyncFromTableRef = useRef(false);
+  const [editableCues, setEditableCues] = useState<EditableSrtCue[]>(() => {
+    try {
+      const base = subtitlesSrtText ? parseSrt(subtitlesSrtText) : [];
+      return base.map((c, i) => ({ ...c, id: `c_${i}_${Math.random().toString(16).slice(2)}` }));
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    if (srtSyncFromTableRef.current) {
+      srtSyncFromTableRef.current = false;
+      return;
+    }
+    try {
+      const base = subtitlesSrtText ? parseSrt(subtitlesSrtText) : [];
+      setEditableCues(base.map((c, i) => ({ ...c, id: `c_${i}_${Math.random().toString(16).slice(2)}` })));
+    } catch {
+      setEditableCues([]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [subtitlesSrtText]);
 
   const [tone, setTone] = useState<TranslateTone>(() => initialTone ?? 'narrative');
   const [voice, setVoice] = useState<VoiceOption>(() => initialVoiceOverVoice ?? 'woman-kore');
@@ -385,6 +547,45 @@ export default function CreationStudio({
       onBalancedSyncPreviewS3KeyChange(balancedSyncPreviewS3Key);
     }
   }, [balancedSyncPreviewS3Key, onBalancedSyncPreviewS3KeyChange]);
+
+  useEffect(() => {
+    onSubtitlesGenerationIdChange?.(subtitlesGenerationId);
+  }, [onSubtitlesGenerationIdChange, subtitlesGenerationId]);
+
+  useEffect(() => {
+    onSubtitlesSrtKeyChange?.(subtitlesSrtKey);
+  }, [onSubtitlesSrtKeyChange, subtitlesSrtKey]);
+
+  useEffect(() => {
+    onSubtitlesDownloadUrlChange?.(subtitlesDownloadUrl);
+  }, [onSubtitlesDownloadUrlChange, subtitlesDownloadUrl]);
+
+  useEffect(() => {
+    onSubtitlesSrtTextChange?.(subtitlesSrtText);
+  }, [onSubtitlesSrtTextChange, subtitlesSrtText]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (!showSubtitlesOverlay) {
+      setActiveSubtitleText('');
+      return;
+    }
+    const onTime = () => {
+      const t = v.currentTime;
+      const cue = editableCues.find((c) => t >= c.startTime && t <= c.endTime);
+      setActiveSubtitleText(cue?.content ?? '');
+    };
+    v.addEventListener('timeupdate', onTime);
+    v.addEventListener('seeked', onTime);
+    v.addEventListener('loadedmetadata', onTime);
+    onTime();
+    return () => {
+      v.removeEventListener('timeupdate', onTime);
+      v.removeEventListener('seeked', onTime);
+      v.removeEventListener('loadedmetadata', onTime);
+    };
+  }, [editableCues, showSubtitlesOverlay]);
 
   useEffect(() => {
     // Reset derived state when switching videos.
@@ -963,6 +1164,86 @@ export default function CreationStudio({
     setShowBalancedPreview(false);
     prevAudioModeRef.current = null;
   };
+
+  const ensureSubtitlesEstimate = async () => {
+    if (!workspaceS3Key) return;
+    if (subtitlesEstimate || subtitlesEstimateLoading) return;
+    setSubtitlesEstimateLoading(true);
+    setSubtitlesEstimateError(null);
+    try {
+      const est = await subtitlesEstimatePointsFromExisting({ s3Key: workspaceS3Key, sourceType: 'video' });
+      setSubtitlesEstimate(est);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setSubtitlesEstimateError(msg);
+    } finally {
+      setSubtitlesEstimateLoading(false);
+    }
+  };
+
+  const startSubtitles = async () => {
+    if (!workspaceS3Key) return;
+    setSubtitlesError(null);
+    setSubtitlesProgress({ percent: 10, label: 'Starting subtitles…' });
+    try {
+      const complete = await subtitlesFromExisting({
+        s3Key: workspaceS3Key,
+        sourceType: 'video',
+        targetLanguage: 'my',
+        style: 'caption_rules_v1',
+      });
+      setSubtitlesGenerationId(complete.jobId);
+      openGenerationJobSseStream(complete.jobId, {
+        onStatus: (raw) => {
+          const p = parseGenerationSseProgressPayload(raw);
+          if (p) setSubtitlesProgress(p);
+        },
+        onDone: () => {},
+        onError: (msg) => {
+          setSubtitlesError(msg);
+          setSubtitlesProgress(null);
+        },
+        onTerminal: (payload) => {
+          if (payload.status !== 'completed') {
+            setSubtitlesError(payload.message || 'Subtitles job failed');
+            setSubtitlesProgress(null);
+            return;
+          }
+          setSubtitlesProgress({ percent: 100, label: 'Subtitles ready' });
+          void fetchSubtitleDownloadUrl(complete.jobId)
+            .then((d) => {
+              setSubtitlesDownloadUrl(d.downloadUrl);
+              setSubtitlesSrtKey(d.srtKey);
+            })
+            .catch((e) => {
+              const msg = e instanceof Error ? e.message : String(e);
+              setSubtitlesError(msg);
+            });
+
+          void fetchSubtitleSrtText(complete.jobId)
+            .then((d) => {
+              setSubtitlesSrtText(d.srtText);
+            })
+            .catch((e) => {
+              const msg = e instanceof Error ? e.message : String(e);
+              setSubtitlesError(msg);
+            });
+        },
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setSubtitlesError(msg);
+      setSubtitlesProgress(null);
+    }
+  };
+
+  const handleSubtitlesClick = () => {
+    if (subtitlesEstimate && !subtitlesEstimateLoading && !subtitlesEstimateError) {
+      setShowSubtitlesConfirm(true);
+      return;
+    }
+    void startSubtitles();
+  };
   const ensureTranslateEstimate = async () => {
     const text = transcriptText.trim();
     if (!text) return;
@@ -1087,6 +1368,75 @@ export default function CreationStudio({
     }
   };
 
+  const handleFinalExportClick = async () => {
+    setExportEstimateError(null);
+    setExportError(null);
+    setExportedVideoUrl(null);
+    try {
+      if (!workspaceS3Key) throw new Error('Video key is missing. Please re-upload the video.');
+      setExportEstimateLoading(true);
+      const est = await videoEditorExportEstimateExisting(workspaceS3Key);
+      const reserve = Number((est as any).reserveCostPoints);
+      setExportEstimate({ reserveCostPoints: Number.isFinite(reserve) ? reserve : 0 });
+      setShowExportConfirm(true);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setExportEstimateError(msg || 'Failed to estimate export points');
+    } finally {
+      setExportEstimateLoading(false);
+    }
+  };
+
+  const startFinalExport = async () => {
+    setExportError(null);
+    setExportedVideoUrl(null);
+    setExporting(true);
+    try {
+      const v = videoRef.current;
+      const duration = v?.duration;
+      if (!duration || !Number.isFinite(duration) || duration <= 0) {
+        throw new Error('Video duration not ready. Play the video once, then try Export again.');
+      }
+      const baseUrl = String(videoUrl ?? '');
+      const noFrag = baseUrl.includes('#') ? baseUrl.slice(0, baseUrl.indexOf('#')) : baseUrl;
+      const payload = {
+        videoUrl: noFrag,
+        duration,
+        trimStart: 0,
+        trimEnd: 0,
+        speed: 1,
+        displayToNaturalScale: { x: 1, y: 1 },
+        textLayers: [],
+        imageLayers: [],
+        originalAudio: { muted: false, volume: 100 },
+        protectFlip,
+        protectHueDeg,
+        burnSubtitles: Boolean(showSubtitlesOverlay && subtitlesSrtText.trim()),
+        subtitlesSrtText: subtitlesSrtText,
+      };
+      const res = await videoEditorExportWorkspace(payload);
+      setExportedVideoUrl(res.readUrl);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setExportError(msg || 'Export failed');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!exportedVideoUrl) return;
+    if (autoDownloadRef.current === exportedVideoUrl) return;
+    autoDownloadRef.current = exportedVideoUrl;
+    try {
+      // Trigger download in the current tab (no popup blockers).
+      // User can press Back to return to the editor.
+      window.location.assign(exportedVideoUrl);
+    } catch {
+      // Fallback: user can still click Download.
+    }
+  }, [exportedVideoUrl]);
+
   const startVoiceOver = async () => {
     const text = scriptText.trim();
     if (!text) return;
@@ -1152,11 +1502,11 @@ export default function CreationStudio({
             </button>
           ) : null}
           <ActionButton
-            onClick={() => void handleGenerate()}
-            isLoading={isGenerating}
-            disabled={!isTranslated || isGenerating}
+            onClick={() => void handleFinalExportClick()}
+            isLoading={exporting}
+            disabled={!workspaceS3Key || exporting}
             label="Final Export"
-            loadingLabel="Generating..."
+            loadingLabel="Exporting..."
             className="h-8 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
           />
         </div>
@@ -1187,29 +1537,164 @@ export default function CreationStudio({
 
           <div className="mt-6 rounded-md border border-card-border bg-card p-2">
             <div className="grid grid-cols-2 gap-1 text-[10px] font-semibold uppercase text-muted">
-              <span className="rounded bg-subtle px-2 py-1 text-center">Script</span>
-              <span className="rounded bg-subtle/60 px-2 py-1 text-center">SRT Editor</span>
+              <button
+                type="button"
+                onClick={() => setLeftTab('script')}
+                className={`rounded px-2 py-1 text-center transition-colors ${
+                  leftTab === 'script' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
+                }`}
+              >
+                Script
+              </button>
+              <button
+                type="button"
+                onClick={() => setLeftTab('srt')}
+                className={`rounded px-2 py-1 text-center transition-colors ${
+                  leftTab === 'srt' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
+                }`}
+              >
+                SRT Editor
+              </button>
             </div>
             <div className="mt-2 space-y-1.5">
-              {transcriptRows.length > 0 ? (
+              {leftTab === 'script' && transcriptRows.length > 0 ? (
                 <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
                   {transcriptRows[0].start} - {transcriptRows[transcriptRows.length - 1].end}
                 </div>
               ) : null}
-              <textarea
-                value={scriptText}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  setScriptText(v);
-                  if (isTranslated) {
-                    setTranslatedText(v);
-                  } else {
-                    setTranscriptText(v);
-                  }
-                }}
-                placeholder="Click Transcribe to generate script."
-                className="min-h-[220px] w-full resize-y rounded border border-card-border bg-subtle/30 px-2 py-2 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
-              />
+              {leftTab === 'script' ? (
+                <textarea
+                  value={scriptText}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setScriptText(v);
+                    if (isTranslated) {
+                      setTranslatedText(v);
+                    } else {
+                      setTranscriptText(v);
+                    }
+                  }}
+                  placeholder="Click Transcribe to generate script."
+                  className="min-h-[220px] w-full resize-y rounded border border-card-border bg-subtle/30 px-2 py-2 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
+                />
+              ) : (
+                <>
+                  <div className="flex items-center justify-between gap-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
+                    <span>{editableCues.length} cues</span>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={showSubtitlesOverlay}
+                        onChange={(e) => setShowSubtitlesOverlay(e.target.checked)}
+                      />
+                      Show on video
+                    </label>
+                  </div>
+                  <div className="max-h-[280px] overflow-auto rounded border border-card-border bg-subtle/10 p-2">
+                    {editableCues.length === 0 ? (
+                      <p className="text-xs text-muted">Generate subtitles first to populate cues.</p>
+                    ) : (
+                      <div className="space-y-2">
+                        {editableCues.slice(0, 80).map((c) => (
+                          <div key={c.id} className="rounded border border-card-border bg-card p-2">
+                            <div className="grid grid-cols-[1fr_1fr] gap-2">
+                              <label className="text-[10px] text-muted">
+                                Start
+                                <input
+                                  value={formatSrtTimestamp(c.startTime)}
+                                  onChange={(e) => {
+                                    const next = parseTimeInput(e.target.value);
+                                    if (next == null) return;
+                                    setEditableCues((prev) =>
+                                      prev.map((x) =>
+                                        x.id === c.id ? { ...x, startTime: Math.max(0, next) } : x,
+                                      ),
+                                    );
+                                  }}
+                                  className="mt-1 h-8 w-full rounded border border-card-border bg-subtle/20 px-2 text-[11px] text-foreground outline-none focus:border-foreground"
+                                />
+                              </label>
+                              <label className="text-[10px] text-muted">
+                                End
+                                <input
+                                  value={formatSrtTimestamp(c.endTime)}
+                                  onChange={(e) => {
+                                    const next = parseTimeInput(e.target.value);
+                                    if (next == null) return;
+                                    setEditableCues((prev) =>
+                                      prev.map((x) =>
+                                        x.id === c.id ? { ...x, endTime: Math.max(next, x.startTime + 0.05) } : x,
+                                      ),
+                                    );
+                                  }}
+                                  className="mt-1 h-8 w-full rounded border border-card-border bg-subtle/20 px-2 text-[11px] text-foreground outline-none focus:border-foreground"
+                                />
+                              </label>
+                            </div>
+                            <label className="mt-2 block text-[10px] text-muted">
+                              Text
+                              <textarea
+                                value={c.content}
+                                onChange={(e) => {
+                                  const v = e.target.value;
+                                  setEditableCues((prev) => prev.map((x) => (x.id === c.id ? { ...x, content: v } : x)));
+                                }}
+                                className="mt-1 min-h-[60px] w-full resize-y rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
+                              />
+                            </label>
+                            <div className="mt-2 flex items-center justify-end gap-2">
+                              <button
+                                type="button"
+                                className="h-8 rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
+                                onClick={() => {
+                                  const nextStart = Math.max(0, c.endTime);
+                                  const nextEnd = nextStart + 1.6;
+                                  const id = `c_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+                                  setEditableCues((prev) => {
+                                    const idx = prev.findIndex((x) => x.id === c.id);
+                                    const nextCue: EditableSrtCue = { id, startTime: nextStart, endTime: nextEnd, content: '' };
+                                    if (idx < 0) return [...prev, nextCue];
+                                    return [...prev.slice(0, idx + 1), nextCue, ...prev.slice(idx + 1)];
+                                  });
+                                }}
+                              >
+                                + Add after
+                              </button>
+                              <button
+                                type="button"
+                                className="h-8 rounded-md border border-red-500/30 bg-transparent px-2 text-[10px] font-semibold text-red-300 transition-colors hover:border-red-400/60 hover:bg-red-500/10"
+                                onClick={() => setEditableCues((prev) => prev.filter((x) => x.id !== c.id))}
+                              >
+                                Remove
+                              </button>
+                              <button
+                                type="button"
+                                className="h-8 rounded-md bg-[#7c5cff] px-2 text-[10px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                                onClick={() => {
+                                  srtSyncFromTableRef.current = true;
+                                  setSubtitlesSrtText(cuesToSrt(editableCues));
+                                }}
+                              >
+                                Save SRT
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                        {editableCues.length > 80 ? <p className="text-[10px] text-muted">Showing first 80 cues.</p> : null}
+                      </div>
+                    )}
+                  </div>
+                  <details className="rounded border border-card-border bg-subtle/10 p-2">
+                    <summary className="cursor-pointer text-[10px] font-semibold text-muted">Advanced: edit raw .srt</summary>
+                    <textarea
+                      value={subtitlesSrtText}
+                      onChange={(e) => setSubtitlesSrtText(e.target.value)}
+                      placeholder="Raw .srt text…"
+                      className="mt-2 min-h-[160px] w-full resize-y rounded border border-card-border bg-subtle/20 p-2 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
+                    />
+                  </details>
+                </>
+              )}
             </div>
           </div>
 
@@ -1328,10 +1813,42 @@ export default function CreationStudio({
             ) : null}
             <button
               type="button"
+              onMouseEnter={() => void ensureSubtitlesEstimate()}
+              onFocus={() => void ensureSubtitlesEstimate()}
+              onClick={handleSubtitlesClick}
+              disabled={!workspaceS3Key || Boolean(subtitlesProgress && subtitlesProgress.percent < 100)}
               className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
             >
-              Generate Timestamps
+              Generate Subtitles
             </button>
+            {subtitlesProgress ? (
+              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
+                {subtitlesProgress.label} ({subtitlesProgress.percent}%)
+              </div>
+            ) : null}
+            {subtitlesError ? (
+              <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
+                {subtitlesError}
+              </div>
+            ) : null}
+            {subtitlesDownloadUrl ? (
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  className="h-8 w-full rounded-md bg-[#7c5cff] px-2 text-[10px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                  onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  Download (.srt)
+                </button>
+                <button
+                  type="button"
+                  className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => setLeftTab('srt')}
+                >
+                  Open SRT editor
+                </button>
+              </div>
+            ) : null}
           </div>
         </aside>
 
@@ -1418,6 +1935,96 @@ export default function CreationStudio({
                   }}
                 >
                   Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showSubtitlesConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm subtitles"
+            onMouseDown={() => setShowSubtitlesConfirm(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Generate subtitles?</p>
+              <p className="mt-2 text-sm text-muted">
+                This will generate subtitles for your video and use{' '}
+                <span className="font-semibold text-foreground">
+                  {subtitlesEstimateLoading ? '…' : subtitlesEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {subtitlesEstimateError ? <p className="mt-2 text-sm text-red-300">{subtitlesEstimateError}</p> : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => setShowSubtitlesConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={subtitlesEstimateLoading}
+                  onClick={() => {
+                    setShowSubtitlesConfirm(false);
+                    void startSubtitles();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showExportConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm export"
+            onMouseDown={() => setShowExportConfirm(false)}
+          >
+            <div
+              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Export final video?</p>
+              <p className="mt-2 text-sm text-muted">
+                This will export your current edits (protection + subtitles if enabled) and use{' '}
+                <span className="font-semibold text-foreground">
+                  {exportEstimateLoading ? '…' : exportEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {exportEstimateError ? <p className="mt-2 text-sm text-red-300">{exportEstimateError}</p> : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
+                  onClick={() => setShowExportConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                  disabled={exportEstimateLoading || exporting}
+                  onClick={() => {
+                    setShowExportConfirm(false);
+                    void startFinalExport();
+                  }}
+                >
+                  Confirm
                 </button>
               </div>
             </div>
@@ -1587,6 +2194,13 @@ export default function CreationStudio({
                   filter: protectHueDeg ? `hue-rotate(${protectHueDeg}deg)` : undefined,
                 }}
               />
+              {showSubtitlesOverlay && activeSubtitleText.trim() ? (
+                <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center">
+                  <div className="max-w-[92%] rounded-lg bg-black/65 px-3 py-2 text-center text-sm font-semibold text-white">
+                    {activeSubtitleText}
+                  </div>
+                </div>
+              ) : null}
               {isBalancedPreviewMode ? (
                 <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
                   <span className="font-semibold">Balanced preview ready</span>
@@ -1687,6 +2301,23 @@ export default function CreationStudio({
             {voiceOverError ? (
               <div className="mb-2 rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
                 {voiceOverError}
+              </div>
+            ) : null}
+            {exportError ? (
+              <div className="mb-2 rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
+                {exportError}
+              </div>
+            ) : null}
+            {exportedVideoUrl ? (
+              <div className="mb-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
+                Export ready.{' '}
+                <button
+                  type="button"
+                  className="font-semibold text-foreground underline"
+                  onClick={() => window.open(exportedVideoUrl, '_blank', 'noopener,noreferrer')}
+                >
+                  Download
+                </button>
               </div>
             ) : null}
             <div className="h-1.5 w-full rounded-full bg-subtle">

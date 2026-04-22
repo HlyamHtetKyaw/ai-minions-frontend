@@ -93,3 +93,51 @@ export async function uploadFileToPresignedUrl(
   }
 }
 
+export type WorkspaceExportResponse = {
+  storageUrl: string;
+  readUrl: string;
+  key: string;
+};
+
+export type PointsEstimate = {
+  baseCostPoints: number;
+  reserveCostPoints: number;
+  tokenIn: string | number;
+  tokenOut: string | number;
+  mbAudio: string | number;
+  mbVideo: string | number;
+  fileSizeBytes?: number | null;
+};
+
+export async function videoEditorExportWorkspace(payload: unknown): Promise<WorkspaceExportResponse> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set');
+  const res = await fetchWithAuthRetry(`${base}/api/v1/video-editor/workspace/export`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
+    body: JSON.stringify({ payload }),
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<WorkspaceExportResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `video export failed (${res.status})`));
+  }
+  return json.data;
+}
+
+export async function videoEditorExportEstimateExisting(s3Key: string): Promise<PointsEstimate> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set');
+  const res = await fetchWithAuthRetry(`${base}/api/v1/video-editor/workspace/export/estimate-existing`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
+    body: JSON.stringify({ s3Key }),
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<PointsEstimate>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `export estimate failed (${res.status})`));
+  }
+  return json.data;
+}
+
