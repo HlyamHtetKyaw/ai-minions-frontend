@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { AppPathname } from '@/i18n/routing';
 import { config as contentGeneration } from './content-generation/config';
+import { config as subtitles } from './subtitles/config';
 import { config as transcribe } from './transcribe/config';
 import { config as translate } from './translate/config';
 import { config as videoEdit } from './video-edit/config';
@@ -20,6 +21,7 @@ export type FeatureConfig = {
 export const FEATURES: FeatureConfig[] = [
   viralShorts,
   transcribe,
+  subtitles,
   contentGeneration,
   voiceOver,
   videoEdit,
