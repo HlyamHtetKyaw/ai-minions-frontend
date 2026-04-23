@@ -62,6 +62,11 @@ export type GenerationSseProgressLabelOverrides = {
   stages?: Partial<Record<string, { percent: number; label: string }>>;
   /** Optional override for the initial SSE hello (`status=subscribed`). */
   subscribedLabel?: string;
+  /**
+   * Percent for `status=subscribed` (default 38). Use a lower value when the stream rarely
+   * emits `processing` updates so the UI can ramp smoothly toward completion.
+   */
+  subscribedPercent?: number;
 };
 
 export function parseGenerationSseProgressPayload(
@@ -77,8 +82,14 @@ export function parseGenerationSseProgressPayload(
       (typeof o.step === 'string' && o.step.trim() ? o.step : null);
 
     if (statusRaw === 'subscribed') {
+      const subscribedPctDefault = 38;
+      const subscribedPct =
+        typeof overrides?.subscribedPercent === 'number' && Number.isFinite(overrides.subscribedPercent)
+          ? Math.max(1, Math.min(99, Math.round(overrides.subscribedPercent)))
+          : subscribedPctDefault;
+
       if (overrides?.subscribedLabel && overrides.subscribedLabel.trim()) {
-        return { percent: 38, label: overrides.subscribedLabel.trim() };
+        return { percent: subscribedPct, label: overrides.subscribedLabel.trim() };
       }
       const rawName =
         typeof o.featureName === 'string' && o.featureName.trim()
@@ -90,7 +101,7 @@ export function parseGenerationSseProgressPayload(
         label = "Thanks for waiting — we're getting your transcript ready for you.";
       }
       return {
-        percent: 38,
+        percent: subscribedPct,
         label,
       };
     }

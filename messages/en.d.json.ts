@@ -386,6 +386,26 @@ declare const messages: {
     "generateButton": {
       "label": "Generate Voice",
       "loading": "Generating…"
+    },
+    "provider": {
+      "label": "Model / Provider",
+      "aria": "Choose voice generation provider",
+      "auto": "Auto",
+      "gemini": "Gemini",
+      "openai": "OpenAI"
+    },
+    "estimate": {
+      "kicker": "Estimated points",
+      "unit": "pts",
+      "loading": "Calculating how many points this script needs…",
+      "caption": "This is an approximate reserve based on script length. Your balance is charged when the job runs.",
+      "hint": "Click Generate to see roughly how many points this narration will use.",
+      "unavailable": "We could not estimate points for this script. You can still try generating if you have a balance."
+    },
+    "progress": {
+      "estimating": "Estimating…",
+      "starting": "Starting voice over…",
+      "finished": "Finished"
     }
   },
   "video-edit": {
@@ -627,6 +647,13 @@ declare const messages: {
         "loading": "Analyzing…"
       },
       "back": "Back"
+    },
+    "voiceStudio": {
+      "sectionTitle": "3. AI Voiceover",
+      "voiceStyleKicker": "Voice style",
+      "womanKore": "Woman (Kore)",
+      "man": "Man",
+      "estimateHintTranslate": "Translate your script first. After that, click Generate to see how many points the voice-over needs."
     }
   },
   "transcribe": {
@@ -774,8 +801,34 @@ declare const messages: {
       "label": "Generate Content",
       "loading": "Generating…"
     },
+    "sse": {
+      "subscribed": "Hang tight — we're creating your content. This may take a moment."
+    },
+    "estimate": {
+      "loading": "Estimating points…",
+      "cost": "Estimated cost: ~{points} points",
+      "unavailable": "Estimate unavailable: {message}",
+      "prompt": "Enter a topic to see the estimated points cost.",
+      "backendMissing": "Point estimate isn’t available — the server returned 404 for the estimate request (route missing or wrong URL)."
+    },
+    "timeouts": {
+      "estimate": "Estimate timed out. Please try again."
+    },
+    "progress": {
+      "preparing": "Preparing request…",
+      "jobCreated": "Job created. Waiting for updates…",
+      "simulated": "Still working…",
+      "finished": "Finished 🎉"
+    },
     "result": {
-      "title": "Generated content"
+      "title": "Generated content",
+      "previewAuthor": "AI Minions",
+      "previewTime": "Just now",
+      "download": "Download",
+      "copy": "Copy",
+      "copied": "Copied",
+      "downloadAria": "Download generated image",
+      "copyAria": "Copy generated text to clipboard"
     }
   },
   "translation": {

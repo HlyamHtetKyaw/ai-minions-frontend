@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2, Play, Subtitles } from 'lucide-react';
+import { useTranslations } from 'next-intl';
+import { ChevronDown, Loader2, Play, Subtitles, Volume2 } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
 import {
   transcribeEstimatePointsFromExisting,
@@ -34,6 +35,7 @@ import { balancedSyncAccept, balancedSyncEstimate, balancedSyncReject, balancedS
 
 type TranslateTone = 'narrative' | 'formal' | 'informal';
 type VoiceOption = 'woman-kore' | 'man';
+type VoiceOverProviderChoice = 'auto' | 'gemini' | 'openai';
 
 const MIN_SYNC_RATE = 0.8;
 const MAX_SYNC_RATE = 1.25;
@@ -219,6 +221,8 @@ export default function CreationStudio({
   onSubtitlesFontSizeChange,
   onDiscardWorkspace,
 }: Props) {
+  const tVo = useTranslations('voice-over');
+  const tViral = useTranslations('viralShorts.voiceStudio');
   const [showTranscribeConfirm, setShowTranscribeConfirm] = useState(false);
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
@@ -337,6 +341,13 @@ export default function CreationStudio({
 
   const [tone, setTone] = useState<TranslateTone>(() => initialTone ?? 'narrative');
   const [voice, setVoice] = useState<VoiceOption>(() => initialVoiceOverVoice ?? 'woman-kore');
+  const [voiceOverProvider, setVoiceOverProvider] = useState<VoiceOverProviderChoice>('auto');
+
+  useEffect(() => {
+    setVoiceOverEstimate(null);
+    setVoiceOverEstimateError(null);
+  }, [voice, voiceOverProvider]);
+
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranscribed, setIsTranscribed] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
@@ -1475,9 +1486,13 @@ export default function CreationStudio({
     setIsGenerating(true);
     setIsGenerated(false);
     setVoiceOverError(null);
-    setVoiceOverProgress({ percent: 10, label: 'Starting voice over…' });
+    setVoiceOverProgress({ percent: 10, label: tVo('progress.starting') });
     try {
-      const started = await voiceOverStart({ text, style: voice });
+      const started = await voiceOverStart({
+        text,
+        style: voice,
+        provider: voiceOverProvider === 'auto' ? null : voiceOverProvider.toUpperCase(),
+      });
       openVoiceOverSse(started.jobId, {
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw);
@@ -1497,7 +1512,7 @@ export default function CreationStudio({
               setVoiceOverAudioUrl(url);
               if (key) setVoiceOverS3Key(key);
               setIsGenerated(true);
-              setVoiceOverProgress({ percent: 100, label: 'Finished' });
+              setVoiceOverProgress({ percent: 100, label: tVo('progress.finished') });
               setVoiceOverEnabled(true);
               setOriginalAudioEnabled(false);
               return;
@@ -1815,15 +1830,77 @@ export default function CreationStudio({
               loadingLabel="Translating..."
               className="btn-viral-shorts-analyze h-11 w-full rounded-xl px-4 text-sm font-semibold"
             />
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">3. AI Voiceover</p>
-            <select
-              value={voice}
-              onChange={(e) => setVoice(e.target.value as VoiceOption)}
-              className="h-8 w-full rounded-md border border-card-border bg-card px-2.5 text-xs text-foreground outline-none focus:border-foreground"
-            >
-              <option value="woman-kore">Woman (Kore)</option>
-              <option value="man">Man</option>
-            </select>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{tViral('sectionTitle')}</p>
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
+              <p className="w-full shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted sm:w-auto">
+                {tViral('voiceStyleKicker')}
+              </p>
+              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+                {(
+                  [
+                    { id: 'woman-kore' as const, label: tViral('womanKore') },
+                    { id: 'man' as const, label: tViral('man') },
+                  ] as const
+                ).map(({ id, label }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setVoice(id)}
+                    disabled={isGenerating}
+                    aria-pressed={voice === id}
+                    className={`voice-style-chip ${voice === id ? 'voice-style-chip-active' : ''}`}
+                  >
+                    <Volume2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="ml-auto flex w-full shrink-0 flex-wrap items-center gap-2 sm:mt-0 sm:w-auto sm:gap-x-3">
+                <span className="mx-0.5 hidden h-5 w-px shrink-0 bg-card-border sm:block" aria-hidden />
+                <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                  {tVo('provider.label')}
+                </p>
+                <div className="voice-provider-select-wrap shrink-0">
+                  <select
+                    value={voiceOverProvider}
+                    onChange={(e) => setVoiceOverProvider(e.target.value as VoiceOverProviderChoice)}
+                    className="voice-provider-select"
+                    disabled={isGenerating}
+                    aria-label={tVo('provider.aria')}
+                  >
+                    <option value="auto">{tVo('provider.auto')}</option>
+                    <option value="gemini">{tVo('provider.gemini')}</option>
+                    <option value="openai">{tVo('provider.openai')}</option>
+                  </select>
+                  <ChevronDown className="voice-provider-select-chevron" strokeWidth={2.25} aria-hidden />
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-3 py-3">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{tVo('estimate.kicker')}</p>
+              {!isTranslated ? (
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tViral('estimateHintTranslate')}</p>
+              ) : voiceOverEstimateLoading ? (
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tVo('estimate.loading')}</p>
+              ) : typeof voiceOverEstimate?.reserveCostPoints === 'number' &&
+                Number.isFinite(voiceOverEstimate.reserveCostPoints) ? (
+                <>
+                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                    <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                      {voiceOverEstimate.reserveCostPoints.toLocaleString()}
+                    </span>
+                    <span className="text-xs font-semibold text-muted-foreground">{tVo('estimate.unit')}</span>
+                  </div>
+                  <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{tVo('estimate.caption')}</p>
+                </>
+              ) : voiceOverEstimateError ? (
+                <p className="mt-2 text-xs leading-relaxed text-red-300">{voiceOverEstimateError}</p>
+              ) : (
+                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tVo('estimate.hint')}</p>
+              )}
+            </div>
+
             <ActionButton
               onClick={() => void handleGenerate()}
               isLoading={isGenerating}
@@ -1832,6 +1909,50 @@ export default function CreationStudio({
               loadingLabel="Generating..."
               className="btn-viral-shorts h-11 w-full rounded-xl px-4 text-sm font-semibold"
             />
+
+            {voiceOverProgress ? (
+              <div
+                className={`rounded-xl border border-card-border bg-card px-3 py-3 ${
+                  voiceOverProgress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
+                }`}
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p
+                    className={`text-xs ${
+                      voiceOverProgress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'
+                    }`}
+                  >
+                    {voiceOverProgress.label}
+                  </p>
+                  <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
+                    {voiceOverProgress.percent}%
+                  </p>
+                </div>
+                <div
+                  className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={voiceOverProgress.percent}
+                  aria-label={voiceOverProgress.label}
+                >
+                  <div
+                    className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${
+                      voiceOverProgress.percent >= 100 ? 'bg-emerald-600' : 'bg-violet-500'
+                    }`}
+                    style={{
+                      width: `${Math.min(100, Math.max(0, voiceOverProgress.percent))}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            ) : null}
+
+            {voiceOverError ? (
+              <p className="text-xs leading-relaxed text-red-400">{voiceOverError}</p>
+            ) : null}
             <button
               type="button"
               onClick={() => void handleSyncVoiceToVideo()}
@@ -2436,16 +2557,6 @@ export default function CreationStudio({
                 <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
               )}
             </div>
-            {voiceOverProgress ? (
-              <div className="mb-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
-                {voiceOverProgress.label} ({voiceOverProgress.percent}%)
-              </div>
-            ) : null}
-            {voiceOverError ? (
-              <div className="mb-2 rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
-                {voiceOverError}
-              </div>
-            ) : null}
             {exportError ? (
               <div className="mb-2 rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
                 {exportError}
@@ -2463,9 +2574,6 @@ export default function CreationStudio({
                 </button>
               </div>
             ) : null}
-            <div className="h-1.5 w-full rounded-full bg-subtle">
-              <div className="h-1.5 w-[35%] rounded-full bg-foreground" />
-            </div>
           </div>
         </div>
       </div>

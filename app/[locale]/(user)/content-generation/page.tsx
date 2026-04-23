@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { CircleHelp, Sparkles } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
@@ -10,16 +10,40 @@ import OutputModePicker, { type OutputModeKey } from '@/features/content-generat
 import TopicInput from '@/features/content-generation/components/topic-input';
 import TonePicker, { type ToneKey } from '@/features/content-generation/components/tone-picker';
 import GenerateButton from '@/features/content-generation/components/generate-button';
-import ResultPanel from '@/features/content-generation/components/result-panel';
+import FacebookPreview from '@/features/content-generation/components/FacebookPreview';
 import UploadZone from '@/components/shared/components/upload-zone';
 import { fileToDataUrl, openContentGenerationSse, startGenerateContentV2 } from '@/lib/content-generation-api';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
+import { voiceOverEstimatePoints, type PointsEstimate } from '@/lib/voice-over-api';
+
+function isEstimateNotFoundError(message: string): boolean {
+  const m = (message ?? '').toLowerCase();
+  return m.includes('404') || /\bnot found\b/.test(m);
+}
+
+async function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(message)), ms);
+  });
+  try {
+    return await Promise.race([p, timeout]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 // TODO: replace with real auth state
 const isSignedIn = true;
 
 export default function ContentGenerationPage() {
   const t = useTranslations('contentGeneration');
+
+  const toUserSafeError = useCallback((raw: string): string => {
+    const msg = (raw ?? '').trim();
+    if (!msg) return 'Content generation failed. Please try again.';
+    return msg.length > 180 ? `${msg.slice(0, 180)}...` : msg;
+  }, []);
 
   const [contentType, setContentType] = useState<ContentTypeKey>('hook');
   const [outputMode, setOutputMode] = useState<OutputModeKey>('imageAndText');
@@ -33,22 +57,86 @@ export default function ContentGenerationPage() {
   const [userOverlayText, setUserOverlayText] = useState('');
   const [generatedText, setGeneratedText] = useState('');
   const [generatedImageDataUrl, setGeneratedImageDataUrl] = useState('');
-  const [storageUrl, setStorageUrl] = useState('');
   const [status, setStatus] = useState('');
   const [progress, setProgress] = useState<{ percent: number; label: string } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
+  const [estimateError, setEstimateError] = useState<string | null>(null);
+  const [estimateLoading, setEstimateLoading] = useState(false);
   const isVisualOutput = outputMode === 'imageAndText' || outputMode === 'imageOnly';
 
-  const toUserSafeError = (raw: string): string => {
-    const msg = (raw ?? '').trim();
-    if (!msg) return 'Content generation failed. Please try again.';
-    return msg.length > 180 ? `${msg.slice(0, 180)}...` : msg;
+  /** Voice-over estimate API uses plain text; combine topic + optional overlay as a length proxy. */
+  const voiceEstimateText = useMemo(() => {
+    const t0 = topic.trim();
+    if (!t0) return '';
+    const overlay = userOverlayText.trim();
+    return overlay ? `${t0}\n\n${overlay}` : t0;
+  }, [topic, userOverlayText]);
+
+  useEffect(() => {
+    if (!voiceEstimateText) {
+      setEstimate(null);
+      setEstimateError(null);
+      setEstimateLoading(false);
+      return;
+    }
+    setEstimateLoading(true);
+    setEstimateError(null);
+    let cancelled = false;
+    const tmr = setTimeout(() => {
+      void (async () => {
+        try {
+          const d = await withTimeout(
+            voiceOverEstimatePoints(voiceEstimateText),
+            12000,
+            t('timeouts.estimate'),
+          );
+          if (!cancelled) {
+            setEstimate(d);
+            setEstimateLoading(false);
+          }
+        } catch (e) {
+          if (cancelled) return;
+          const raw = e instanceof Error ? e.message : String(e);
+          setEstimate(null);
+          setEstimateError(toUserSafeError(raw));
+          setEstimateLoading(false);
+        }
+      })();
+    }, 450);
+    return () => {
+      cancelled = true;
+      clearTimeout(tmr);
+    };
+  }, [voiceEstimateText, t, toUserSafeError]);
+
+  const contentSseProgressOverrides = useMemo(
+    () => ({
+      subscribedLabel: t('sse.subscribed'),
+      /** First SSE hello sits lower so the bar can ramp when the stream has no intermediate stages. */
+      subscribedPercent: 22,
+    }),
+    [t],
+  );
+
+  const generationRunRef = useRef(0);
+  const progressSimTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sseProgressFloorRef = useRef(0);
+
+  const clearProgressSimulator = () => {
+    if (progressSimTickRef.current != null) {
+      clearInterval(progressSimTickRef.current);
+      progressSimTickRef.current = null;
+    }
   };
 
   const handleGenerate = async () => {
+    const runId = ++generationRunRef.current;
+    clearProgressSimulator();
+
     setIsLoading(true);
     setStatus('');
-    setProgress({ percent: 8, label: 'Preparing request...' });
+    setProgress({ percent: 8, label: t('progress.preparing') });
     try {
       const logoDataUrl = logoFile ? await fileToDataUrl(logoFile) : undefined;
       const start = await startGenerateContentV2({
@@ -63,29 +151,62 @@ export default function ContentGenerationPage() {
         aiOverlayTextEnabled,
         userOverlayText: userOverlayText.trim() || undefined,
       });
-      setProgress({ percent: 14, label: 'Job created. Waiting for updates...' });
+      setProgress({ percent: 14, label: t('progress.jobCreated') });
+      sseProgressFloorRef.current = 14;
 
       await new Promise<void>((resolve) => {
+        progressSimTickRef.current = setInterval(() => {
+          if (generationRunRef.current !== runId) {
+            clearProgressSimulator();
+            return;
+          }
+          setProgress((prev) => {
+            if (!prev) return prev;
+            const floor = Math.min(sseProgressFloorRef.current, 94);
+            const next = Math.min(95, Math.max(prev.percent + 1, floor));
+            if (next <= prev.percent) return prev;
+            const useSimulatedCopy = prev.percent >= floor + 8;
+            return {
+              percent: next,
+              label: useSimulatedCopy ? t('progress.simulated') : prev.label,
+            };
+          });
+        }, 420);
+
         openContentGenerationSse(start.jobId, {
           onStatus: (raw) => {
-            const parsed = parseGenerationSseProgressPayload(raw);
+            if (generationRunRef.current !== runId) return;
+            const parsed = parseGenerationSseProgressPayload(raw, contentSseProgressOverrides);
             if (parsed) {
-              setProgress(parsed);
+              if (parsed.percent >= 100) {
+                clearProgressSimulator();
+              }
+              sseProgressFloorRef.current = Math.max(
+                sseProgressFloorRef.current,
+                parsed.percent >= 100 ? parsed.percent : Math.min(parsed.percent, 99),
+              );
+              setProgress((prev) => ({
+                percent: Math.max(parsed.percent, prev?.percent ?? 0),
+                label: parsed.label,
+              }));
             }
           },
           onDone: () => {},
           onError: (msg) => {
+            if (generationRunRef.current !== runId) return;
+            clearProgressSimulator();
             setStatus(toUserSafeError(msg));
             setProgress(null);
             resolve();
           },
           onTerminal: (payload) => {
+            if (generationRunRef.current !== runId) return;
+            clearProgressSimulator();
             if (payload.status === 'completed' && payload.data) {
               const result = payload.data;
               setGeneratedText(result.generatedText || '');
-              setStorageUrl(result.storageUrl || '');
               setGeneratedImageDataUrl(result.imageBase64 ? `data:image/png;base64,${result.imageBase64}` : '');
-              setProgress({ percent: 100, label: 'Finished 🎉' });
+              setProgress({ percent: 100, label: t('progress.finished') });
               setStatus('');
             } else {
               setStatus(toUserSafeError(payload.message ?? 'Content generation failed.'));
@@ -96,6 +217,7 @@ export default function ContentGenerationPage() {
         });
       });
     } finally {
+      clearProgressSimulator();
       setIsLoading(false);
     }
   };
@@ -229,6 +351,19 @@ export default function ContentGenerationPage() {
                 </div>
               ) : null}
               <TonePicker value={tone} onChange={setTone} />
+              <div className="rounded-xl border border-card-border bg-card px-4 py-3">
+                <p className="text-sm text-muted-foreground">
+                  {estimateLoading
+                    ? t('estimate.loading')
+                    : estimate
+                      ? t('estimate.cost', { points: estimate.reserveCostPoints })
+                      : estimateError
+                        ? isEstimateNotFoundError(estimateError)
+                          ? t('estimate.backendMissing')
+                          : t('estimate.unavailable', { message: estimateError })
+                        : t('estimate.prompt')}
+                </p>
+              </div>
               <GenerateButton topic={topic} isLoading={isLoading} onClick={handleGenerate} />
               {progress ? (
                 <div className={`rounded-xl border border-card-border bg-card px-4 py-3 ${progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}>
@@ -253,7 +388,33 @@ export default function ContentGenerationPage() {
                   <p className="text-sm text-muted-foreground">{status}</p>
                 </div>
               ) : null}
-              <ResultPanel text={generatedText} imageDataUrl={generatedImageDataUrl} storageUrl={storageUrl} />
+               {generatedText || generatedImageDataUrl ? (
+                 <FacebookPreview
+                   contentType={outputMode as 'imageAndText' | 'textOnly' | 'imageOnly'}
+                   imageUrl={generatedImageDataUrl || null}
+                   textContent={generatedText}
+                   onDownload={() => {
+                     if (!generatedImageDataUrl) return;
+                     // Convert base64 to blob and trigger download
+                     const byteCharacters = atob(generatedImageDataUrl.split(',')[1]);
+                     const byteNumbers = new Array(byteCharacters.length);
+                     for (let i = 0; i < byteCharacters.length; i++) {
+                       byteNumbers[i] = byteCharacters.charCodeAt(i);
+                     }
+                     const byteArray = new Uint8Array(byteNumbers);
+                     const blob = new Blob([byteArray], { type: 'image/png' });
+                     const url = URL.createObjectURL(blob);
+                     
+                     const a = document.createElement('a');
+                     a.href = url;
+                     a.download = `ai-minions-content-${Date.now()}.png`;
+                     document.body.appendChild(a);
+                     a.click();
+                     document.body.removeChild(a);
+                     URL.revokeObjectURL(url);
+                   }}
+                 />
+               ) : null}
             </div>
           </div>
         </div>
