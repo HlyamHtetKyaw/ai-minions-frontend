@@ -46,7 +46,7 @@ const ICONS: Record<WorkspaceToolId, ReactNode> = {
 export function WorkspaceToolRail({ tools, activeTool, onToolChange }: WorkspaceToolRailProps) {
   return (
     <aside
-      className="flex max-h-[50vh] min-h-0 w-[4.5rem] shrink-0 flex-col gap-1.5 overflow-y-auto overflow-x-hidden overscroll-y-contain border-r border-white/10 bg-black/60 px-2 py-3 [scrollbar-width:none] [-ms-overflow-style:none] md:h-full md:max-h-none [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0"
+      className="flex w-full shrink-0 flex-row gap-1.5 overflow-x-auto overflow-y-hidden border-b border-white/10 bg-black/60 px-2 py-2 [scrollbar-width:none] [-ms-overflow-style:none] lg:h-full lg:max-h-none lg:w-[4.5rem] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:border-r lg:border-b-0 lg:px-2 lg:py-3 [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0"
       aria-label="Editing tools"
     >
       {tools.map((tool) => (

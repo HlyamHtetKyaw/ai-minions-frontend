@@ -15,6 +15,14 @@ import { clampTimeToVideoSegments } from '@/lib/videoSegmentTime';
 import { useAudioExtractor } from '@/hooks/useAudioExtractor';
 import { useAudioPlayback } from '@/hooks/useAudioPlayback';
 import {
+  exportVideoEditorWorkspace,
+  getVideoEditorWorkspace,
+  openVideoEditorWorkspaceSse,
+  resetVideoEditorWorkspace,
+  saveVideoEditorWorkspaceSnapshot,
+  uploadVideoEditorFile,
+} from '@/lib/video-editor-workspace-api';
+import {
   MAIN_VIDEO_TIMELINE_CLIP_ID,
   useEditorStore,
   type EditorTool,
@@ -106,14 +114,118 @@ function snapshotSignature(snapshot: WorkspaceHistorySnapshot) {
   });
 }
 
+function isBlobUrl(value: unknown): value is string {
+  return typeof value === 'string' && value.startsWith('blob:');
+}
+
+function extractWorkspaceKeyFromVideoSrc(value: string | null): string | null {
+  if (value == null || value.trim() === '') return null;
+  try {
+    const u = new URL(value);
+    const frag = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash;
+    for (const token of frag.split('&')) {
+      const [k, v] = token.split('=');
+      if (k === 'wk' && v != null && v.trim() !== '') {
+        return decodeURIComponent(v);
+      }
+    }
+  } catch {
+    // ignore malformed URLs
+  }
+  return null;
+}
+
+function serializeWorkspaceForPersistence(state: ReturnType<typeof useEditorStore.getState>): string {
+  const snapshot = createWorkspaceHistorySnapshot(state);
+  const safeVideoSrc = isBlobUrl(snapshot.videoSrc) ? null : snapshot.videoSrc;
+  const videoSrcKey = extractWorkspaceKeyFromVideoSrc(safeVideoSrc);
+  const persistedVideoSrc = videoSrcKey != null ? null : safeVideoSrc;
+  const safeGalleryImages = snapshot.galleryImages.filter((img) => !isBlobUrl(img.src));
+  const safeGalleryIds = new Set(safeGalleryImages.map((img) => img.id));
+  const safeImageLayers = snapshot.imageLayers.filter(
+    (layer) => !isBlobUrl(layer.src) && safeGalleryIds.has(layer.galleryImageId),
+  );
+  const audioTracks = snapshot.audioTracks
+    .filter((track) => !isBlobUrl(track.src))
+    .map((track) => Object.fromEntries(Object.entries(track).filter(([key]) => key !== 'audioBuffer')));
+
+  const hasVideo = persistedVideoSrc != null || videoSrcKey != null;
+  return JSON.stringify({
+    ...snapshot,
+    videoSrc: persistedVideoSrc,
+    videoSrcKey: videoSrcKey ?? undefined,
+    duration: hasVideo ? snapshot.duration : 0,
+    currentTime: hasVideo ? snapshot.currentTime : 0,
+    trimStart: hasVideo ? snapshot.trimStart : 0,
+    trimEnd: hasVideo ? snapshot.trimEnd : 0,
+    videoTimelineSegments: hasVideo ? snapshot.videoTimelineSegments : [],
+    splitPoints: hasVideo ? snapshot.splitPoints : [],
+    videoSegments: hasVideo ? snapshot.videoSegments : [],
+    galleryImages: safeGalleryImages,
+    imageLayers: safeImageLayers,
+    audioTracks,
+  });
+}
+
+function parseWorkspaceFromPersistence(rawJson: string): WorkspaceHistorySnapshot | null {
+  try {
+    const raw = JSON.parse(rawJson) as WorkspaceHistorySnapshot & {
+      audioTracks?: Array<Omit<WorkspaceHistorySnapshot['audioTracks'][number], 'audioBuffer'>>;
+      videoSrcKey?: string;
+    };
+    if (raw == null || typeof raw !== 'object') return null;
+    const base = createWorkspaceHistorySnapshot(useEditorStore.getState());
+    const safeVideoSrc = isBlobUrl(raw.videoSrc) ? null : (raw.videoSrc ?? null);
+    const safeGalleryImages = Array.isArray(raw.galleryImages)
+      ? raw.galleryImages.filter((img) => !isBlobUrl(img.src))
+      : base.galleryImages;
+    const safeGalleryIds = new Set(safeGalleryImages.map((img) => img.id));
+    const safeImageLayers = Array.isArray(raw.imageLayers)
+      ? raw.imageLayers.filter((layer) => !isBlobUrl(layer.src) && safeGalleryIds.has(layer.galleryImageId))
+      : base.imageLayers;
+    const safeAudioTracks = Array.isArray(raw.audioTracks)
+      ? raw.audioTracks
+          .filter((track) => !isBlobUrl(track.src))
+          .map((track) => ({ ...track, audioBuffer: null }))
+      : base.audioTracks;
+    const hasVideo =
+      safeVideoSrc != null ||
+      (typeof raw.videoSrcKey === 'string' && raw.videoSrcKey.trim().length > 0);
+    return {
+      ...base,
+      ...raw,
+      videoSrc: safeVideoSrc,
+      duration: hasVideo ? raw.duration : 0,
+      currentTime: hasVideo ? raw.currentTime : 0,
+      trimStart: hasVideo ? raw.trimStart : 0,
+      trimEnd: hasVideo ? raw.trimEnd : 0,
+      videoTimelineSegments: hasVideo ? raw.videoTimelineSegments : [],
+      splitPoints: hasVideo ? raw.splitPoints : [],
+      videoSegments: hasVideo ? raw.videoSegments : [],
+      galleryImages: safeGalleryImages,
+      imageLayers: safeImageLayers,
+      isPlaying: false,
+      audioTracks: safeAudioTracks,
+    };
+  } catch {
+    return null;
+  }
+}
+
 function isEditableTarget(target: EventTarget | null) {
   if (!(target instanceof HTMLElement)) return false;
   const tag = target.tagName;
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return true;
   return target.isContentEditable;
 }
-function assignWorkspaceImageTimelineVerticalLane(layers: ImageLayer[]) {
-  const sorted = [...layers].sort(
+type TimelineLaneItem = {
+  id: string;
+  startTime: number;
+  endTime: number;
+};
+
+function assignWorkspaceTimelineVerticalLane(items: TimelineLaneItem[]) {
+  const sorted = [...items].sort(
     (a, b) =>
       a.startTime - b.startTime || a.endTime - b.endTime || a.id.localeCompare(b.id),
   );
@@ -132,6 +244,10 @@ function assignWorkspaceImageTimelineVerticalLane(layers: ImageLayer[]) {
     map.set(l.id, lane);
   }
   return map;
+}
+
+function assignWorkspaceImageTimelineVerticalLane(layers: ImageLayer[]) {
+  return assignWorkspaceTimelineVerticalLane(layers);
 }
 
 const STORE_TOOL_BY_WORKSPACE: Record<WorkspaceToolId, EditorTool> = {
@@ -159,6 +275,37 @@ function exitDocumentFullscreen(): void {
 function requestElementFullscreen(el: HTMLElement): void {
   const node = el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
   void (el.requestFullscreen?.() ?? node.webkitRequestFullscreen?.());
+}
+
+async function triggerExportDownload(downloadUrl: string, s3Key: string): Promise<void> {
+  const fileName = s3Key.split('/').filter(Boolean).pop() ?? 'video-export.mp4';
+  try {
+    const res = await fetch(downloadUrl, { method: 'GET' });
+    if (!res.ok) {
+      throw new Error(`Download failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+    return;
+  } catch {
+    // Fallback to direct signed URL navigation when CORS blocks blob download.
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = fileName;
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 }
 
 export function VideoWorkspaceShell() {
@@ -216,6 +363,7 @@ export function VideoWorkspaceShell() {
   const [clipRowById, setClipRowById] = useState<Record<string, string>>({});
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [workspaceSyncStatus, setWorkspaceSyncStatus] = useState('Connecting workspace stream...');
   const previewFrameRef = useRef<HTMLDivElement>(null);
   const volumeBeforeMuteRef = useRef(72);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
@@ -225,6 +373,11 @@ export function VideoWorkspaceShell() {
   const historyFutureRef = useRef<WorkspaceHistorySnapshot[]>([]);
   const isApplyingHistoryRef = useRef(false);
   const lastHistorySignatureRef = useRef('');
+  const isHydratingWorkspaceRef = useRef(false);
+  const pendingWorkspaceJsonRef = useRef<string | null>(null);
+  const lastSyncedWorkspaceJsonRef = useRef<string>('');
+  const workspaceSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   useEffect(() => {
     const initial = createWorkspaceHistorySnapshot(useEditorStore.getState());
     historyPastRef.current = [initial];
@@ -251,6 +404,31 @@ export function VideoWorkspaceShell() {
     return () => unsub();
   }, []);
 
+  useEffect(() => {
+    const closeSse = openVideoEditorWorkspaceSse({
+      onStatus: (rawData) => {
+        try {
+          const status = JSON.parse(rawData) as { status?: string; message?: string; progressPercent?: number };
+          if (status.message) {
+            const percent = typeof status.progressPercent === 'number' ? ` (${Math.round(status.progressPercent)}%)` : '';
+            setWorkspaceSyncStatus(`${status.message}${percent}`);
+            return;
+          }
+          if (status.status) {
+            setWorkspaceSyncStatus(`Workspace ${status.status}`);
+            return;
+          }
+        } catch {
+          // ignore non-json payload
+        }
+      },
+      onError: (message) => {
+        setWorkspaceSyncStatus(message);
+      },
+    });
+    return () => closeSse();
+  }, []);
+
   const applyHistorySnapshot = useCallback((snapshot: WorkspaceHistorySnapshot) => {
     isApplyingHistoryRef.current = true;
     useEditorStore.setState((state) => ({
@@ -267,6 +445,69 @@ export function VideoWorkspaceShell() {
     lastHistorySignatureRef.current = snapshotSignature(snapshot);
     setCanUndo(historyPastRef.current.length > 1);
     setCanRedo(historyFutureRef.current.length > 0);
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      try {
+        const result = await getVideoEditorWorkspace();
+        if (cancelled) return;
+        const parsed = parseWorkspaceFromPersistence(result.workspaceJson);
+        if (parsed != null) {
+          isHydratingWorkspaceRef.current = true;
+          applyHistorySnapshot(parsed);
+          isHydratingWorkspaceRef.current = false;
+          lastSyncedWorkspaceJsonRef.current = serializeWorkspaceForPersistence(useEditorStore.getState());
+        }
+        setWorkspaceSyncStatus('Workspace loaded');
+      } catch (error) {
+        setWorkspaceSyncStatus(
+          error instanceof Error ? `Workspace load failed: ${error.message}` : 'Workspace load failed',
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [applyHistorySnapshot]);
+
+  useEffect(() => {
+    const flushPending = async () => {
+      const pendingJson = pendingWorkspaceJsonRef.current;
+      if (!pendingJson || pendingJson === lastSyncedWorkspaceJsonRef.current) return;
+      try {
+        await saveVideoEditorWorkspaceSnapshot(pendingJson);
+        lastSyncedWorkspaceJsonRef.current = pendingJson;
+        setWorkspaceSyncStatus('Workspace cached');
+      } catch (error) {
+        setWorkspaceSyncStatus(
+          error instanceof Error ? `Workspace sync failed: ${error.message}` : 'Workspace sync failed',
+        );
+      }
+    };
+
+    const unsubscribe = useEditorStore.subscribe((state) => {
+      if (isHydratingWorkspaceRef.current) return;
+      const payload = serializeWorkspaceForPersistence(state);
+      if (payload === lastSyncedWorkspaceJsonRef.current) return;
+      pendingWorkspaceJsonRef.current = payload;
+      setWorkspaceSyncStatus('Syncing workspace...');
+      if (workspaceSaveTimerRef.current != null) {
+        clearTimeout(workspaceSaveTimerRef.current);
+      }
+      workspaceSaveTimerRef.current = setTimeout(() => {
+        void flushPending();
+      }, 1500);
+    });
+
+    return () => {
+      unsubscribe();
+      if (workspaceSaveTimerRef.current != null) {
+        clearTimeout(workspaceSaveTimerRef.current);
+        workspaceSaveTimerRef.current = null;
+      }
+    };
   }, []);
 
   const undo = useCallback(() => {
@@ -349,7 +590,12 @@ export function VideoWorkspaceShell() {
   const onMusicFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) addAudioTrack('music', file);
+      if (file) {
+        addAudioTrack('music', file);
+        void uploadVideoEditorFile(file).catch((error) => {
+          console.warn('[video-editor] music upload failed', error);
+        });
+      }
       e.target.value = '';
     },
     [addAudioTrack],
@@ -358,7 +604,12 @@ export function VideoWorkspaceShell() {
   const onVoiceFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) addAudioTrack('voiceover', file);
+      if (file) {
+        addAudioTrack('voiceover', file);
+        void uploadVideoEditorFile(file).catch((error) => {
+          console.warn('[video-editor] voiceover upload failed', error);
+        });
+      }
       e.target.value = '';
     },
     [addAudioTrack],
@@ -616,6 +867,9 @@ export function VideoWorkspaceShell() {
           tone: 'violet' as const,
         });
       }
+      const textLaneById = assignWorkspaceTimelineVerticalLane(
+        textLayers.filter((x) => x.type === 'text'),
+      );
       for (const l of textLayers.filter((x) => x.type === 'text')) {
         place('text', {
           id: l.id,
@@ -624,6 +878,7 @@ export function VideoWorkspaceShell() {
           start: l.startTime / duration,
           width: Math.max((l.endTime - l.startTime) / duration, 0.004),
           tone: 'emerald' as const,
+          verticalLane: textLaneById.get(l.id) ?? 0,
         });
       }
       for (const l of blurLayers) {
@@ -706,10 +961,73 @@ export function VideoWorkspaceShell() {
     selectedSegmentId != null ||
     (selectedLayerId != null && !selectedIsVideoTimelineClip);
 
-  const onExportClick = useCallback(() => {
+  const panelMode: 'segment' | 'crop' | 'speed' | 'subs' | 'audio' | 'blur' | 'image' | 'text' | null =
+    selectedSegmentId != null
+      ? 'segment'
+      : activeTool === 'crop'
+        ? 'crop'
+        : activeTool === 'speed'
+          ? 'speed'
+          : activeTool === 'subs'
+            ? 'subs'
+            : activeTool === 'audio'
+              ? 'audio'
+              : activeTool === 'blur'
+                ? 'blur'
+                : activeTool === 'image'
+                  ? 'image'
+                  : activeTool === 'text'
+                    ? 'text'
+                    : selectedIsBlur
+                      ? 'blur'
+                      : selectedIsImage
+                        ? 'image'
+                        : selectedLayerId != null
+                          ? 'text'
+                          : null;
+
+  const onExportClick = useCallback(async () => {
     const payload = buildExportPayload(useEditorStore.getState());
-    console.info('[workspace] export payload', payload);
+    setWorkspaceSyncStatus('Exporting video...');
+    try {
+      const result = await exportVideoEditorWorkspace(payload);
+      setWorkspaceSyncStatus('Downloading export...');
+      await triggerExportDownload(result.downloadUrl, result.s3Key);
+      setWorkspaceSyncStatus('Export downloaded');
+    } catch (error) {
+      setWorkspaceSyncStatus(
+        error instanceof Error ? `Export failed: ${error.message}` : 'Export failed',
+      );
+    }
   }, []);
+
+  const onResetWorkspace = useCallback(async () => {
+    const confirmed = window.confirm('Reset workspace? This will clear all current edits.');
+    if (!confirmed) return;
+    try {
+      await resetVideoEditorWorkspace();
+      setVideoSrc(null);
+      setSelectedLayerId(null);
+      setSelectedSegmentId(null);
+      setSelectedAudioTrackId(null);
+      setClipRowById({});
+      setActiveTool('media');
+      setActiveToolStore('pointer');
+      const fresh = createWorkspaceHistorySnapshot(useEditorStore.getState());
+      historyPastRef.current = [fresh];
+      historyFutureRef.current = [];
+      lastHistorySignatureRef.current = snapshotSignature(fresh);
+      pendingWorkspaceJsonRef.current = null;
+      lastSyncedWorkspaceJsonRef.current = '{}';
+      setCanUndo(false);
+      setCanRedo(false);
+      setWorkspaceSyncStatus('Workspace reset');
+    } catch (error) {
+      setWorkspaceSyncStatus(
+        error instanceof Error ? `Workspace reset failed: ${error.message}` : 'Workspace reset failed',
+      );
+    }
+  }, [setActiveToolStore, setSelectedAudioTrackId, setSelectedLayerId, setSelectedSegmentId, setVideoSrc]);
 
   return (
     <div className="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded-xl border border-white/10 bg-black text-foreground">
@@ -719,15 +1037,22 @@ export function VideoWorkspaceShell() {
         onAspectChange={onAspectChange}
         aspectOptions={aspectOptions}
         aspectToggleAriaLabel={t('aspectToggleAria')}
+        landscapeLabel="Landscape"
+        portraitLabel="Portrait"
         exportLabel={t('exportVideo')}
+        resetLabel="Reset"
         onExportClick={onExportClick}
+        onResetClick={() => {
+          void onResetWorkspace();
+        }}
         onUndoClick={undo}
         onRedoClick={redo}
         canUndo={canUndo}
         canRedo={canRedo}
+        syncStatusLabel={workspaceSyncStatus}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+      <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
         <WorkspaceToolRail tools={tools} activeTool={activeTool} onToolChange={handleToolChange} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <input
@@ -817,49 +1142,49 @@ export function VideoWorkspaceShell() {
         </div>
         {activeTool !== 'media' && activeTool !== 'trim' || selectedSegmentId != null ? (
           showStoreToolPanel ? (
-            <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-l border-white/10 bg-black/70 md:w-72 md:min-w-72 md:max-w-72">
+            <aside className="flex max-h-[55vh] min-h-0 w-full shrink-0 flex-col border-t border-white/10 bg-black/70 xl:h-full xl:max-h-none xl:w-72 xl:min-w-72 xl:max-w-72 xl:border-l xl:border-t-0">
               <div className="shrink-0 border-b border-white/10 px-4 py-3">
                 <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  {selectedSegmentId != null
+                  {panelMode === 'segment'
                     ? 'Segment audio'
-                    : activeTool === 'crop'
-                    ? t('tools.crop')
-                    : activeTool === 'speed'
-                      ? t('tools.speed')
-                      : activeTool === 'subs'
-                        ? t('tools.subs')
-                        : activeTool === 'audio'
-                          ? t('tools.audio')
-                          : activeTool === 'blur' || selectedIsBlur
-                            ? t('tools.blur')
-                            : activeTool === 'image' || selectedIsImage
-                              ? t('tools.image')
-                              : t('tools.text')}
+                    : panelMode === 'crop'
+                      ? t('tools.crop')
+                      : panelMode === 'speed'
+                        ? t('tools.speed')
+                        : panelMode === 'subs'
+                          ? t('tools.subs')
+                          : panelMode === 'audio'
+                            ? t('tools.audio')
+                            : panelMode === 'blur'
+                              ? t('tools.blur')
+                              : panelMode === 'image'
+                                ? t('tools.image')
+                                : t('tools.text')}
                 </h2>
               </div>
               <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
-                {selectedSegmentId != null ? (
+                {panelMode === 'segment' ? (
                   <SegmentAudioPanel />
-                ) : activeTool === 'crop' ? (
+                ) : panelMode === 'crop' ? (
                   <CropProperties onAfterApply={() => setActiveTool('media')} />
-                ) : activeTool === 'speed' ? (
+                ) : panelMode === 'speed' ? (
                   <SpeedProperties />
-                ) : activeTool === 'subs' ? (
+                ) : panelMode === 'subs' ? (
                   <WorkspaceSubsPanel
                     onImported={() => {
                       setActiveTool('text');
                       setActiveToolStore('text');
                     }}
                   />
-                ) : activeTool === 'audio' ? (
+                ) : panelMode === 'audio' ? (
                   <AudioProperties />
-                ) : activeTool === 'blur' || selectedIsBlur ? (
+                ) : panelMode === 'blur' ? (
                   <BlurProperties />
-                ) : activeTool === 'image' || selectedIsImage ? (
+                ) : panelMode === 'image' ? (
                   <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
                     {activeTool === 'image' ? (
                       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                        <ImageGalleryPanel />
+                        <ImageGalleryPanel developerSourceOnly />
                       </div>
                     ) : null}
                     {selectedIsImage ? (
