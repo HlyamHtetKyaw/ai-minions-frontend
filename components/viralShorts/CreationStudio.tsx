@@ -130,6 +130,8 @@ type Props = {
   initialSubtitlesSrtKey?: string;
   initialSubtitlesDownloadUrl?: string;
   initialSubtitlesSrtText?: string;
+  initialSubtitlesPosition?: { x: number; y: number };
+  initialSubtitlesFontSize?: number;
   initialTranscriptText?: string;
   initialTranslatedText?: string;
   initialTone?: TranslateTone;
@@ -163,6 +165,8 @@ type Props = {
   onSubtitlesSrtKeyChange?: (key: string) => void;
   onSubtitlesDownloadUrlChange?: (url: string) => void;
   onSubtitlesSrtTextChange?: (text: string) => void;
+  onSubtitlesPositionChange?: (pos: { x: number; y: number }) => void;
+  onSubtitlesFontSizeChange?: (size: number) => void;
   onDiscardWorkspace?: () => void;
 };
 
@@ -176,6 +180,8 @@ export default function CreationStudio({
   initialSubtitlesSrtKey,
   initialSubtitlesDownloadUrl,
   initialSubtitlesSrtText,
+  initialSubtitlesPosition,
+  initialSubtitlesFontSize,
   initialTranscriptText,
   initialTranslatedText,
   initialTone,
@@ -209,6 +215,8 @@ export default function CreationStudio({
   onSubtitlesSrtKeyChange,
   onSubtitlesDownloadUrlChange,
   onSubtitlesSrtTextChange,
+  onSubtitlesPositionChange,
+  onSubtitlesFontSizeChange,
   onDiscardWorkspace,
 }: Props) {
   const [showTranscribeConfirm, setShowTranscribeConfirm] = useState(false);
@@ -284,6 +292,20 @@ export default function CreationStudio({
   );
   const [subtitlesSrtText, setSubtitlesSrtText] = useState(() =>
     typeof initialSubtitlesSrtText === 'string' ? initialSubtitlesSrtText : '',
+  );
+  const [subtitlesEditPosition, setSubtitlesEditPosition] = useState(false);
+  const [subtitlesPosition, setSubtitlesPosition] = useState<{ x: number; y: number }>(() => {
+    const p = initialSubtitlesPosition;
+    const x = p && typeof p.x === 'number' && Number.isFinite(p.x) ? Math.max(0, Math.min(1, p.x)) : 0.5;
+    const y = p && typeof p.y === 'number' && Number.isFinite(p.y) ? Math.max(0, Math.min(1, p.y)) : 0.88;
+    return { x, y };
+  });
+  const [subtitlesFontSize, setSubtitlesFontSize] = useState(() => {
+    const n = typeof initialSubtitlesFontSize === 'number' && Number.isFinite(initialSubtitlesFontSize) ? initialSubtitlesFontSize : 22;
+    return Math.max(14, Math.min(60, Math.round(n)));
+  });
+  const subtitleDragRef = useRef<{ active: boolean; startX: number; startY: number; baseX: number; baseY: number } | null>(
+    null,
   );
   const [leftTab, setLeftTab] = useState<'script' | 'srt'>(() => (subtitlesSrtText.trim() ? 'srt' : 'script'));
   const [showSubtitlesOverlay, setShowSubtitlesOverlay] = useState(true);
@@ -563,6 +585,14 @@ export default function CreationStudio({
   useEffect(() => {
     onSubtitlesSrtTextChange?.(subtitlesSrtText);
   }, [onSubtitlesSrtTextChange, subtitlesSrtText]);
+
+  useEffect(() => {
+    onSubtitlesPositionChange?.(subtitlesPosition);
+  }, [onSubtitlesPositionChange, subtitlesPosition]);
+
+  useEffect(() => {
+    onSubtitlesFontSizeChange?.(subtitlesFontSize);
+  }, [onSubtitlesFontSizeChange, subtitlesFontSize]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -1413,6 +1443,8 @@ export default function CreationStudio({
         protectHueDeg,
         burnSubtitles: Boolean(showSubtitlesOverlay && subtitlesSrtText.trim()),
         subtitlesSrtText: subtitlesSrtText,
+        subtitlesPosition: subtitlesPosition,
+        subtitlesFontSize: subtitlesFontSize,
       };
       const res = await videoEditorExportWorkspace(payload);
       setExportedVideoUrl(res.readUrl);
@@ -1581,14 +1613,80 @@ export default function CreationStudio({
                 <>
                   <div className="flex items-center justify-between gap-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
                     <span>{editableCues.length} cues</span>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={showSubtitlesOverlay}
-                        onChange={(e) => setShowSubtitlesOverlay(e.target.checked)}
-                      />
-                      Show on video
-                    </label>
+                    <div className="flex items-center gap-3">
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={showSubtitlesOverlay}
+                          onChange={(e) => setShowSubtitlesOverlay(e.target.checked)}
+                        />
+                        Show on video
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={subtitlesEditPosition}
+                          disabled={!showSubtitlesOverlay}
+                          onChange={(e) => setSubtitlesEditPosition(e.target.checked)}
+                        />
+                        Move
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Size</span>
+                        <div className="inline-flex items-center overflow-hidden rounded border border-card-border bg-card">
+                          <button
+                            type="button"
+                            className="h-6 w-6 border-r border-card-border text-[12px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
+                            onClick={() => setSubtitlesFontSize((v) => Math.max(14, v - 1))}
+                            disabled={subtitlesFontSize <= 14}
+                            aria-label="Decrease subtitle size"
+                          >
+                            –
+                          </button>
+                          <input
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={String(subtitlesFontSize)}
+                            onChange={(e) => {
+                              const raw = e.target.value.replace(/[^\d]/g, '');
+                              if (!raw) return;
+                              const n = Math.max(14, Math.min(60, Number(raw)));
+                              if (Number.isFinite(n)) setSubtitlesFontSize(n);
+                            }}
+                            onBlur={(e) => {
+                              const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
+                              setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
+                            }}
+                            className="h-6 w-10 bg-transparent text-center text-[11px] font-semibold text-foreground outline-none"
+                            aria-label="Subtitle size"
+                          />
+                          <button
+                            type="button"
+                            className="h-6 w-6 border-l border-card-border text-[12px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
+                            onClick={() => setSubtitlesFontSize((v) => Math.min(60, v + 1))}
+                            disabled={subtitlesFontSize >= 60}
+                            aria-label="Increase subtitle size"
+                          >
+                            +
+                          </button>
+                        </div>
+                        <select
+                          value={String(subtitlesFontSize)}
+                          onChange={(e) => {
+                            const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
+                            setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
+                          }}
+                          className="h-6 rounded border border-card-border bg-card px-1 text-[10px] font-semibold text-foreground outline-none hover:bg-surface"
+                          aria-label="Preset subtitle sizes"
+                        >
+                          {[14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 60].map((n) => (
+                            <option key={n} value={String(n)}>
+                              {n}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
                   </div>
                   <div className="max-h-[280px] overflow-auto rounded border border-card-border bg-subtle/10 p-2">
                     {editableCues.length === 0 ? (
@@ -2195,10 +2293,55 @@ export default function CreationStudio({
                 }}
               />
               {showSubtitlesOverlay && activeSubtitleText.trim() ? (
-                <div className="pointer-events-none absolute inset-x-3 bottom-3 flex justify-center">
+                <div
+                  className="absolute"
+                  style={{
+                    left: `${Math.round(subtitlesPosition.x * 1000) / 10}%`,
+                    top: `${Math.round(subtitlesPosition.y * 1000) / 10}%`,
+                    transform: 'translate(-50%, -50%)',
+                    pointerEvents: subtitlesEditPosition ? 'auto' : 'none',
+                  }}
+                  onPointerDown={(e) => {
+                    if (!subtitlesEditPosition) return;
+                    const el = e.currentTarget.parentElement;
+                    if (!el) return;
+                    const rect = el.getBoundingClientRect();
+                    subtitleDragRef.current = {
+                      active: true,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      baseX: subtitlesPosition.x,
+                      baseY: subtitlesPosition.y,
+                    };
+                    (e.currentTarget as HTMLDivElement).setPointerCapture?.(e.pointerId);
+                    e.preventDefault();
+                    e.stopPropagation();
+                  }}
+                  onPointerMove={(e) => {
+                    const d = subtitleDragRef.current;
+                    if (!subtitlesEditPosition || !d?.active) return;
+                    const el = e.currentTarget.parentElement;
+                    if (!el) return;
+                    const rect = el.getBoundingClientRect();
+                    const dx = (e.clientX - d.startX) / Math.max(1, rect.width);
+                    const dy = (e.clientY - d.startY) / Math.max(1, rect.height);
+                    setSubtitlesPosition({
+                      x: Math.max(0, Math.min(1, d.baseX + dx)),
+                      y: Math.max(0, Math.min(1, d.baseY + dy)),
+                    });
+                    e.preventDefault();
+                  }}
+                  onPointerUp={() => {
+                    if (!subtitleDragRef.current) return;
+                    subtitleDragRef.current.active = false;
+                  }}
+                >
                   <div className="max-w-[92%] rounded-lg bg-black/65 px-3 py-2 text-center text-sm font-semibold text-white">
                     {activeSubtitleText}
                   </div>
+                  {subtitlesEditPosition ? (
+                    <div className="mt-1 text-center text-[10px] font-semibold text-white/80">Drag to move</div>
+                  ) : null}
                 </div>
               ) : null}
               {isBalancedPreviewMode ? (
