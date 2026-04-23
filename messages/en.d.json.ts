@@ -386,6 +386,13 @@ declare const messages: {
     "generateButton": {
       "label": "Generate Voice",
       "loading": "Generating…"
+    },
+    "generation": {
+      "starting": "Starting voice over…",
+      "waitingForUpdates": "Job created. Waiting for updates…",
+      "finished": "Finished",
+      "errorGeneric": "Voice generation failed. Please try again.",
+      "noAudioUrl": "Generation finished but no playable audio was returned."
     }
   },
   "video-edit": {

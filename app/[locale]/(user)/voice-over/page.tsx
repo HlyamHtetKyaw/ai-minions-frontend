@@ -12,11 +12,35 @@ import PageHeader from '@/components/layout/page-header';
 import GenerateButton from '@/features/voice-over/components/generate-button';
 import { voiceOverEstimatePoints, voiceOverStart, openVoiceOverSse } from '@/lib/voice-over-api';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
+import { openVoiceOverSse, voiceOverPresignRead, voiceOverStart } from '@/lib/voice-over-api';
+import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 
 // TODO: replace with real auth state
 const isSignedIn = true;
 
 type ProviderChoice = 'auto' | 'gemini' | 'openai';
+
+function toUserSafeError(raw: string): string {
+  const msg = (raw ?? '').trim();
+  if (!msg) return '';
+  return msg.length > 180 ? `${msg.slice(0, 180)}…` : msg;
+}
+
+async function resolveVoiceOverPlayableUrl(data: Record<string, unknown>): Promise<string> {
+  const audioUrl = typeof data.audioUrl === 'string' ? data.audioUrl.trim() : '';
+  const s3Key = typeof data.s3Key === 'string' ? data.s3Key.trim() : '';
+  const audioBase64 = typeof data.audioBase64 === 'string' ? data.audioBase64.trim() : '';
+  if (audioUrl) return audioUrl;
+  if (audioBase64) return `data:audio/mpeg;base64,${audioBase64}`;
+  if (s3Key) {
+    try {
+      return await voiceOverPresignRead(s3Key);
+    } catch {
+      return '';
+    }
+  }
+  return '';
+}
 
 export default function VoiceOverPage() {
   const t = useTranslations('voice-over');
@@ -146,8 +170,34 @@ export default function VoiceOverPage() {
               <GenerateButton
                 onClick={handleGenerate}
                 isLoading={isLoading}
-                disabled={!canGenerate}
+                disabled={!scriptText.trim()}
               />
+
+              {progress ? (
+                <div
+                  className={`rounded-xl border border-card-border bg-card px-4 py-3 ${progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p
+                      className={`text-sm ${progress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
+                    >
+                      {progress.label}
+                    </p>
+                    <p className="text-xs font-semibold text-muted-foreground tabular-nums">{progress.percent}%</p>
+                  </div>
+                  <div className="mt-2 h-2 w-full rounded-full bg-subtle">
+                    <div
+                      className={`h-2 rounded-full transition-[width] ${progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'}`}
+                      style={{ width: `${progress.percent}%` }}
+                    />
+                  </div>
+                </div>
+              ) : null}
+              {!progress && status ? (
+                <div className="rounded-xl border border-red-500/25 bg-card px-4 py-3">
+                  <p className="text-sm text-red-300">{status}</p>
+                </div>
+              ) : null}
 
               {audioSrc ? (
                 <AudioPlayer src={audioSrc} filename="voice-over.mp3" />
