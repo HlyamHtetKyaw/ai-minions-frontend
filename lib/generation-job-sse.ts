@@ -1,4 +1,5 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
+import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
 
 /**
  * Worker / main DB stores {@code outputData} as JSON object or string; transcript may be at {@code text} or
@@ -171,9 +172,8 @@ export function parseGenerationSseProgressPayload(
 /**
  * SSE for any {@code ai_generations} async job (transcribe, translate, voice-over, …).
  *
- * Uses native {@link EventSource} with `withCredentials: true` so HttpOnly cookies are sent cross-origin.
- * Firefox (and some Chromium builds) often label cross-origin `fetch()` + `ReadableStream` SSE as "Blocked"
- * in DevTools even when CORS headers are correct; EventSource is the supported path for credentialed SSE.
+ * Uses `fetch()` streaming with `Authorization: Bearer …` (same as other API calls).
+ * Native {@link EventSource} cannot attach Bearer tokens, which breaks production setups that rely on JWTs.
  */
 export function openGenerationJobSseStream(
   generationId: number,
@@ -188,17 +188,11 @@ export function openGenerationJobSseStream(
   const path = `${base}/api/v1/generations/${generationId}/stream`;
   let finished = false;
   let sawTerminalStatus = false;
-  let es: EventSource | null = null;
+  let transportErrored = false;
 
   const finish = () => {
     if (finished) return;
     finished = true;
-    try {
-      es?.close();
-    } catch {
-      /* ignore */
-    }
-    es = null;
     handlers.onDone();
   };
 
@@ -225,125 +219,26 @@ export function openGenerationJobSseStream(
     }
   };
 
-  if (typeof EventSource !== 'undefined') {
-    try {
-      es = new EventSource(path, { withCredentials: true });
-    } catch (e) {
-      handlers.onError(e instanceof Error ? e.message : String(e));
-      handlers.onDone();
-      return;
-    }
-
-    es.addEventListener('status', (ev: MessageEvent<string>) => {
-      if (ev.data) handlePayload(ev.data);
-    });
-
-    es.addEventListener('message', (ev: MessageEvent<string>) => {
-      if (ev.data) handlePayload(ev.data);
-    });
-
-    es.onopen = () => {
+  consumeSseWithAuth(path, {
+    onOpen: () => {
       if (!finished) handlers.onOpen?.();
-    };
-
-    es.onerror = () => {
+    },
+    onEvent: (_eventName, data) => {
       if (finished) return;
-      const state = es?.readyState;
-      if (state === EventSource.CLOSED) {
-        if (!sawTerminalStatus) {
-          handlers.onError('SSE connection closed before the job finished.');
-        }
-        finish();
-      }
-    };
-
-    return;
-  }
-
-  /** Fallback: streaming fetch (no custom Accept — avoids extra CORS complexity in some browsers). */
-  const ac = new AbortController();
-  void (async () => {
-    try {
-      const res = await fetch(path, {
-        method: 'GET',
-        credentials: 'include',
-        signal: ac.signal,
-      });
-
-      if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        let msg = `SSE open failed (${res.status})`;
-        try {
-          const j = JSON.parse(text) as { message?: string };
-          if (j.message) msg = j.message;
-        } catch {
-          if (text.trim()) msg = `${msg}: ${text.slice(0, 200)}`;
-        }
-        if (!finished) handlers.onError(msg);
-        finish();
-        return;
-      }
-
-      if (!finished) handlers.onOpen?.();
-
-      const body = res.body;
-      if (!body) {
-        if (!finished) handlers.onError('SSE: empty response body');
-        finish();
-        return;
-      }
-
-      const reader = body.getReader();
-      const decoder = new TextDecoder();
-      let carry = '';
-
-      const dispatchBlock = (block: string) => {
-        const lines = block.split(/\r?\n/).filter((l) => l.length > 0);
-        if (lines.length === 0) return;
-        if (lines.every((l) => l.startsWith(':'))) return;
-
-        let eventName = 'message';
-        const dataLines: string[] = [];
-        for (const line of lines) {
-          if (line.startsWith('event:')) {
-            eventName = line.slice(6).trim();
-          } else if (line.startsWith('data:')) {
-            dataLines.push(line.slice(5).replace(/^\s/, ''));
-          }
-        }
-        const data = dataLines.join('\n');
-        if (!data) return;
-        if (eventName === 'status' || eventName === 'message') {
-          handlePayload(data);
-        }
-      };
-
-      while (!finished) {
-        const { done, value } = await reader.read();
-        if (done) {
-          if (!sawTerminalStatus && !finished) {
-            handlers.onError('Stream closed before the job finished (no final status).');
-            finish();
-          }
-          break;
-        }
-        carry += decoder.decode(value, { stream: true });
-        const parts = carry.split(/\r?\n\r?\n/);
-        carry = parts.pop() ?? '';
-        for (const chunk of parts) {
-          dispatchBlock(chunk);
-        }
-      }
-
-      if (!finished) finish();
-    } catch (e) {
+      handlePayload(data);
+    },
+    onError: (msg) => {
       if (finished) return;
-      if (e instanceof DOMException && e.name === 'AbortError') {
-        finish();
-        return;
+      transportErrored = true;
+      handlers.onError(msg);
+    },
+    onClose: () => {
+      if (finished) return;
+      // If upstream closed without a terminal JSON, treat as error (same as old EventSource path).
+      if (!sawTerminalStatus && !transportErrored) {
+        handlers.onError('SSE connection closed before the job finished.');
       }
-      handlers.onError(e instanceof Error ? e.message : String(e));
       finish();
-    }
-  })();
+    },
+  });
 }

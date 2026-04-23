@@ -5,6 +5,7 @@ import {
   fetchInit,
   fetchWithAuthRetry,
 } from '@/lib/api-auth-fetch';
+import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
 
 type ApiEnvelope<T> = {
   success: boolean;
@@ -151,22 +152,27 @@ export function openVideoEditorWorkspaceSse(handlers: VideoEditorWorkspaceSseHan
     handlers.onError('API base URL is not set');
     return () => {};
   }
-  const es = new EventSource(`${base}/api/v1/video-editor/workspace/stream`, {
-    withCredentials: true,
+  const path = `${base}/api/v1/video-editor/workspace/stream`;
+  let userAborted = false;
+  let transportErrored = false;
+  const abort = consumeSseWithAuth(path, {
+    onEvent: (_eventName, data) => {
+      handlers.onStatus(data);
+    },
+    onError: (message) => {
+      if (!userAborted) {
+        transportErrored = true;
+        handlers.onError(message);
+      }
+    },
+    onClose: () => {
+      if (!userAborted && !transportErrored) {
+        handlers.onError('Workspace SSE connection closed');
+      }
+    },
   });
-  es.addEventListener('status', (ev: MessageEvent<string>) => {
-    if (ev.data) handlers.onStatus(ev.data);
-  });
-  es.onerror = () => {
-    if (es.readyState === EventSource.CLOSED) {
-      handlers.onError('Workspace SSE connection closed');
-    }
-  };
   return () => {
-    try {
-      es.close();
-    } catch {
-      // ignore
-    }
+    userAborted = true;
+    abort();
   };
 }

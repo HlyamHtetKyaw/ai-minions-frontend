@@ -5,6 +5,7 @@ import {
   fetchInit,
   fetchWithAuthRetry,
 } from '@/lib/api-auth-fetch';
+import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
 
 export type ContentGenerateV2Params = {
   topic: string;
@@ -101,16 +102,12 @@ export function openContentGenerationSse(jobId: string, handlers: ContentGenerat
   }
   const path = `${base}/api/v1/ai/content/v2/stream/${jobId}`;
   let done = false;
-  let es: EventSource | null = null;
+  let sawTerminal = false;
+  let transportErrored = false;
 
   const finish = () => {
     if (done) return;
     done = true;
-    try {
-      es?.close();
-    } catch {
-      /* ignore */
-    }
     handlers.onDone();
   };
 
@@ -120,6 +117,7 @@ export function openContentGenerationSse(jobId: string, handlers: ContentGenerat
       const payload = JSON.parse(raw) as Record<string, unknown>;
       const status = String(payload.status ?? '').toLowerCase();
       if (status === 'completed' || status === 'failed' || status === 'error' || status === 'timeout') {
+        sawTerminal = true;
         handlers.onTerminal?.({
           status: status as 'completed' | 'failed' | 'error' | 'timeout',
           data: (payload.data ?? undefined) as ContentGenerateV2Result | undefined,
@@ -132,16 +130,24 @@ export function openContentGenerationSse(jobId: string, handlers: ContentGenerat
     }
   };
 
-  es = new EventSource(path, { withCredentials: true });
-  es.addEventListener('status', (ev: MessageEvent<string>) => {
-    if (ev.data) handleRaw(ev.data);
-  });
-  es.onerror = () => {
-    if (!done && es?.readyState === EventSource.CLOSED) {
-      handlers.onError('SSE connection closed.');
+  consumeSseWithAuth(path, {
+    onEvent: (_eventName, data) => {
+      if (done) return;
+      handleRaw(data);
+    },
+    onError: (msg) => {
+      if (done) return;
+      transportErrored = true;
+      handlers.onError(msg);
+    },
+    onClose: () => {
+      if (done) return;
+      if (!sawTerminal && !transportErrored) {
+        handlers.onError('SSE connection closed.');
+      }
       finish();
-    }
-  };
+    },
+  });
 }
 
 export async function fileToDataUrl(file: File): Promise<string> {

@@ -1,5 +1,6 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
 import { authHeaders, errorMessageFromBody, fetchInit, fetchWithAuthRetry } from '@/lib/api-auth-fetch';
+import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
 
 export type PointsEstimate = {
   baseCostPoints: number;
@@ -80,17 +81,11 @@ export function openVoiceOverSse(jobId: string, handlers: {
   }
   const path = `${base}/api/v1/ai/voice-over/stream/${encodeURIComponent(jobId)}`;
   let finished = false;
-  let es: EventSource | null = null;
+  let transportErrored = false;
 
   const finish = () => {
     if (finished) return;
     finished = true;
-    try {
-      es?.close();
-    } catch {
-      /* ignore */
-    }
-    es = null;
     handlers.onDone();
   };
 
@@ -112,25 +107,24 @@ export function openVoiceOverSse(jobId: string, handlers: {
     }
   };
 
-  try {
-    es = new EventSource(path, { withCredentials: true });
-  } catch (e) {
-    handlers.onError(e instanceof Error ? e.message : String(e));
-    handlers.onDone();
-    return;
-  }
-
-  es.addEventListener('status', (ev: MessageEvent<string>) => {
-    if (ev.data) handlePayload(ev.data);
+  consumeSseWithAuth(path, {
+    onEvent: (_eventName, data) => {
+      if (finished) return;
+      handlePayload(data);
+    },
+    onError: (msg) => {
+      if (finished) return;
+      transportErrored = true;
+      handlers.onError(msg);
+    },
+    onClose: () => {
+      if (finished) return;
+      if (!transportErrored) {
+        handlers.onError('Voice over stream disconnected');
+      }
+      finish();
+    },
   });
-  es.addEventListener('message', (ev: MessageEvent<string>) => {
-    if (ev.data) handlePayload(ev.data);
-  });
-  es.onerror = () => {
-    if (finished) return;
-    handlers.onError('Voice over stream disconnected');
-    finish();
-  };
 }
 
 export async function voiceOverPresignRead(s3Key: string): Promise<string> {
