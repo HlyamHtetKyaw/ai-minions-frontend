@@ -480,12 +480,34 @@
         "ratio4_3": "4:3"
       },
       "exportVideo": "Export video",
+      "exportOverlay": {
+        "exporting": "Exporting video…",
+        "downloading": "Downloading export…"
+      },
       "resetDialog": {
         "title": "Reset workspace?",
         "description": "This will clear all current edits and send you back to choose canvas size.",
         "cancel": "Cancel",
         "confirm": "Reset",
         "resetting": "Resetting…"
+      },
+      "canvasGate": {
+        "previewKicker": "Canvas preview",
+        "previewHint": "This frame matches your export aspect. Upload or replace media on the next step (same formats as Viral Shorts: MP4/WebM).",
+        "badge": "New project",
+        "title": "Choose canvas size",
+        "subtitle": "Pick the timeline and preview shape first — like framing a 9:16 short before you drop in a long video. You can upload or replace media anytime after.",
+        "orientationLabel": "Orientation",
+        "landscape": "Landscape",
+        "portrait": "Portrait",
+        "aspectRatioLabel": "Aspect ratio",
+        "continue": "Continue to editor",
+        "hints": {
+          "ratio16_9": "YouTube · TV",
+          "ratio9_16": "9:16 portrait · Viral Shorts / Stories",
+          "ratio1_1": "Square feed",
+          "ratio4_3": "Classic"
+        }
       },
       "tools": {
         "media": "media",

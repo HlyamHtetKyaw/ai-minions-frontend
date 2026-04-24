@@ -393,6 +393,7 @@ export function VideoWorkspaceShell() {
   const [workspaceUiPhase, setWorkspaceUiPhase] = useState<'loading' | 'canvas-only' | 'editor'>('loading');
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
+  const [exportOverlayPhase, setExportOverlayPhase] = useState<'idle' | 'exporting' | 'downloading'>('idle');
   const previewFrameRef = useRef<HTMLDivElement>(null);
   const volumeBeforeMuteRef = useRef(72);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
@@ -938,9 +939,10 @@ export function VideoWorkspaceShell() {
     return rows.map((id) => ({ id, clips: bucket[id] }));
   }, [audioTracks, blurLayers, clipRowById, duration, galleryImages, imageLayers, t, textLayers, trimEnd, trimStart, videoSrc, videoTimelineSegments]);
 
+  const speed = playbackSpeed > 0 && Number.isFinite(playbackSpeed) ? playbackSpeed : 1;
   const timeDisplay = t('timeAtPlayhead', {
-    current: formatWorkspaceTime(currentTime),
-    total: formatWorkspaceTime(duration),
+    current: formatWorkspaceTime(currentTime / speed),
+    total: formatWorkspaceTime(duration / speed),
   });
 
   const playheadPosition = duration > 0 ? currentTime / duration : 0;
@@ -1023,9 +1025,11 @@ export function VideoWorkspaceShell() {
         easyAspect: aspectIdToRatio(aspect),
       },
     });
+    setExportOverlayPhase('exporting');
     setWorkspaceSyncStatus('Exporting video...');
     try {
       const result = await exportVideoEditorWorkspace(payload);
+      setExportOverlayPhase('downloading');
       setWorkspaceSyncStatus('Downloading export...');
       await triggerExportDownload(result.downloadUrl, result.s3Key);
       setWorkspaceSyncStatus('Export downloaded');
@@ -1033,6 +1037,8 @@ export function VideoWorkspaceShell() {
       setWorkspaceSyncStatus(
         error instanceof Error ? `Export failed: ${error.message}` : 'Export failed',
       );
+    } finally {
+      setExportOverlayPhase('idle');
     }
   }, [aspect]);
 
@@ -1350,6 +1356,25 @@ export function VideoWorkspaceShell() {
               </button>
             </div>
           </div>
+        </div>
+      ) : null}
+
+      {exportOverlayPhase !== 'idle' ? (
+        <div
+          className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black text-foreground"
+          aria-busy={true}
+          aria-live="polite"
+          role="status"
+        >
+          <div
+            className="h-8 w-8 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400"
+            aria-hidden
+          />
+          <p className="mt-4 text-xs text-zinc-500">
+            {exportOverlayPhase === 'exporting'
+              ? t('exportOverlay.exporting')
+              : t('exportOverlay.downloading')}
+          </p>
         </div>
       ) : null}
     </div>

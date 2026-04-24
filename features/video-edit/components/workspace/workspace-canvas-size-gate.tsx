@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useTranslations } from 'next-intl';
 import { ArrowRight, Monitor, Smartphone, Sparkles } from 'lucide-react';
 import { getWorkspacePreviewFrameStyle } from './workspace-preview-frame-style';
 
@@ -26,16 +27,14 @@ function ratioToAspectId(ratio: number): CanvasGateAspectId {
   return Math.abs(nearest.ratio - ratio) <= 0.01 ? nearest.id : '16:9';
 }
 
-const ASPECT_PRESETS: Array<{
-  id: CanvasGateAspectId;
-  label: string;
-  hint: string;
-}> = [
-  { id: '16:9', label: '16:9', hint: 'YouTube · TV' },
-  { id: '9:16', label: '9:16', hint: 'Stories · Shorts' },
-  { id: '1:1', label: '1:1', hint: 'Square feed' },
-  { id: '4:3', label: '4:3', hint: 'Classic' },
-];
+const ASPECT_IDS: CanvasGateAspectId[] = ['16:9', '9:16', '1:1', '4:3'];
+
+function aspectToRatioKey(id: CanvasGateAspectId): 'ratio16_9' | 'ratio9_16' | 'ratio1_1' | 'ratio4_3' {
+  if (id === '16:9') return 'ratio16_9';
+  if (id === '9:16') return 'ratio9_16';
+  if (id === '1:1') return 'ratio1_1';
+  return 'ratio4_3';
+}
 
 function MiniFramePreview({ aspect }: { aspect: CanvasGateAspectId }) {
   const inner =
@@ -61,6 +60,8 @@ type WorkspaceCanvasSizeGateProps = {
 };
 
 export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: WorkspaceCanvasSizeGateProps) {
+  const t = useTranslations('video-edit.workspace.canvasGate');
+  const ta = useTranslations('video-edit.workspace.aspect');
   const [pending, setPending] = useState<CanvasGateAspectId>(() => ratioToAspectId(initialEasyAspect));
 
   useEffect(() => {
@@ -106,12 +107,10 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                 <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.04)_0%,transparent_45%)]" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                    Canvas preview
+                    {t('previewKicker')}
                   </p>
                   <p className="text-2xl font-semibold tracking-tight text-white tabular-nums">{pending}</p>
-                  <p className="max-w-[14rem] text-xs leading-relaxed text-zinc-500">
-                    This frame matches your export aspect. Add media on the next step.
-                  </p>
+                  <p className="max-w-[14rem] text-xs leading-relaxed text-zinc-500">{t('previewHint')}</p>
                 </div>
               </div>
             </div>
@@ -122,17 +121,13 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
             <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-5 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.75)] backdrop-blur-xl sm:p-8">
               <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-[11px] font-medium text-violet-200/95">
                 <Sparkles className="size-3.5 shrink-0 text-violet-300" strokeWidth={2} />
-                New project
+                {t('badge')}
               </div>
-              <h1 className="mt-4 text-xl font-semibold tracking-tight text-white sm:text-2xl">
-                Choose canvas size
-              </h1>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">
-                Pick the shape of your timeline and preview first. You can upload or replace video anytime after.
-              </p>
+              <h1 className="mt-4 text-xl font-semibold tracking-tight text-white sm:text-2xl">{t('title')}</h1>
+              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{t('subtitle')}</p>
 
               <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:mt-8">
-                Orientation
+                {t('orientationLabel')}
               </p>
               <div className="mt-2.5 flex w-full max-w-full rounded-xl border border-white/[0.06] bg-black/30 p-1 sm:inline-flex sm:w-auto">
                 <button
@@ -145,7 +140,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                   }`}
                 >
                   <Monitor className="size-4 shrink-0 opacity-90" strokeWidth={2} />
-                  Landscape
+                  {t('landscape')}
                 </button>
                 <button
                   type="button"
@@ -157,16 +152,19 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                   }`}
                 >
                   <Smartphone className="size-4 shrink-0 opacity-90" strokeWidth={2} />
-                  Portrait
+                  {t('portrait')}
                 </button>
               </div>
 
               <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:mt-8">
-                Aspect ratio
+                {t('aspectRatioLabel')}
               </p>
               <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
-                {ASPECT_PRESETS.map(({ id, label, hint }) => {
+                {ASPECT_ORDER.map((id) => {
                   const active = pending === id;
+                  const labelKey = ASPECT_LABEL_KEY[id];
+                  const hint = t(`hints.${labelKey}`);
+                  const label = tAspect(labelKey);
                   return (
                     <button
                       key={id}
@@ -191,7 +189,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                 onClick={() => onContinue(pending)}
                 className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/50 transition hover:from-violet-500 hover:to-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 active:scale-[0.99] sm:mt-8"
               >
-                Continue to editor
+                {t('continue')}
                 <ArrowRight className="size-4" strokeWidth={2.25} />
               </button>
             </div>
