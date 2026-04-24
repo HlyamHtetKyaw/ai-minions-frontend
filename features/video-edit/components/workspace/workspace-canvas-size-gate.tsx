@@ -27,7 +27,14 @@ function ratioToAspectId(ratio: number): CanvasGateAspectId {
   return Math.abs(nearest.ratio - ratio) <= 0.01 ? nearest.id : '16:9';
 }
 
-const ASPECT_IDS: CanvasGateAspectId[] = ['16:9', '9:16', '1:1', '4:3'];
+const ASPECT_ORDER: CanvasGateAspectId[] = ['16:9', '9:16', '1:1', '4:3'];
+
+const ASPECT_LABEL_KEY: Record<CanvasGateAspectId, 'ratio16_9' | 'ratio9_16' | 'ratio1_1' | 'ratio4_3'> = {
+  '16:9': 'ratio16_9',
+  '9:16': 'ratio9_16',
+  '1:1': 'ratio1_1',
+  '4:3': 'ratio4_3',
+};
 
 function aspectToRatioKey(id: CanvasGateAspectId): 'ratio16_9' | 'ratio9_16' | 'ratio1_1' | 'ratio4_3' {
   if (id === '16:9') return 'ratio16_9';
@@ -164,7 +171,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                   const active = pending === id;
                   const labelKey = ASPECT_LABEL_KEY[id];
                   const hint = t(`hints.${labelKey}`);
-                  const label = tAspect(labelKey);
+                  const label = ta(labelKey);
                   return (
                     <button
                       key={id}
