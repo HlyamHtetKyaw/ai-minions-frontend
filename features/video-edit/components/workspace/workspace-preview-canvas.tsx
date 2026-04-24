@@ -12,21 +12,39 @@ type WorkspacePreviewCanvasProps = {
   aspect: WorkspaceAspectId;
   /** When true, canvas size is chosen in the workspace shell first (Canva-style). */
   skipInitialCanvasSizeStep?: boolean;
+  /** True while the preview wrapper is the fullscreen element. */
+  isFullscreen?: boolean;
 };
 
 /** `ref` targets the framed preview (used for fullscreen from the timeline). */
 export const WorkspacePreviewCanvas = forwardRef<HTMLDivElement, WorkspacePreviewCanvasProps>(
-  function WorkspacePreviewCanvas({ canvasLabel, aspect, skipInitialCanvasSizeStep = false }, ref) {
-    const frameStyle = useMemo(() => getWorkspacePreviewFrameStyle(aspect), [aspect]);
+  function WorkspacePreviewCanvas(
+    { canvasLabel, aspect, skipInitialCanvasSizeStep = false, isFullscreen = false },
+    ref,
+  ) {
+    const frameStyle = useMemo(
+      () =>
+        getWorkspacePreviewFrameStyle(
+          aspect,
+          isFullscreen ? { maxHeight: 'min(92dvh, 920px)' } : undefined,
+        ),
+      [aspect, isFullscreen],
+    );
 
     return (
-      <div className="relative flex min-w-0 shrink-0 flex-col bg-zinc-950/80 p-2 sm:p-4">
+      <div
+        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
+          isFullscreen ? 'h-full w-full bg-black p-0' : 'bg-zinc-950/80 p-2 sm:p-4'
+        }`}
+      >
         <div
-          className="relative mx-auto flex w-full max-w-5xl justify-center"
+          ref={ref}
+          className={`relative mx-auto flex justify-center ${
+            isFullscreen ? 'h-full w-full max-w-none items-center' : 'w-full max-w-5xl'
+          }`}
           aria-label={canvasLabel}
         >
           <div
-            ref={ref}
             className="relative mx-auto min-h-0 overflow-hidden rounded-lg border border-white/10 bg-black ring-1 ring-white/5 transition-[width,height,aspect-ratio] duration-300 ease-out"
             style={frameStyle}
           >

@@ -1,16 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
+import { useTranslations } from 'next-intl';
 import { useEditorStore } from '@/store/editorStore';
-
-const FONT_OPTIONS = [
-  'Inter',
-  'Noto Sans Myanmar',
-  'Montserrat',
-  'Playfair Display',
-  'Roboto Mono',
-  'Oswald',
-] as const;
 
 const SWATCHES = ['#ffffff', '#000000', '#7F77DD', '#5DCAA5', '#EF9F27'] as const;
 
@@ -19,6 +11,7 @@ function clamp(n: number, min: number, max: number) {
 }
 
 export function TextProperties() {
+  const tPanel = useTranslations('video-edit.workspace.textPanel');
   const duration = useEditorStore((s) => s.duration);
   const selectedLayerId = useEditorStore((s) => s.selectedLayerId);
   const textLayers = useEditorStore((s) => s.textLayers);
@@ -57,6 +50,11 @@ export function TextProperties() {
 
       {layer != null && (
         <>
+          {layer.srtImportBatchId != null && layer.srtImportBatchId !== '' ? (
+            <p className="rounded-md border border-white/10 bg-zinc-900/50 px-2 py-1.5 text-[10px] leading-relaxed text-zinc-400">
+              {tPanel('srtStyleSyncHint')}
+            </p>
+          ) : null}
           <section>
             <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
               Content
@@ -71,7 +69,8 @@ export function TextProperties() {
               }}
               className="w-full resize-none rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1.5 text-sm text-zinc-100 outline-none ring-zinc-600 focus:ring-1"
               style={{
-                fontFamily: `"${layer.fontFamily}", "Noto Sans Myanmar", "Pyidaungsu", "Myanmar Text", sans-serif`,
+                fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
+                whiteSpace: 'pre-wrap',
               }}
             />
           </section>
@@ -81,19 +80,9 @@ export function TextProperties() {
               Font
             </h3>
             <div className="flex flex-col gap-2">
-              <select
-                value={layer.fontFamily}
-                onChange={(e) =>
-                  updateTextLayer(layer.id, { fontFamily: e.target.value })
-                }
-                className="w-full rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1.5 text-sm text-zinc-100 outline-none focus:ring-1 focus:ring-zinc-600"
-              >
-                {FONT_OPTIONS.map((f) => (
-                  <option key={f} value={f}>
-                    {f}
-                  </option>
-                ))}
-              </select>
+              <div className="w-full rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1.5 text-sm text-zinc-100">
+                Pyidaungsu (default)
+              </div>
               <label className="flex items-center gap-2 text-xs text-zinc-400">
                 <span className="w-16 shrink-0">Size</span>
                 <input

@@ -43,6 +43,7 @@ type ImageGalleryPanelProps = {
 export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryPanelProps) {
   const galleryImages = useEditorStore((s) => s.galleryImages);
   const addGalleryImage = useEditorStore((s) => s.addGalleryImage);
+  const setGalleryImageRemoteSrc = useEditorStore((s) => s.setGalleryImageRemoteSrc);
   const deleteGalleryImage = useEditorStore((s) => s.deleteGalleryImage);
   const addImageLayer = useEditorStore((s) => s.addImageLayer);
 
@@ -85,8 +86,11 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
       try {
         for (const file of list) {
           try {
-            await addGalleryImage(file);
-            await uploadVideoEditorFile(file);
+            const added = await addGalleryImage(file);
+            const prep = await uploadVideoEditorFile(file);
+            if (prep.storageUrl && prep.storageUrl.trim() !== '') {
+              setGalleryImageRemoteSrc(added.id, prep.storageUrl.trim());
+            }
           } catch {
             // Skip invalid images; optional: toast
           }
@@ -95,7 +99,7 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
         setBusy(false);
       }
     },
-    [addGalleryImage],
+    [addGalleryImage, setGalleryImageRemoteSrc],
   );
 
   const onDrop = useCallback(
