@@ -2,7 +2,6 @@ import { type ReactNode } from 'react';
 import {
   Captions,
   Clapperboard,
-  Crop,
   Droplets,
   Gauge,
   Image,
@@ -17,7 +16,6 @@ export type WorkspaceToolId =
   | 'text'
   | 'blur'
   | 'image'
-  | 'crop'
   | 'speed'
   | 'subs'
   | 'audio'
@@ -36,7 +34,6 @@ const ICONS: Record<WorkspaceToolId, ReactNode> = {
   text: <Type strokeWidth={1.75} />,
   blur: <Droplets strokeWidth={1.75} />,
   image: <Image strokeWidth={1.75} />,
-  crop: <Crop strokeWidth={1.75} />,
   speed: <Gauge strokeWidth={1.75} />,
   subs: <Captions strokeWidth={1.75} />,
   audio: <Music strokeWidth={1.75} />,

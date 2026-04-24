@@ -802,11 +802,25 @@ export function WorkspaceTimelineDock({
   const draggingRef = useRef(false);
   const [clipDragGuideRatios, setClipDragGuideRatios] = useState<number[] | null>(null);
 
+  const parsedSpeed = Number.parseFloat(speedValue);
+  const timelineSpeed = Number.isFinite(parsedSpeed) && parsedSpeed > 0 ? parsedSpeed : 1;
+  const rawRulerStepSec = Math.max(0.1, rulerStepSec * timelineSpeed);
+
   const ticks: number[] = [];
   const safeDuration = Math.max(durationSec, 1e-6);
-  for (let t = 0; t <= durationSec; t += rulerStepSec) {
+  for (let t = 0; t <= durationSec; t += rawRulerStepSec) {
     ticks.push(t);
   }
+  const lastTick = ticks[ticks.length - 1];
+  if (lastTick == null || Math.abs(lastTick - durationSec) > 1e-6) {
+    ticks.push(durationSec);
+  }
+
+  const formatRulerTick = (rawSeconds: number) => {
+    const sec = Math.max(0, rawSeconds / timelineSpeed);
+    const rounded = Math.round(sec * 10) / 10;
+    return Number.isInteger(rounded) ? `${rounded}s` : `${rounded.toFixed(1)}s`;
+  };
 
   const seekFromClientX = useCallback(
     (clientX: number) => {
@@ -848,7 +862,7 @@ export function WorkspaceTimelineDock({
   const transportDisabled = phase !== 'ready';
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border-t border-white/10 bg-black/90">
+    <div className="flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-t border-white/10 bg-black/90">
       <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/5 px-2 py-2 sm:gap-3 sm:px-3">
         <div
           className={`flex items-center gap-1 ${transportDisabled ? 'pointer-events-none opacity-40' : ''}`}
@@ -994,7 +1008,7 @@ export function WorkspaceTimelineDock({
 
       {phase === 'ready' && (
         <WorkspaceTimelineDragGuideContext.Provider value={setClipDragGuideRatios}>
-          <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto">
+          <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-zinc-950">
             <div
               ref={timelineRef}
               className="relative flex min-w-[720px] flex-col bg-black/25"
@@ -1010,7 +1024,7 @@ export function WorkspaceTimelineDock({
                     className="pointer-events-none absolute top-1 font-mono text-[10px] text-muted"
                     style={{ left: `${(t / safeDuration) * 100}%`, transform: 'translateX(-50%)' }}
                   >
-                    {t}s
+                    {formatRulerTick(t)}
                   </span>
                 ))}
               </div>

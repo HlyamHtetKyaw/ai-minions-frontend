@@ -530,6 +530,9 @@
       "timeIn": "in",
       "timeOut": "out",
       "deleteLayer": "Delete layer",
+      "textPanel": {
+        "srtStyleSyncHint": "Imported .srt captions: font, color, opacity, size, and position apply to every cue from the same import. Edit wording and timing per line below."
+      },
       "subs": {
         "uploadTitle": "Upload .srt file",
         "uploadHint": "Imported captions will be converted to text layers which you can edit freely.",
@@ -542,6 +545,8 @@
       "timeline": {
         "emptyUpload": "Upload a video to see the timeline.",
         "preparing": "Preparing timeline…",
+        "resizeHandleAria": "Resize timeline panel",
+        "resizeHandleTitle": "Drag up or down to resize the timeline",
         "tracks": {
           "video": "video",
           "text": "text",

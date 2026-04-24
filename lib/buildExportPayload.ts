@@ -29,14 +29,15 @@ export function resolveExportVideoUrl(videoSrc: string | null | undefined): stri
  *   [base][imgN]overlay=X:Y:enable='between(t,startTime,endTime)'[base]
  */
 export function buildExportPayload(state: EditorState) {
+  /** Prefer measured video frame; fall back to layout canvas so export scale is not stuck at 1 when frame is 0. */
+  const frameW =
+    state.canvasFrameWidth > 0 ? state.canvasFrameWidth : Math.max(1, state.canvasSize.width || 1);
+  const frameH =
+    state.canvasFrameHeight > 0 ? state.canvasFrameHeight : Math.max(1, state.canvasSize.height || 1);
   const scaleX =
-    state.canvasFrameWidth > 0 && state.videoNaturalWidth > 0
-      ? state.videoNaturalWidth / state.canvasFrameWidth
-      : 1;
+    frameW > 0 && state.videoNaturalWidth > 0 ? state.videoNaturalWidth / frameW : 1;
   const scaleY =
-    state.canvasFrameHeight > 0 && state.videoNaturalHeight > 0
-      ? state.videoNaturalHeight / state.canvasFrameHeight
-      : 1;
+    frameH > 0 && state.videoNaturalHeight > 0 ? state.videoNaturalHeight / frameH : 1;
 
   /*
    * FFmpeg translation (illustrative; input indices depend on your filter graph):
@@ -105,20 +106,29 @@ export function buildExportPayload(state: EditorState) {
       startTime: l.startTime,
       endTime: l.endTime,
     })),
-    imageLayers: state.imageLayers.map((l) => ({
-      id: l.id,
-      src: l.src,
-      x: l.x,
-      y: l.y,
-      width: l.width,
-      height: l.height,
-      opacity: l.opacity / 100,
-      rotation: l.rotation,
-      flipX: l.flipX,
-      flipY: l.flipY,
-      startTime: l.startTime,
-      endTime: l.endTime,
-    })),
+    imageLayers: state.imageLayers.map((l) => {
+      let src = l.src;
+      if (typeof src === 'string' && src.startsWith('blob:')) {
+        const g = state.galleryImages.find((x) => x.id === l.galleryImageId);
+        if (g != null && typeof g.src === 'string' && !g.src.startsWith('blob:')) {
+          src = g.src;
+        }
+      }
+      return {
+        id: l.id,
+        src,
+        x: l.x,
+        y: l.y,
+        width: l.width,
+        height: l.height,
+        opacity: l.opacity / 100,
+        rotation: l.rotation,
+        flipX: l.flipX,
+        flipY: l.flipY,
+        startTime: l.startTime,
+        endTime: l.endTime,
+      };
+    }),
     audioTracks: state.audioTracks.map((t) => ({
       id: t.id,
       type: t.type,
@@ -144,8 +154,8 @@ export function buildExportPayload(state: EditorState) {
     /** Multiply display-space crop/layer pixels by these to get natural video pixels for FFmpeg. */
     displayToNaturalScale: { x: scaleX, y: scaleY },
     canvasFrame: {
-      width: state.canvasFrameWidth,
-      height: state.canvasFrameHeight,
+      width: frameW,
+      height: frameH,
     },
     naturalVideo: {
       width: state.videoNaturalWidth,
