@@ -1,14 +1,11 @@
 import {
   WorkspacePanelNumberField,
-  WorkspacePanelSelect,
   WorkspacePanelSlider,
 } from './ui';
 
 type WorkspacePropertiesPanelProps = {
   titleLabel: string;
   fontLabel: string;
-  fontValue: string;
-  onFontChange: (v: string) => void;
   positionSectionLabel: string;
   x: string;
   y: string;
@@ -33,8 +30,6 @@ const SWATCHES = ['#fafafa', '#c4b5fd', '#86efac', '#fdba74', '#fef08a'] as cons
 export function WorkspacePropertiesPanel({
   titleLabel,
   fontLabel,
-  fontValue,
-  onFontChange,
   positionSectionLabel,
   x,
   y,
@@ -58,16 +53,12 @@ export function WorkspacePropertiesPanel({
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">{titleLabel}</h2>
 
-        <WorkspacePanelSelect
-          id="workspace-font"
-          label={fontLabel}
-          value={fontValue}
-          onChange={(e) => onFontChange(e.target.value)}
-        >
-          <option value="inter">Inter</option>
-          <option value="system">System UI</option>
-          <option value="mono">Geist Mono</option>
-        </WorkspacePanelSelect>
+        <div>
+          <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">{fontLabel}</p>
+          <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-foreground">
+            Pyidaungsu (default)
+          </div>
+        </div>
 
         <div className="flex gap-2">
           {SWATCHES.map((c) => (

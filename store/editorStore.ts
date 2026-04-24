@@ -16,6 +16,8 @@ export type TextLayer = {
   opacity: number;
   startTime: number;
   endTime: number;
+  /** Shared by all cues from one SRT import; used to sync layout/style across captions. */
+  srtImportBatchId?: string;
 };
 
 export type BlurLayer = {
@@ -279,6 +281,8 @@ export type EditorState = {
   updateBlurLayer: (id: string, patch: Partial<BlurLayer>) => void;
   deleteBlurLayer: (id: string) => void;
   addGalleryImage: (file: File) => Promise<GalleryImage>;
+  /** Replace a gallery item’s `blob:` preview URL with an HTTPS URL after workspace upload (required for export). */
+  setGalleryImageRemoteSrc: (galleryImageId: string, storageUrl: string) => void;
   deleteGalleryImage: (id: string) => void;
   addImageLayer: (galleryImage: GalleryImage) => void;
   updateImageLayer: (id: string, patch: Partial<ImageLayer>) => void;
@@ -553,13 +557,61 @@ export const useEditorStore = create<EditorState>((set) => ({
       canvasSize: { width: Math.max(0, w), height: Math.max(0, h) },
     }),
   setCanvasSize: (size) =>
-    set({
-      canvasFrameWidth: Math.max(0, size.width),
-      canvasFrameHeight: Math.max(0, size.height),
-      canvasSize: {
-        width: Math.max(0, size.width),
-        height: Math.max(0, size.height),
-      },
+    set((state) => {
+      const nextW = Math.max(0, size.width);
+      const nextH = Math.max(0, size.height);
+      const prevW = Math.max(0, state.canvasFrameWidth);
+      const prevH = Math.max(0, state.canvasFrameHeight);
+      const changed = Math.abs(nextW - prevW) > 0.5 || Math.abs(nextH - prevH) > 0.5;
+      if (!changed) {
+        return {
+          canvasFrameWidth: nextW,
+          canvasFrameHeight: nextH,
+          canvasSize: { width: nextW, height: nextH },
+        };
+      }
+
+      // Keep layer placement stable when the preview frame resizes (e.g. fullscreen / responsive).
+      if (prevW <= 1 || prevH <= 1 || nextW <= 1 || nextH <= 1) {
+        return {
+          canvasFrameWidth: nextW,
+          canvasFrameHeight: nextH,
+          canvasSize: { width: nextW, height: nextH },
+        };
+      }
+      const sx = nextW / prevW;
+      const sy = nextH / prevH;
+      /** Isotropic scale when sx≠sy: keeps text font and image/blur boxes from stretching (e.g. fullscreen). */
+      const sIso = Math.sqrt(sx * sy);
+      const scaleRect = <T extends { x: number; y: number; width: number; height: number }>(layer: T): T => ({
+        ...layer,
+        x: layer.x * sx,
+        y: layer.y * sy,
+        width: layer.width * sx,
+        height: layer.height * sy,
+      });
+      const scaleRectIso = <T extends { x: number; y: number; width: number; height: number }>(layer: T): T => ({
+        ...layer,
+        x: layer.x * sIso,
+        y: layer.y * sIso,
+        width: layer.width * sIso,
+        height: layer.height * sIso,
+      });
+      const clampFont = (n: number) => Math.min(200, Math.max(8, Math.round(n)));
+      return {
+        canvasFrameWidth: nextW,
+        canvasFrameHeight: nextH,
+        canvasSize: { width: nextW, height: nextH },
+        textLayers: state.textLayers.map((l) => {
+          const scaled = scaleRect(l);
+          return {
+            ...scaled,
+            fontSize: clampFont(scaled.fontSize * sIso),
+          };
+        }),
+        blurLayers: state.blurLayers.map((l) => scaleRectIso(l)),
+        imageLayers: state.imageLayers.map((l) => scaleRectIso(l)),
+      };
     }),
   setVideoNaturalSize: (w, h) =>
     set({
@@ -701,7 +753,7 @@ export const useEditorStore = create<EditorState>((set) => ({
         width: 200,
         height: 60,
         fontSize: 24,
-        fontFamily: 'Inter',
+        fontFamily: 'Pyidaungsu',
         color: '#ffffff',
         opacity: 100,
         startTime,
@@ -716,6 +768,15 @@ export const useEditorStore = create<EditorState>((set) => ({
     set((state) => {
       if (cues.length === 0) return {};
       const d = state.duration;
+      const cw =
+        state.canvasFrameWidth > 0 ? state.canvasFrameWidth : Math.max(1, state.canvasSize.width);
+      const ch =
+        state.canvasFrameHeight > 0 ? state.canvasFrameHeight : Math.max(1, state.canvasSize.height);
+      const boxW = cw > 48 ? Math.min(cw - 16, Math.max(280, cw * 0.92)) : 280;
+      const boxH = Math.min(160, Math.max(72, Math.round(ch * 0.14)));
+      const x = Math.max(8, Math.round((cw - boxW) / 2));
+      const y = Math.max(8, Math.round(ch - boxH - Math.max(12, ch * 0.03)));
+      const srtImportBatchId = nanoid();
       const newLayers: TextLayer[] = cues.map((cue) => {
         let startTime = Math.max(0, cue.startTime);
         let endTime = Math.max(startTime + MIN_VIDEO_CLIP_SEC, cue.endTime);
@@ -729,16 +790,17 @@ export const useEditorStore = create<EditorState>((set) => ({
           id: nanoid(),
           type: 'text' as const,
           content,
-          x: 100,
-          y: 100,
-          width: 200,
-          height: 60,
-          fontSize: 24,
-          fontFamily: 'Inter',
+          x,
+          y,
+          width: boxW,
+          height: boxH,
+          fontSize: 20,
+          fontFamily: 'Pyidaungsu',
           color: '#ffffff',
           opacity: 100,
           startTime,
           endTime,
+          srtImportBatchId,
         };
       });
       const lastId = newLayers[newLayers.length - 1]!.id;
@@ -748,11 +810,39 @@ export const useEditorStore = create<EditorState>((set) => ({
       };
     }),
   updateTextLayer: (id, patch) =>
-    set((state) => ({
-      textLayers: state.textLayers.map((l) =>
-        l.id === id ? { ...l, ...patch } : l,
-      ),
-    })),
+    set((state) => {
+      const target = state.textLayers.find((l) => l.id === id);
+      const batchId = target?.srtImportBatchId;
+      const bulkKeys: (keyof TextLayer)[] = [
+        'x',
+        'y',
+        'width',
+        'height',
+        'fontSize',
+        'fontFamily',
+        'color',
+        'opacity',
+      ];
+      const patchBulk: Partial<TextLayer> = {};
+      for (const k of bulkKeys) {
+        if (k in patch && patch[k] !== undefined) {
+          (patchBulk as Record<string, unknown>)[k] = patch[k] as unknown;
+        }
+      }
+      const propagateBulk = Boolean(batchId) && Object.keys(patchBulk).length > 0;
+
+      return {
+        textLayers: state.textLayers.map((l) => {
+          if (l.id === id) {
+            return { ...l, ...patch };
+          }
+          if (propagateBulk && l.srtImportBatchId === batchId) {
+            return { ...l, ...patchBulk };
+          }
+          return l;
+        }),
+      };
+    }),
   deleteTextLayer: (id) =>
     set((state) => ({
       textLayers: state.textLayers.filter((l) => l.id !== id),
@@ -819,6 +909,21 @@ export const useEditorStore = create<EditorState>((set) => ({
       throw new Error('Could not read image dimensions');
     }
   },
+  setGalleryImageRemoteSrc: (galleryImageId, storageUrl) =>
+    set((state) => {
+      const prev = state.galleryImages.find((g) => g.id === galleryImageId);
+      if (prev != null && prev.src.startsWith('blob:') && prev.src !== storageUrl) {
+        URL.revokeObjectURL(prev.src);
+      }
+      return {
+        galleryImages: state.galleryImages.map((g) =>
+          g.id === galleryImageId ? { ...g, src: storageUrl } : g,
+        ),
+        imageLayers: state.imageLayers.map((l) =>
+          l.galleryImageId === galleryImageId ? { ...l, src: storageUrl } : l,
+        ),
+      };
+    }),
   deleteGalleryImage: (id) =>
     set((state) => {
       const image = state.galleryImages.find((g) => g.id === id);

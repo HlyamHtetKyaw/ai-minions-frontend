@@ -1,10 +1,9 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { useTranslations } from 'next-intl';
 import { AudioProperties } from '@/components/editor/panels/AudioProperties';
 import { BlurProperties } from '@/components/editor/panels/BlurProperties';
-import { CropProperties } from '@/components/editor/panels/CropProperties';
 import { SpeedProperties } from '@/components/editor/panels/SpeedProperties';
 import { TextProperties } from '@/components/editor/panels/TextProperties';
 import { ImageGalleryPanel } from '@/components/editor/panels/ImageGalleryPanel';
@@ -42,6 +41,22 @@ import { WorkspaceSubsPanel } from './workspace-subs-panel';
 import { WorkspaceTimelineDock, type WorkspaceTimelinePhase } from './workspace-timeline-dock';
 import { WorkspaceToolRail, type WorkspaceToolId } from './workspace-tool-rail';
 import { WorkspaceTopBar, type WorkspaceAspectId } from './workspace-top-bar';
+
+const TIMELINE_DOCK_HEIGHT_STORAGE_KEY = 'ai-minions.video-workspace.timelineDockHeightPx';
+const TIMELINE_DOCK_HEIGHT_DEFAULT = 268;
+const TIMELINE_DOCK_MIN_PX = 140;
+
+function readStoredTimelineDockHeightPx(): number {
+  if (typeof window === 'undefined') return TIMELINE_DOCK_HEIGHT_DEFAULT;
+  try {
+    const raw = localStorage.getItem(TIMELINE_DOCK_HEIGHT_STORAGE_KEY);
+    const n = raw != null ? Number.parseInt(raw, 10) : NaN;
+    if (Number.isFinite(n) && n >= TIMELINE_DOCK_MIN_PX && n <= 900) return n;
+  } catch {
+    /* ignore */
+  }
+  return TIMELINE_DOCK_HEIGHT_DEFAULT;
+}
 
 type WorkspaceHistorySnapshot = {
   videoSrc: string | null;
@@ -286,7 +301,6 @@ const STORE_TOOL_BY_WORKSPACE: Record<WorkspaceToolId, EditorTool> = {
   text: 'text',
   blur: 'blur',
   image: 'image',
-  crop: 'crop',
   speed: 'speed',
   subs: 'pointer',
   audio: 'audio',
@@ -356,7 +370,6 @@ export function VideoWorkspaceShell() {
   }, [setVideoSrc]);
 
   const [activeTool, setActiveTool] = useState<WorkspaceToolId>('media');
-  const [font, setFont] = useState('inter');
   const [pos, setPos] = useState({ x: '810', y: '390', w: '300', h: '60' });
   const [opacity, setOpacity] = useState(100);
   const [timing, setTiming] = useState({ in: '0.0', out: '10.0' });
@@ -381,6 +394,69 @@ export function VideoWorkspaceShell() {
   const pendingWorkspaceJsonRef = useRef<string | null>(null);
   const lastSyncedWorkspaceJsonRef = useRef<string>('');
   const workspaceSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const centerColumnRef = useRef<HTMLDivElement>(null);
+  const [timelineDockHeightPx, setTimelineDockHeightPx] = useState(readStoredTimelineDockHeightPx);
+  const timelineDockHeightPxRef = useRef(timelineDockHeightPx);
+  timelineDockHeightPxRef.current = timelineDockHeightPx;
+
+  const onTimelineDockResizeStart = useCallback((e: ReactMouseEvent) => {
+    e.preventDefault();
+    const startY = e.clientY;
+    const startH = timelineDockHeightPxRef.current;
+    const getBounds = () => {
+      const col = centerColumnRef.current;
+      if (!col) {
+        return { min: TIMELINE_DOCK_MIN_PX, max: 560 };
+      }
+      const ch = col.clientHeight;
+      const max = Math.max(TIMELINE_DOCK_MIN_PX + 80, Math.floor(ch * 0.82));
+      const min = TIMELINE_DOCK_MIN_PX;
+      return { min, max: Math.max(min + 40, max) };
+    };
+    const onMove = (ev: MouseEvent) => {
+      const { min, max } = getBounds();
+      const delta = startY - ev.clientY;
+      const next = Math.min(max, Math.max(min, startH + delta));
+      timelineDockHeightPxRef.current = next;
+      setTimelineDockHeightPx(next);
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      try {
+        localStorage.setItem(TIMELINE_DOCK_HEIGHT_STORAGE_KEY, String(timelineDockHeightPxRef.current));
+      } catch {
+        /* ignore quota / private mode */
+      }
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, []);
+
+  useEffect(() => {
+    const clampToColumn = () => {
+      const col = centerColumnRef.current;
+      if (!col) return;
+      const max = Math.max(TIMELINE_DOCK_MIN_PX + 80, Math.floor(col.clientHeight * 0.82));
+      setTimelineDockHeightPx((h) => {
+        const next = Math.min(Math.max(TIMELINE_DOCK_MIN_PX, h), max);
+        if (next !== h) {
+          try {
+            localStorage.setItem(TIMELINE_DOCK_HEIGHT_STORAGE_KEY, String(next));
+          } catch {
+            /* ignore */
+          }
+        }
+        return next;
+      });
+    };
+    window.addEventListener('resize', clampToColumn);
+    const raf = requestAnimationFrame(() => clampToColumn());
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener('resize', clampToColumn);
+    };
+  }, []);
 
   useEffect(() => {
     const initial = createWorkspaceHistorySnapshot(useEditorStore.getState());
@@ -821,7 +897,6 @@ export function VideoWorkspaceShell() {
         { id: 'text' as const, label: t('tools.text') },
         { id: 'blur' as const, label: t('tools.blur') },
         { id: 'image' as const, label: t('tools.image') },
-        { id: 'crop' as const, label: t('tools.crop') },
         { id: 'speed' as const, label: t('tools.speed') },
         { id: 'subs' as const, label: t('tools.subs') },
         { id: 'trim' as const, label: t('tools.trim') },
@@ -948,19 +1023,16 @@ export function VideoWorkspaceShell() {
     activeTool === 'text' ||
     activeTool === 'blur' ||
     activeTool === 'image' ||
-    activeTool === 'crop' ||
     activeTool === 'speed' ||
     activeTool === 'subs' ||
     activeTool === 'audio' ||
     selectedSegmentId != null ||
     (selectedLayerId != null && !selectedIsVideoTimelineClip);
 
-  const panelMode: 'segment' | 'crop' | 'speed' | 'subs' | 'audio' | 'blur' | 'image' | 'text' | null =
+  const panelMode: 'segment' | 'speed' | 'subs' | 'audio' | 'blur' | 'image' | 'text' | null =
     selectedSegmentId != null
       ? 'segment'
-      : activeTool === 'crop'
-        ? 'crop'
-        : activeTool === 'speed'
+      : activeTool === 'speed'
           ? 'speed'
           : activeTool === 'subs'
             ? 'subs'
@@ -981,7 +1053,7 @@ export function VideoWorkspaceShell() {
                           : null;
 
   const onExportClick = useCallback(async () => {
-    const state = useEditorStore.getState();
+    let state = useEditorStore.getState();
     if (resolveExportVideoUrl(state.videoSrc) == null) {
       setWorkspaceSyncStatus(
         state.videoSrc?.startsWith('blob:')
@@ -990,6 +1062,12 @@ export function VideoWorkspaceShell() {
       );
       return;
     }
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => resolve());
+      });
+    });
+    state = useEditorStore.getState();
     // Export must respect the top-bar aspect choice even if crop panel/workspace hydration
     // left `cropSettings.easyAspect` out of sync with the selected orientation.
     const payload = buildExportPayload({
@@ -1110,7 +1188,7 @@ export function VideoWorkspaceShell() {
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
         <WorkspaceToolRail tools={tools} activeTool={activeTool} onToolChange={handleToolChange} />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <div ref={centerColumnRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <input
             ref={musicInputRef}
             type="file"
@@ -1127,13 +1205,33 @@ export function VideoWorkspaceShell() {
             aria-hidden
             onChange={onVoiceFile}
           />
-          <WorkspacePreviewCanvas
-            ref={previewFrameRef}
-            canvasLabel={t('canvasAria')}
-            aspect={aspect}
-            skipInitialCanvasSizeStep
-          />
-          <WorkspaceTimelineDock
+          <div className="min-h-0 flex-1 overflow-hidden">
+            <WorkspacePreviewCanvas
+              ref={previewFrameRef}
+              canvasLabel={t('canvasAria')}
+              aspect={aspect}
+              skipInitialCanvasSizeStep
+              isFullscreen={previewFullscreen}
+            />
+          </div>
+          <div
+            role="separator"
+            aria-orientation="horizontal"
+            aria-label={t('timeline.resizeHandleAria')}
+            title={t('timeline.resizeHandleTitle')}
+            onMouseDown={onTimelineDockResizeStart}
+            className="group relative z-10 flex h-2 shrink-0 cursor-row-resize items-center justify-center border-y border-transparent bg-transparent hover:border-white/10 hover:bg-white/[0.04]"
+          >
+            <span
+              className="h-1 w-12 rounded-full bg-white/20 transition-colors group-hover:bg-violet-400/70"
+              aria-hidden
+            />
+          </div>
+          <div
+            className="flex min-h-0 shrink-0 flex-col overflow-hidden"
+            style={{ height: timelineDockHeightPx }}
+          >
+            <WorkspaceTimelineDock
             phase={timelinePhase}
             durationSec={duration}
             playheadPosition={playheadPosition}
@@ -1195,7 +1293,8 @@ export function VideoWorkspaceShell() {
             addVoiceoverLabel="Add voiceover"
             onAddMusic={() => musicInputRef.current?.click()}
             onAddVoiceover={() => voiceInputRef.current?.click()}
-          />
+            />
+          </div>
         </div>
         {activeTool !== 'media' && activeTool !== 'trim' || selectedSegmentId != null ? (
           showStoreToolPanel ? (
@@ -1204,9 +1303,7 @@ export function VideoWorkspaceShell() {
                 <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                   {panelMode === 'segment'
                     ? 'Segment audio'
-                    : panelMode === 'crop'
-                      ? t('tools.crop')
-                      : panelMode === 'speed'
+                    : panelMode === 'speed'
                         ? t('tools.speed')
                         : panelMode === 'subs'
                           ? t('tools.subs')
@@ -1222,8 +1319,6 @@ export function VideoWorkspaceShell() {
               <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
                 {panelMode === 'segment' ? (
                   <SegmentAudioPanel />
-                ) : panelMode === 'crop' ? (
-                  <CropProperties onAfterApply={() => setActiveTool('media')} />
                 ) : panelMode === 'speed' ? (
                   <SpeedProperties />
                 ) : panelMode === 'subs' ? (
@@ -1264,8 +1359,6 @@ export function VideoWorkspaceShell() {
             <WorkspacePropertiesPanel
               titleLabel={t('tabs.properties')}
               fontLabel={t('font')}
-              fontValue={font}
-              onFontChange={setFont}
               positionSectionLabel={t('position')}
               x={pos.x}
               y={pos.y}

@@ -112,14 +112,15 @@ export function TextLayer({ layer, stackIndex = 0 }: TextLayerProps) {
           className="w-full px-1 text-center"
           style={{
             fontSize: `${layer.fontSize}px`,
-            // Myanmar Unicode falls through when the chosen display font has no glyphs (matches export + Viral subtitle stack).
-            fontFamily: `"${layer.fontFamily}", "Noto Sans Myanmar", "Pyidaungsu", "Myanmar Text", sans-serif`,
+            // Keep video-editor text rendering aligned with Viral flow (Pyidaungsu-first fallback stack).
+            fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
             color: layer.color,
             opacity: layer.opacity / 100,
             userSelect: 'none',
             pointerEvents: 'none',
             lineHeight: 1.2,
             wordBreak: 'break-word',
+            whiteSpace: 'pre-wrap',
           }}
         >
           {layer.content}
