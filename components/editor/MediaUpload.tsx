@@ -2,11 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useEditorStore } from '@/store/editorStore';
-import {
-  applyVideoFileToEditor,
-  VIDEO_FILE_ACCEPT_ATTR,
-} from '@/components/editor/video-file';
-import { uploadVideoEditorFile } from '@/lib/video-editor-workspace-api';
+import { isAllowedVideoFile, VIDEO_FILE_ACCEPT_ATTR } from '@/components/editor/video-file';
+import { applyLocalVideoFileWithWorkspaceUpload } from '@/lib/workspace-video-source';
 
 function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
@@ -31,6 +28,7 @@ export function MediaUpload({ variant = 'default', fileInputId }: MediaUploadPro
   const [fileSize, setFileSize] = useState<number | null>(null);
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   const clearProgressTimer = useCallback(() => {
     if (progressTimerRef.current != null) {
@@ -41,10 +39,11 @@ export function MediaUpload({ variant = 'default', fileInputId }: MediaUploadPro
 
   const applyFile = useCallback(
     async (file: File) => {
-      if (!applyVideoFileToEditor(file, setVideoSrc)) return;
+      if (!isAllowedVideoFile(file)) return;
 
       clearProgressTimer();
       setProgress(0);
+      setUploadError(null);
       setFileName(file.name);
       setFileSize(file.size);
 
@@ -60,18 +59,13 @@ export function MediaUpload({ variant = 'default', fileInputId }: MediaUploadPro
       }, 45);
 
       try {
-        const uploaded = await uploadVideoEditorFile(file);
-        if (uploaded.storageUrl.startsWith('http://') || uploaded.storageUrl.startsWith('https://')) {
-          const current = useEditorStore.getState().videoSrc;
-          if (typeof current === 'string' && current.startsWith('blob:')) {
-            URL.revokeObjectURL(current);
-          }
-          const withWorkspaceKey = `${uploaded.storageUrl}#wk=${encodeURIComponent(uploaded.s3Key)}`;
-          useEditorStore.setState({ videoSrc: withWorkspaceKey });
-        }
+        await applyLocalVideoFileWithWorkspaceUpload(file, setVideoSrc);
         setProgress(100);
       } catch (error) {
         console.warn('[video-editor] file upload failed', error);
+        setUploadError(
+          error instanceof Error ? error.message : 'Upload failed; export needs a cloud URL. Try again.',
+        );
       } finally {
         clearProgressTimer();
       }
@@ -142,8 +136,13 @@ export function MediaUpload({ variant = 'default', fileInputId }: MediaUploadPro
             Drop a video here or click to browse
           </p>
           <p className="mt-2 text-xs text-zinc-500">
-            MP4, MOV, or WebM — local preview only (no upload yet)
+            MP4, MOV, or WebM. The file uploads so export can run on the server.
           </p>
+          {uploadError ? (
+            <p className="mt-2 max-w-md text-xs text-rose-400" role="alert">
+              {uploadError}
+            </p>
+          ) : null}
         </div>
       </button>
 

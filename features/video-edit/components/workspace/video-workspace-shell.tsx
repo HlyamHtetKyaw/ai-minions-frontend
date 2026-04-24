@@ -10,7 +10,7 @@ import { TextProperties } from '@/components/editor/panels/TextProperties';
 import { ImageGalleryPanel } from '@/components/editor/panels/ImageGalleryPanel';
 import { ImageProperties } from '@/components/editor/panels/ImageProperties';
 import { SegmentAudioPanel } from '@/components/editor/panels/SegmentAudioPanel';
-import { buildExportPayload } from '@/lib/buildExportPayload';
+import { buildExportPayload, resolveExportVideoUrl } from '@/lib/buildExportPayload';
 import { clampTimeToVideoSegments } from '@/lib/videoSegmentTime';
 import { useAudioExtractor } from '@/hooks/useAudioExtractor';
 import { useAudioPlayback } from '@/hooks/useAudioPlayback';
@@ -987,7 +987,16 @@ export function VideoWorkspaceShell() {
                           : null;
 
   const onExportClick = useCallback(async () => {
-    const payload = buildExportPayload(useEditorStore.getState());
+    const state = useEditorStore.getState();
+    if (resolveExportVideoUrl(state.videoSrc) == null) {
+      setWorkspaceSyncStatus(
+        state.videoSrc?.startsWith('blob:')
+          ? 'Wait for the video to finish uploading before exporting.'
+          : 'Add a video and ensure it is uploaded (not only a local preview) before exporting.',
+      );
+      return;
+    }
+    const payload = buildExportPayload(state);
     setWorkspaceSyncStatus('Exporting video...');
     try {
       const result = await exportVideoEditorWorkspace(payload);
@@ -1032,7 +1041,7 @@ export function VideoWorkspaceShell() {
   return (
     <div className="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded-xl border border-white/10 bg-black text-foreground">
       <WorkspaceTopBar
-        returnToDashboardLabel={t('returnToDashboard')}
+        historyLabel={t('history')}
         aspect={aspect}
         onAspectChange={onAspectChange}
         aspectOptions={aspectOptions}
@@ -1040,6 +1049,14 @@ export function VideoWorkspaceShell() {
         landscapeLabel="Landscape"
         portraitLabel="Portrait"
         exportLabel={t('exportVideo')}
+        exportDisabled={resolveExportVideoUrl(videoSrc) == null}
+        exportDisabledTitle={
+          videoSrc?.startsWith('blob:')
+            ? 'Wait for upload to finish'
+            : videoSrc == null
+              ? 'Add a video first'
+              : 'Video must be available as an HTTPS URL for export'
+        }
         resetLabel="Reset"
         onExportClick={onExportClick}
         onResetClick={() => {

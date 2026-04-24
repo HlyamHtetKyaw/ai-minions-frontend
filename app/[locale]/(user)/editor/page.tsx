@@ -16,7 +16,7 @@ import { TrimProperties } from '@/components/editor/panels/TrimProperties';
 import { useAudioExtractor } from '@/hooks/useAudioExtractor';
 import { useAudioPlayback } from '@/hooks/useAudioPlayback';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
-import { buildExportPayload } from '@/lib/buildExportPayload';
+import { buildExportPayload, resolveExportVideoUrl } from '@/lib/buildExportPayload';
 import { useEditorStore } from '@/store/editorStore';
 
 export default function EditorPage() {
@@ -101,7 +101,7 @@ export default function EditorPage() {
         <h1 className="text-sm font-semibold tracking-tight text-zinc-100">Untitled project</h1>
         <button
           type="button"
-          disabled={videoSrc == null}
+          disabled={resolveExportVideoUrl(videoSrc) == null}
           onClick={onExportVideo}
           className="rounded-lg bg-[#534AB7] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#4539a0] disabled:pointer-events-none disabled:opacity-40"
         >
