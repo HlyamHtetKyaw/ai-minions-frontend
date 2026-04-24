@@ -221,7 +221,7 @@
           }
         },
         "descriptions": {
-          "viral-shorts": "Upload long-form video and surface viral-ready moments with AI.",
+          "viral-shorts": "Transcribe long videos, translate the script, add AI voice-over and subtitles, then export synced video.",
           "video-upload": "Upload your video to begin",
           "transcribe": "Turn video/audio into text",
           "translate": "Translate captions or scripts",
@@ -267,8 +267,8 @@
     "tipHeading": "Tip",
     "steps": {
       "viral-shorts": {
-        "name": "Viral Shorts",
-        "description": "Find clips from long-form video"
+        "name": "Viral video",
+        "description": "Transcribe, translate, AI voice-over, subtitles, and export"
       },
       "video-upload": {
         "name": "Video Upload",
@@ -300,7 +300,7 @@
       }
     },
     "tips": {
-      "viral-shorts": "Use a stable master file (1080p or 4K MP4/WebM). Clear speech and visible subjects help the model pick stronger moments.",
+      "viral-shorts": "Prefer MP4 or WebM with clear speech for accurate transcription. Subtitle preview matches how text is burned into the exported file.",
       "video-upload": "Upload MP4, MOV, or AVI files. Clear audio gives the best transcription accuracy.",
       "transcribe": "AI transcription works best with clear audio and minimal background noise.",
       "transcript": "Review and correct the transcript before generating content for better results.",
@@ -364,8 +364,8 @@
       "cardLetter": "A"
     },
     "viral-shorts": {
-      "name": "Viral Shorts",
-      "description": "Turn long videos into vertical 9:16 clips with AI-picked highlights.",
+      "name": "Viral video",
+      "description": "Editor for long videos: transcribe, translate, AI narration, subtitles, sync, and export—with autosave.",
       "category": "Edit & finalize",
       "cardLetter": "S"
     }
@@ -678,19 +678,19 @@
   },
   "viralShorts": {
     "page": {
-      "title": "Viral Shorts",
-      "subtitle": "Upload long-form video up to 1 hour 30 min (e.g. podcast, event, interview). AI finds viral moments; trim, preview, download, or combine any two segments into a 9:16 vertical.",
-      "helpAria": "Help with Viral Shorts",
+      "title": "Viral video",
+      "subtitle": "Upload an MP4 or WebM video. Transcribe speech, translate your script, generate an AI voice-over, style subtitles, align audio with video, and export—your session is saved automatically as you work.",
+      "helpAria": "Help with viral video editor",
       "loadingWorkspace": "Loading your workspace…",
-      "loadingWorkspaceHint": "Checking for a saved viral video session.",
+      "loadingWorkspaceHint": "Checking for a saved editor session.",
       "preparingWorkspace": "Opening your workspace…",
       "preparingWorkspaceHint": "Saving your upload and loading the editor."
     },
     "uploadCard": {
-      "title": "Upload long-form video"
+      "title": "Upload your video"
     },
     "uploadZone": {
-      "instruction": "Click or drop a video (MP4/WebM, max 1 hour 30 min)"
+      "instruction": "Click or drop an MP4 or WebM video"
     },
     "continue": {
       "label": "Upload & continue",
@@ -701,10 +701,10 @@
       "hint": "This can take a while for long videos. Please keep this tab open until the upload completes."
     },
     "analyze": {
-      "status": "Video uploaded. Run AI to detect viral moments.",
+      "status": "Video uploaded. Continue in the editor to transcribe and add voice-over.",
       "primary": {
-        "label": "Analyze for viral clips",
-        "loading": "Analyzing…"
+        "label": "Open editor",
+        "loading": "Opening…"
       },
       "back": "Back"
     },
