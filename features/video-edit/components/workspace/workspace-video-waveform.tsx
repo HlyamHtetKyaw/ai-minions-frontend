@@ -102,6 +102,12 @@ export function WorkspaceVideoWaveform({ className }: WorkspaceVideoWaveformProp
       });
 
       ws.on('error', (err) => {
+        // Teardown / `videoSrc` changes call `destroy()`, which aborts the decode fetch — expected.
+        const name =
+          err != null && typeof err === 'object' && 'name' in err
+            ? String((err as { name: unknown }).name)
+            : '';
+        if (name === 'AbortError') return;
         console.warn('[WaveSurfer]', err);
       });
 
@@ -118,8 +124,16 @@ export function WorkspaceVideoWaveform({ className }: WorkspaceVideoWaveformProp
       cancelled = true;
       cancelAnimationFrame(frame);
       detachVideo();
-      unsubscribeStore?.();
-      ws?.destroy();
+      try {
+        unsubscribeStore?.();
+      } catch {
+        /* noop */
+      }
+      try {
+        ws?.destroy();
+      } catch {
+        /* noop */
+      }
       ws = null;
     };
   }, [videoSrc]);

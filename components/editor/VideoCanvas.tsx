@@ -27,12 +27,47 @@ import {
   sortVideoSegments,
 } from '@/lib/videoSegmentTime';
 
+type CanvasAspectId = '16:9' | '9:16' | '1:1' | '4:3';
+
+function aspectIdToRatio(aspect: CanvasAspectId): number {
+  if (aspect === '16:9') return 16 / 9;
+  if (aspect === '9:16') return 9 / 16;
+  if (aspect === '1:1') return 1;
+  return 4 / 3;
+}
+
+function ratioToAspectId(ratio: number): CanvasAspectId {
+  const options: Array<{ id: CanvasAspectId; ratio: number }> = [
+    { id: '16:9', ratio: 16 / 9 },
+    { id: '9:16', ratio: 9 / 16 },
+    { id: '1:1', ratio: 1 },
+    { id: '4:3', ratio: 4 / 3 },
+  ];
+  const nearest = options.reduce((best, item) =>
+    Math.abs(item.ratio - ratio) < Math.abs(best.ratio - ratio) ? item : best,
+  );
+  return Math.abs(nearest.ratio - ratio) <= 0.01 ? nearest.id : '16:9';
+}
+
+function aspectIdToCssRatio(aspect: CanvasAspectId): string {
+  if (aspect === '16:9') return '16 / 9';
+  if (aspect === '9:16') return '9 / 16';
+  if (aspect === '1:1') return '1 / 1';
+  return '4 / 3';
+}
+
 type VideoCanvasProps = {
   fileInputId?: string;
   objectFit?: 'contain' | 'cover';
+  /** Parent already handled “choose canvas size” (e.g. video-edit workspace shell). */
+  skipInitialCanvasSizeStep?: boolean;
 };
 
-export function VideoCanvas({ fileInputId, objectFit = 'contain' }: VideoCanvasProps = {}) {
+export function VideoCanvas({
+  fileInputId,
+  objectFit = 'contain',
+  skipInitialCanvasSizeStep = false,
+}: VideoCanvasProps = {}) {
   const videoSrc = useEditorStore((s) => s.videoSrc);
   const currentTime = useEditorStore((s) => s.currentTime);
   const textLayers = useEditorStore((s) => s.textLayers);
@@ -49,6 +84,7 @@ export function VideoCanvas({ fileInputId, objectFit = 'contain' }: VideoCanvasP
   const selectedLayerId = useEditorStore((s) => s.selectedLayerId);
   const setSelectedLayerId = useEditorStore((s) => s.setSelectedLayerId);
   const setVideoSrc = useEditorStore((s) => s.setVideoSrc);
+  const setCropSettings = useEditorStore((s) => s.setCropSettings);
   const trimStart = useEditorStore((s) => s.trimStart);
   const trimEnd = useEditorStore((s) => s.trimEnd);
   const videoTimelineSegments = useEditorStore((s) => s.videoTimelineSegments);
@@ -64,6 +100,18 @@ export function VideoCanvas({ fileInputId, objectFit = 'contain' }: VideoCanvasP
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const frameContainerRef = useRef<HTMLDivElement | null>(null);
   const [frameSize, setFrameSize] = useState({ w: 0, h: 0 });
+  const [canvasSizeChosen, setCanvasSizeChosen] = useState<boolean>(videoSrc != null);
+  const [pendingCanvasAspect, setPendingCanvasAspect] = useState<CanvasAspectId>('16:9');
+
+  useEffect(() => {
+    if (videoSrc != null) {
+      setCanvasSizeChosen(true);
+    }
+  }, [videoSrc]);
+
+  useEffect(() => {
+    setPendingCanvasAspect(ratioToAspectId(cropSettings.easyAspect));
+  }, [cropSettings.easyAspect]);
 
   const clampVideoTime = useCallback(
     (t: number) => {
@@ -269,9 +317,89 @@ export function VideoCanvas({ fileInputId, objectFit = 'contain' }: VideoCanvasP
   ]);
 
   if (videoSrc == null) {
+    if (!skipInitialCanvasSizeStep && !canvasSizeChosen) {
+      return (
+        <div className="flex h-full min-h-[280px] w-full items-center justify-center bg-[#121212] p-6">
+          <div className="flex w-full max-w-5xl items-center justify-center">
+            <div
+              className="relative w-full max-w-[min(92vw,1100px)] overflow-hidden rounded-xl border border-zinc-700/70 bg-zinc-950/75"
+              style={{ aspectRatio: aspectIdToCssRatio(pendingCanvasAspect) }}
+            >
+              <div className="absolute inset-0 flex items-center justify-center p-6">
+                <div className="w-full max-w-2xl rounded-xl border border-zinc-700/80 bg-zinc-900/90 p-6">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
+                    Start with canvas size
+                  </p>
+                  <p className="mt-2 text-sm text-zinc-300">
+                    Choose your project orientation first. You can add video after this step.
+                  </p>
+                  <div className="mt-4 flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPendingCanvasAspect('16:9')}
+                      className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        pendingCanvasAspect === '16:9' || pendingCanvasAspect === '4:3'
+                          ? 'border-violet-400/60 bg-violet-500/20 text-foreground'
+                          : 'border-white/15 bg-transparent text-zinc-300 hover:border-white/30'
+                      }`}
+                    >
+                      Landscape
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPendingCanvasAspect('9:16')}
+                      className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                        pendingCanvasAspect === '9:16'
+                          ? 'border-violet-400/60 bg-violet-500/20 text-foreground'
+                          : 'border-white/15 bg-transparent text-zinc-300 hover:border-white/30'
+                      }`}
+                    >
+                      Portrait
+                    </button>
+                  </div>
+                  <div className="mt-2 flex items-center gap-1">
+                    {(['16:9', '9:16', '1:1', '4:3'] as const).map((aspect) => (
+                      <button
+                        key={aspect}
+                        type="button"
+                        onClick={() => setPendingCanvasAspect(aspect)}
+                        className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
+                          pendingCanvasAspect === aspect
+                            ? 'border-violet-400/60 bg-violet-500/20 text-foreground'
+                            : 'border-white/15 bg-transparent text-zinc-300 hover:border-white/30'
+                        }`}
+                      >
+                        {aspect}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCropSettings({ easyAspect: aspectIdToRatio(pendingCanvasAspect) });
+                        setCanvasSizeChosen(true);
+                      }}
+                      className="rounded-md border border-white/20 px-3 py-1.5 text-xs font-medium text-foreground transition-colors hover:border-violet-400/40 hover:bg-violet-500/10"
+                    >
+                      Continue to editor
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
     return (
-      <div className="flex h-full min-h-[280px] w-full items-center justify-center bg-[#121212] p-6">
-        <MediaUpload variant="centered" fileInputId={fileInputId} />
+      <div className="flex h-full min-h-0 w-full flex-col bg-[#121212] p-3 sm:p-4">
+        <MediaUpload
+          variant="centered"
+          fileInputId={fileInputId}
+          requireAspectChoice={false}
+          defaultAspect={ratioToAspectId(cropSettings.easyAspect)}
+        />
       </div>
     );
   }
@@ -296,9 +424,12 @@ export function VideoCanvas({ fileInputId, objectFit = 'contain' }: VideoCanvasP
           onChange={(e) => {
             const file = e.target.files?.[0];
             if (file) {
-              void applyLocalVideoFileWithWorkspaceUpload(file, setVideoSrc).catch((err) => {
-                console.warn('[video-editor] video replace upload failed', err);
-              });
+              const easyAspect = useEditorStore.getState().cropSettings.easyAspect;
+              void applyLocalVideoFileWithWorkspaceUpload(file, setVideoSrc, easyAspect).catch(
+                (err) => {
+                  console.warn('[video-editor] video replace upload failed', err);
+                },
+              );
             }
             e.target.value = '';
           }}

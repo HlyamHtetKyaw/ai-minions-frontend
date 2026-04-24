@@ -1,17 +1,10 @@
 import { Redo2, Undo2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
-import { WorkspaceSegmentedToggle } from './ui';
 
 export type WorkspaceAspectId = '16:9' | '9:16' | '1:1' | '4:3';
 
 type WorkspaceTopBarProps = {
   historyLabel: string;
-  aspect: WorkspaceAspectId;
-  onAspectChange: (id: WorkspaceAspectId) => void;
-  aspectOptions: { id: WorkspaceAspectId; label: string }[];
-  aspectToggleAriaLabel: string;
-  landscapeLabel?: string;
-  portraitLabel?: string;
   exportLabel: string;
   /** When true, export is blocked (e.g. video is still a local blob: URL). */
   exportDisabled?: boolean;
@@ -28,12 +21,6 @@ type WorkspaceTopBarProps = {
 
 export function WorkspaceTopBar({
   historyLabel,
-  aspect,
-  onAspectChange,
-  aspectOptions,
-  aspectToggleAriaLabel,
-  landscapeLabel = 'Landscape',
-  portraitLabel = 'Portrait',
   exportLabel,
   exportDisabled = false,
   exportDisabledTitle,
@@ -46,9 +33,6 @@ export function WorkspaceTopBar({
   canRedo = false,
   syncStatusLabel,
 }: WorkspaceTopBarProps) {
-  const isLandscapeAspect = aspect === '16:9' || aspect === '4:3';
-  const isPortraitAspect = aspect === '9:16';
-
   return (
     <header className="flex shrink-0 flex-col gap-2 border-b border-white/10 bg-black/80 px-3 py-2 backdrop-blur-sm sm:px-4 lg:min-h-14 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
       <div className="flex min-w-0 w-full items-center lg:flex-1">
@@ -82,44 +66,10 @@ export function WorkspaceTopBar({
         </div>
       </div>
 
-      <div className="flex w-full justify-start lg:flex-1 lg:justify-center">
-        <div className="flex w-full flex-col items-start gap-1 lg:w-auto lg:items-center">
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              aria-pressed={isLandscapeAspect}
-              onClick={() => onAspectChange(isLandscapeAspect && aspect === '4:3' ? '4:3' : '16:9')}
-              className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                isLandscapeAspect
-                  ? 'border-violet-400/60 bg-violet-500/20 text-foreground'
-                  : 'border-white/15 bg-transparent text-zinc-300 hover:border-white/30'
-              }`}
-            >
-              {landscapeLabel}
-            </button>
-            <button
-              type="button"
-              aria-pressed={isPortraitAspect}
-              onClick={() => onAspectChange('9:16')}
-              className={`rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors ${
-                isPortraitAspect
-                  ? 'border-violet-400/60 bg-violet-500/20 text-foreground'
-                  : 'border-white/15 bg-transparent text-zinc-300 hover:border-white/30'
-              }`}
-            >
-              {portraitLabel}
-            </button>
-          </div>
-          <WorkspaceSegmentedToggle
-            ariaLabel={aspectToggleAriaLabel}
-            options={aspectOptions}
-            value={aspect}
-            onChange={onAspectChange}
-          />
-          {syncStatusLabel ? (
-            <p className="text-[10px] uppercase tracking-wide text-zinc-400">{syncStatusLabel}</p>
-          ) : null}
-        </div>
+      <div className="flex w-full items-center justify-start lg:flex-1 lg:justify-center">
+        {syncStatusLabel ? (
+          <p className="text-[10px] uppercase tracking-wide text-zinc-400">{syncStatusLabel}</p>
+        ) : null}
       </div>
 
       <div className="flex w-full justify-end lg:flex-1">

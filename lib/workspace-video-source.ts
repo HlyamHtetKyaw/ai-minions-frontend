@@ -12,15 +12,23 @@ export function isHttpWorkspaceReadUrl(url: string): boolean {
  * Loads a local file for immediate preview (blob), uploads to workspace storage, then sets
  * `videoSrc` to the cloud read URL + `#wk=` key. Use for every path that imports a main video
  * (dropzone and "replace video" file input), otherwise export stays disabled on `blob:` URLs.
+ *
+ * `setVideoSrc` resets `cropSettings` to defaults (16:9). Pass `easyAspectToKeep` so the chosen
+ * canvas ratio (e.g. 9:16) survives upload and the preview frame stays correct.
  */
 export async function applyLocalVideoFileWithWorkspaceUpload(
   file: File,
   setVideoSrc: EditorState['setVideoSrc'],
+  easyAspectToKeep?: number,
 ): Promise<void> {
   if (!isAllowedVideoFile(file)) {
     return;
   }
+  const restoreEasyAspect =
+    easyAspectToKeep ?? useEditorStore.getState().cropSettings.easyAspect;
   applyVideoFileToEditor(file, setVideoSrc);
+  // `setVideoSrc` resets crop to 16:9; restore before/after upload so the preview frame never flips.
+  useEditorStore.getState().setCropSettings({ easyAspect: restoreEasyAspect });
   const uploaded = await uploadVideoEditorFile(file);
   if (!isHttpWorkspaceReadUrl(uploaded.storageUrl)) {
     return;
