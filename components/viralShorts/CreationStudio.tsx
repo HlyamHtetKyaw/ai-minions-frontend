@@ -148,6 +148,8 @@ type Props = {
   initialSubtitlesSrtText?: string;
   initialSubtitlesPosition?: { x: number; y: number };
   initialSubtitlesFontSize?: number;
+  initialSubtitlesBackgroundBlur?: number;
+  initialSubtitlesBackgroundOpacity?: number;
   initialTranscriptText?: string;
   initialTranslatedText?: string;
   initialTone?: TranslateTone;
@@ -184,6 +186,8 @@ type Props = {
   onSubtitlesSrtTextChange?: (text: string) => void;
   onSubtitlesPositionChange?: (pos: { x: number; y: number }) => void;
   onSubtitlesFontSizeChange?: (size: number) => void;
+  onSubtitlesBackgroundBlurChange?: (blur: number) => void;
+  onSubtitlesBackgroundOpacityChange?: (opacity: number) => void;
   onDiscardWorkspace?: () => void;
 };
 
@@ -199,6 +203,8 @@ export default function CreationStudio({
   initialSubtitlesSrtText,
   initialSubtitlesPosition,
   initialSubtitlesFontSize,
+  initialSubtitlesBackgroundBlur,
+  initialSubtitlesBackgroundOpacity,
   initialTranscriptText,
   initialTranslatedText,
   initialTone,
@@ -234,6 +240,8 @@ export default function CreationStudio({
   onSubtitlesSrtTextChange,
   onSubtitlesPositionChange,
   onSubtitlesFontSizeChange,
+  onSubtitlesBackgroundBlurChange,
+  onSubtitlesBackgroundOpacityChange,
   onDiscardWorkspace,
 }: Props) {
   const tVo = useTranslations('voice-over');
@@ -320,6 +328,20 @@ export default function CreationStudio({
   const [subtitlesFontSize, setSubtitlesFontSize] = useState(() => {
     const n = typeof initialSubtitlesFontSize === 'number' && Number.isFinite(initialSubtitlesFontSize) ? initialSubtitlesFontSize : 22;
     return Math.max(14, Math.min(60, Math.round(n)));
+  });
+  const [subtitlesBackgroundBlur, setSubtitlesBackgroundBlur] = useState(() => {
+    const n =
+      typeof initialSubtitlesBackgroundBlur === 'number' && Number.isFinite(initialSubtitlesBackgroundBlur)
+        ? initialSubtitlesBackgroundBlur
+        : 8;
+    return Math.max(0, Math.min(24, Math.round(n)));
+  });
+  const [subtitlesBackgroundOpacity, setSubtitlesBackgroundOpacity] = useState(() => {
+    const n =
+      typeof initialSubtitlesBackgroundOpacity === 'number' && Number.isFinite(initialSubtitlesBackgroundOpacity)
+        ? initialSubtitlesBackgroundOpacity
+        : 65;
+    return Math.max(0, Math.min(100, Math.round(n)));
   });
   const subtitleDragRef = useRef<{ active: boolean; startX: number; startY: number; baseX: number; baseY: number } | null>(
     null,
@@ -686,6 +708,14 @@ export default function CreationStudio({
   useEffect(() => {
     onSubtitlesFontSizeChange?.(subtitlesFontSize);
   }, [onSubtitlesFontSizeChange, subtitlesFontSize]);
+
+  useEffect(() => {
+    onSubtitlesBackgroundBlurChange?.(subtitlesBackgroundBlur);
+  }, [onSubtitlesBackgroundBlurChange, subtitlesBackgroundBlur]);
+
+  useEffect(() => {
+    onSubtitlesBackgroundOpacityChange?.(subtitlesBackgroundOpacity);
+  }, [onSubtitlesBackgroundOpacityChange, subtitlesBackgroundOpacity]);
 
   useEffect(() => {
     const v = videoRef.current;
@@ -1522,6 +1552,8 @@ export default function CreationStudio({
         subtitlesSrtText: subtitlesSrtText,
         subtitlesPosition: subtitlesPosition,
         subtitlesFontSize: subtitlesFontSize,
+        subtitlesBackgroundBlur: subtitlesBackgroundBlur,
+        subtitlesBackgroundOpacity: subtitlesBackgroundOpacity,
       };
       const res = await videoEditorExportWorkspace(payload);
       setExportedVideoUrl(res.readUrl);
@@ -1766,6 +1798,46 @@ export default function CreationStudio({
                             </option>
                           ))}
                         </select>
+                        <span
+                          className="inline-flex min-w-[68px] items-center justify-center rounded border border-card-border bg-black/70 px-1.5 py-0.5 text-center font-semibold text-white"
+                          style={{ fontSize: `${subtitlesFontSize}px`, lineHeight: 1.05 }}
+                        >
+                          Aa
+                        </span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Blur</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={24}
+                          step={1}
+                          value={subtitlesBackgroundBlur}
+                          onChange={(e) => {
+                            const n = Math.max(0, Math.min(24, Number(e.target.value) || 0));
+                            setSubtitlesBackgroundBlur(Number.isFinite(n) ? n : 0);
+                          }}
+                          className="h-6 w-20 accent-[#7c5cff]"
+                          aria-label="Subtitle background blur"
+                        />
+                        <span className="w-8 text-right tabular-nums">{subtitlesBackgroundBlur}</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <span className="whitespace-nowrap">Opacity</span>
+                        <input
+                          type="range"
+                          min={0}
+                          max={100}
+                          step={1}
+                          value={subtitlesBackgroundOpacity}
+                          onChange={(e) => {
+                            const n = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                            setSubtitlesBackgroundOpacity(Number.isFinite(n) ? n : 0);
+                          }}
+                          className="h-6 w-20 accent-[#7c5cff]"
+                          aria-label="Subtitle background opacity"
+                        />
+                        <span className="w-10 text-right tabular-nums">{subtitlesBackgroundOpacity}%</span>
                       </label>
                     </div>
                   </div>
@@ -2533,7 +2605,15 @@ export default function CreationStudio({
                     subtitleDragRef.current.active = false;
                   }}
                 >
-                  <div className="max-w-[92%] rounded-lg bg-black/65 px-3 py-2 text-center text-sm font-semibold text-white">
+                  <div
+                    className="max-w-[92%] rounded-lg px-3 py-2 text-center font-semibold text-white"
+                    style={{
+                      fontSize: `${subtitlesFontSize}px`,
+                      lineHeight: 1.25,
+                      backgroundColor: `rgba(0, 0, 0, ${subtitlesBackgroundOpacity / 100})`,
+                      backdropFilter: `blur(${subtitlesBackgroundBlur}px)`,
+                    }}
+                  >
                     {activeSubtitleText}
                   </div>
                   {subtitlesEditPosition ? (
