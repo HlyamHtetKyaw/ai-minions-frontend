@@ -47,6 +47,8 @@ export default function ViralShortsPage() {
   const [subtitlesSrtText, setSubtitlesSrtText] = useState('');
   const [subtitlesPosition, setSubtitlesPosition] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.88 });
   const [subtitlesFontSize, setSubtitlesFontSize] = useState(22);
+  const [subtitlesBackgroundBlur, setSubtitlesBackgroundBlur] = useState(8);
+  const [subtitlesBackgroundOpacity, setSubtitlesBackgroundOpacity] = useState(65);
   const [error, setError] = useState<string | null>(null);
   const saveTimerRef = useRef<number | null>(null);
   const canContinue = useMemo(() => Boolean(file) && step !== 'uploading', [file, step]);
@@ -92,6 +94,8 @@ export default function ViralShortsPage() {
           subtitlesSrtText?: string | null;
           subtitlesPosition?: { x?: number | null; y?: number | null } | null;
           subtitlesFontSize?: number | null;
+          subtitlesBackgroundBlur?: number | null;
+          subtitlesBackgroundOpacity?: number | null;
           transcript?: string | null; // legacy
           scriptText?: string | null; // legacy
         };
@@ -160,6 +164,16 @@ export default function ViralShortsPage() {
           typeof parsed.subtitlesFontSize === 'number' && Number.isFinite(parsed.subtitlesFontSize)
             ? Math.max(14, Math.min(60, Math.round(parsed.subtitlesFontSize)))
             : 22,
+        );
+        setSubtitlesBackgroundBlur(
+          typeof parsed.subtitlesBackgroundBlur === 'number' && Number.isFinite(parsed.subtitlesBackgroundBlur)
+            ? Math.max(0, Math.min(24, Math.round(parsed.subtitlesBackgroundBlur)))
+            : 8,
+        );
+        setSubtitlesBackgroundOpacity(
+          typeof parsed.subtitlesBackgroundOpacity === 'number' && Number.isFinite(parsed.subtitlesBackgroundOpacity)
+            ? Math.max(0, Math.min(100, Math.round(parsed.subtitlesBackgroundOpacity)))
+            : 65,
         );
           const t = (typeof parsed.tone === 'string' ? parsed.tone : '').toLowerCase();
           if (t === 'formal' || t === 'informal' || t === 'narrative') {
@@ -235,6 +249,8 @@ export default function ViralShortsPage() {
           subtitlesSrtText: '',
           subtitlesPosition: { x: 0.5, y: 0.88 },
           subtitlesFontSize: 22,
+          subtitlesBackgroundBlur: 8,
+          subtitlesBackgroundOpacity: 65,
           step: 'studio',
         }),
       );
@@ -278,6 +294,8 @@ export default function ViralShortsPage() {
           subtitlesSrtText,
           subtitlesPosition,
           subtitlesFontSize,
+          subtitlesBackgroundBlur,
+          subtitlesBackgroundOpacity,
           step: 'studio',
         }),
       ).catch(() => {});
@@ -311,6 +329,8 @@ export default function ViralShortsPage() {
     subtitlesSrtText,
     subtitlesPosition,
     subtitlesFontSize,
+    subtitlesBackgroundBlur,
+    subtitlesBackgroundOpacity,
     videoName,
     videoUrl,
   ]);
@@ -445,6 +465,8 @@ export default function ViralShortsPage() {
                 initialSubtitlesSrtText={subtitlesSrtText}
                 initialSubtitlesPosition={subtitlesPosition}
                 initialSubtitlesFontSize={subtitlesFontSize}
+                initialSubtitlesBackgroundBlur={subtitlesBackgroundBlur}
+                initialSubtitlesBackgroundOpacity={subtitlesBackgroundOpacity}
                 onTranscriptTextChange={setTranscriptText}
                 onTranslatedTextChange={setTranslatedText}
                 onToneChange={setTranslateTone}
@@ -466,6 +488,8 @@ export default function ViralShortsPage() {
                 onSubtitlesSrtTextChange={setSubtitlesSrtText}
                 onSubtitlesPositionChange={setSubtitlesPosition}
                 onSubtitlesFontSizeChange={setSubtitlesFontSize}
+                onSubtitlesBackgroundBlurChange={setSubtitlesBackgroundBlur}
+                onSubtitlesBackgroundOpacityChange={setSubtitlesBackgroundOpacity}
                 onVideoUrlChange={(next) => setVideoUrl(next)}
                 onVideoNameChange={(next) => setVideoName(next)}
                 onDiscardWorkspace={() => void handleDiscardWorkspace()}
