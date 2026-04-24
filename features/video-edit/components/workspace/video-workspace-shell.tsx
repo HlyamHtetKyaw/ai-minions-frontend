@@ -32,6 +32,11 @@ import {
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { formatWorkspaceTime } from '@/features/video-edit/lib/format-workspace-time';
 import { WorkspacePreviewCanvas, WORKSPACE_VIDEO_FILE_INPUT_ID } from './workspace-preview-canvas';
+import {
+  WorkspaceCanvasSizeGate,
+  canvasAspectIdToEasyRatio,
+  workspaceJsonHasPersistedVideo,
+} from './workspace-canvas-size-gate';
 import { WorkspacePropertiesPanel } from './workspace-properties-panel';
 import { WorkspaceSubsPanel } from './workspace-subs-panel';
 import { WorkspaceTimelineDock, type WorkspaceTimelinePhase } from './workspace-timeline-dock';
@@ -225,6 +230,27 @@ type TimelineLaneItem = {
   endTime: number;
 };
 
+function aspectIdToRatio(aspect: WorkspaceAspectId): number {
+  if (aspect === '16:9') return 16 / 9;
+  if (aspect === '9:16') return 9 / 16;
+  if (aspect === '1:1') return 1;
+  return 4 / 3;
+}
+
+function ratioToAspectId(ratio: number): WorkspaceAspectId | null {
+  if (!Number.isFinite(ratio) || ratio <= 0) return null;
+  const ASPECTS: Array<{ id: WorkspaceAspectId; ratio: number }> = [
+    { id: '16:9', ratio: 16 / 9 },
+    { id: '9:16', ratio: 9 / 16 },
+    { id: '1:1', ratio: 1 },
+    { id: '4:3', ratio: 4 / 3 },
+  ];
+  const nearest = ASPECTS.reduce((best, next) =>
+    Math.abs(next.ratio - ratio) < Math.abs(best.ratio - ratio) ? next : best,
+  );
+  return Math.abs(nearest.ratio - ratio) <= 0.01 ? nearest.id : null;
+}
+
 function assignWorkspaceTimelineVerticalLane(items: TimelineLaneItem[]) {
   const sorted = [...items].sort(
     (a, b) =>
@@ -312,11 +338,12 @@ export function VideoWorkspaceShell() {
   const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
   const setSelectedAudioTrackId = useEditorStore((s) => s.setSelectedAudioTrackId);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
-  const setCropSettings = useEditorStore((s) => s.setCropSettings);
   const originalAudioMuted = useEditorStore((s) => s.originalAudioMuted);
   const originalAudioVolume = useEditorStore((s) => s.originalAudioVolume);
   const setOriginalAudioMuted = useEditorStore((s) => s.setOriginalAudioMuted);
   const setOriginalAudioVolume = useEditorStore((s) => s.setOriginalAudioVolume);
+  const cropEasyAspect = useEditorStore((s) => s.cropSettings.easyAspect);
+  const setCropSettings = useEditorStore((s) => s.setCropSettings);
 
   useEffect(() => {
     return () => {
@@ -324,7 +351,6 @@ export function VideoWorkspaceShell() {
     };
   }, [setVideoSrc]);
 
-  const [aspect, setAspect] = useState<WorkspaceAspectId>('16:9');
   const [activeTool, setActiveTool] = useState<WorkspaceToolId>('media');
   const [font, setFont] = useState('inter');
   const [pos, setPos] = useState({ x: '810', y: '390', w: '300', h: '60' });
@@ -334,6 +360,9 @@ export function VideoWorkspaceShell() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [workspaceSyncStatus, setWorkspaceSyncStatus] = useState('Connecting workspace stream...');
+  const [workspaceUiPhase, setWorkspaceUiPhase] = useState<'loading' | 'canvas-only' | 'editor'>('loading');
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetBusy, setResetBusy] = useState(false);
   const previewFrameRef = useRef<HTMLDivElement>(null);
   const volumeBeforeMuteRef = useRef(72);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
@@ -373,6 +402,11 @@ export function VideoWorkspaceShell() {
 
     return () => unsub();
   }, []);
+
+  const aspect: WorkspaceAspectId = useMemo(
+    () => ratioToAspectId(cropEasyAspect) ?? '16:9',
+    [cropEasyAspect],
+  );
 
   useEffect(() => {
     const closeSse = openVideoEditorWorkspaceSse({
@@ -423,18 +457,26 @@ export function VideoWorkspaceShell() {
       try {
         const result = await getVideoEditorWorkspace();
         if (cancelled) return;
-        const parsed = parseWorkspaceFromPersistence(result.workspaceJson);
+        const rawWorkspaceJson =
+          typeof result.workspaceJson === 'string' ? result.workspaceJson : '{}';
+        const parsed = parseWorkspaceFromPersistence(rawWorkspaceJson);
         if (parsed != null) {
           isHydratingWorkspaceRef.current = true;
           applyHistorySnapshot(parsed);
           isHydratingWorkspaceRef.current = false;
           lastSyncedWorkspaceJsonRef.current = serializeWorkspaceForPersistence(useEditorStore.getState());
         }
+        if (cancelled) return;
         setWorkspaceSyncStatus('Workspace loaded');
+        setWorkspaceUiPhase(
+          workspaceJsonHasPersistedVideo(rawWorkspaceJson) ? 'editor' : 'canvas-only',
+        );
       } catch (error) {
+        if (cancelled) return;
         setWorkspaceSyncStatus(
           error instanceof Error ? `Workspace load failed: ${error.message}` : 'Workspace load failed',
         );
+        setWorkspaceUiPhase('canvas-only');
       }
     })();
     return () => {
@@ -459,6 +501,11 @@ export function VideoWorkspaceShell() {
 
     const unsubscribe = useEditorStore.subscribe((state) => {
       if (isHydratingWorkspaceRef.current) return;
+      // Blob URLs are browser-local; serializing them becomes `videoSrc: null` and zeros duration,
+      // which would overwrite the server snapshot while upload is still running. Wait for HTTPS + `#wk=`.
+      if (typeof state.videoSrc === 'string' && state.videoSrc.startsWith('blob:')) {
+        return;
+      }
       const payload = serializeWorkspaceForPersistence(state);
       if (payload === lastSyncedWorkspaceJsonRef.current) return;
       pendingWorkspaceJsonRef.current = payload;
@@ -762,35 +809,6 @@ export function VideoWorkspaceShell() {
     setClipRowById((prev) => (prev[clipId] === rowId ? prev : { ...prev, [clipId]: rowId }));
   }, []);
 
-  const aspectOptions = useMemo(
-    () =>
-      [
-        { id: '16:9' as const, label: t('aspect.ratio16_9') },
-        { id: '9:16' as const, label: t('aspect.ratio9_16') },
-        { id: '1:1' as const, label: t('aspect.ratio1_1') },
-        { id: '4:3' as const, label: t('aspect.ratio4_3') },
-      ],
-    [t],
-  );
-
-  const onAspectChange = useCallback(
-    (nextAspect: WorkspaceAspectId) => {
-      setAspect(nextAspect);
-      setActiveTool('crop');
-      setActiveToolStore('crop');
-      const easyAspect =
-        nextAspect === '16:9'
-          ? 16 / 9
-          : nextAspect === '9:16'
-            ? 9 / 16
-            : nextAspect === '1:1'
-              ? 1
-              : 4 / 3;
-      setCropSettings({ easyAspect });
-    },
-    [setActiveToolStore, setCropSettings],
-  );
-
   const tools = useMemo(
     () =>
       [
@@ -966,7 +984,15 @@ export function VideoWorkspaceShell() {
       );
       return;
     }
-    const payload = buildExportPayload(state);
+    // Export must respect the top-bar aspect choice even if crop panel/workspace hydration
+    // left `cropSettings.easyAspect` out of sync with the selected orientation.
+    const payload = buildExportPayload({
+      ...state,
+      cropSettings: {
+        ...state.cropSettings,
+        easyAspect: aspectIdToRatio(aspect),
+      },
+    });
     setWorkspaceSyncStatus('Exporting video...');
     try {
       const result = await exportVideoEditorWorkspace(payload);
@@ -978,11 +1004,10 @@ export function VideoWorkspaceShell() {
         error instanceof Error ? `Export failed: ${error.message}` : 'Export failed',
       );
     }
-  }, []);
+  }, [aspect]);
 
-  const onResetWorkspace = useCallback(async () => {
-    const confirmed = window.confirm('Reset workspace? This will clear all current edits.');
-    if (!confirmed) return;
+  const performResetWorkspace = useCallback(async () => {
+    setResetBusy(true);
     try {
       await resetVideoEditorWorkspace();
       setVideoSrc(null);
@@ -1001,23 +1026,59 @@ export function VideoWorkspaceShell() {
       setCanUndo(false);
       setCanRedo(false);
       setWorkspaceSyncStatus('Workspace reset');
+      setWorkspaceUiPhase('canvas-only');
+      setResetDialogOpen(false);
     } catch (error) {
       setWorkspaceSyncStatus(
         error instanceof Error ? `Workspace reset failed: ${error.message}` : 'Workspace reset failed',
       );
+    } finally {
+      setResetBusy(false);
     }
   }, [setActiveToolStore, setSelectedAudioTrackId, setSelectedLayerId, setSelectedSegmentId, setVideoSrc]);
 
+  useEffect(() => {
+    if (!resetDialogOpen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setResetDialogOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [resetDialogOpen]);
+
+  if (workspaceUiPhase === 'loading') {
+    return (
+      <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-black text-foreground">
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400"
+          aria-hidden
+        />
+        <p className="mt-4 text-xs text-zinc-500">Loading workspace…</p>
+      </div>
+    );
+  }
+
+  if (workspaceUiPhase === 'canvas-only') {
+    return (
+      <div className="flex h-full min-h-0 flex-1 flex-col bg-black text-foreground">
+        <WorkspaceCanvasSizeGate
+          initialEasyAspect={cropEasyAspect}
+          onContinue={(aspect) => {
+            setCropSettings({ easyAspect: canvasAspectIdToEasyRatio(aspect) });
+            setWorkspaceUiPhase('editor');
+          }}
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="flex min-h-[560px] flex-1 flex-col overflow-hidden rounded-xl border border-white/10 bg-black text-foreground">
+    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-foreground">
       <WorkspaceTopBar
         historyLabel={t('history')}
-        aspect={aspect}
-        onAspectChange={onAspectChange}
-        aspectOptions={aspectOptions}
-        aspectToggleAriaLabel={t('aspectToggleAria')}
-        landscapeLabel="Landscape"
-        portraitLabel="Portrait"
         exportLabel={t('exportVideo')}
         exportDisabled={resolveExportVideoUrl(videoSrc) == null}
         exportDisabledTitle={
@@ -1029,9 +1090,7 @@ export function VideoWorkspaceShell() {
         }
         resetLabel="Reset"
         onExportClick={onExportClick}
-        onResetClick={() => {
-          void onResetWorkspace();
-        }}
+        onResetClick={() => setResetDialogOpen(true)}
         onUndoClick={undo}
         onRedoClick={redo}
         canUndo={canUndo}
@@ -1062,6 +1121,7 @@ export function VideoWorkspaceShell() {
             ref={previewFrameRef}
             canvasLabel={t('canvasAria')}
             aspect={aspect}
+            skipInitialCanvasSizeStep
           />
           <WorkspaceTimelineDock
             phase={timelinePhase}
@@ -1216,6 +1276,52 @@ export function VideoWorkspaceShell() {
           )
         ) : null}
       </div>
+
+      {resetDialogOpen ? (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center p-4 sm:items-center"
+          role="presentation"
+        >
+          <button
+            type="button"
+            className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+            aria-label={t('resetDialog.cancel')}
+            onClick={() => !resetBusy && setResetDialogOpen(false)}
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="workspace-reset-title"
+            aria-describedby="workspace-reset-desc"
+            className="relative z-[101] w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black/60 sm:p-6"
+          >
+            <h2 id="workspace-reset-title" className="text-lg font-semibold tracking-tight text-white">
+              {t('resetDialog.title')}
+            </h2>
+            <p id="workspace-reset-desc" className="mt-2 text-sm leading-relaxed text-zinc-400">
+              {t('resetDialog.description')}
+            </p>
+            <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+              <button
+                type="button"
+                disabled={resetBusy}
+                onClick={() => setResetDialogOpen(false)}
+                className="rounded-xl border border-white/15 bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/5 disabled:opacity-50"
+              >
+                {t('resetDialog.cancel')}
+              </button>
+              <button
+                type="button"
+                disabled={resetBusy}
+                onClick={() => void performResetWorkspace()}
+                className="rounded-xl border border-rose-500/40 bg-rose-600/90 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-rose-950/40 transition hover:bg-rose-500 disabled:opacity-60"
+              >
+                {resetBusy ? t('resetDialog.resetting') : t('resetDialog.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

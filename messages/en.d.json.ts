@@ -483,6 +483,13 @@ declare const messages: {
         "ratio4_3": "4:3"
       },
       "exportVideo": "Export video",
+      "resetDialog": {
+        "title": "Reset workspace?",
+        "description": "This will clear all current edits and send you back to choose canvas size.",
+        "cancel": "Cancel",
+        "confirm": "Reset",
+        "resetting": "Resetting…"
+      },
       "tools": {
         "media": "media",
         "text": "text",
