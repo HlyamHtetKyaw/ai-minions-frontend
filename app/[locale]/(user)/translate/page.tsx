@@ -17,12 +17,18 @@ function languageLabel(code: string): string {
 
 export default function TranslatePage() {
   const t = useTranslations('translation');
+  type TranslateTone =
+    | 'casual_social_media'
+    | 'polite_educational'
+    | 'formal_corporate'
+    | 'youthful_trendy';
 
   const [isSignedIn, setIsSignedIn] = useState(false);
   const [sourceLang, setSourceLang] = useState(LANGUAGES[0].code);
   const [targetLang, setTargetLang] = useState(LANGUAGES[1].code);
   const [sourceText, setSourceText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
+  const [tone, setTone] = useState<TranslateTone>('casual_social_media');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
@@ -90,6 +96,7 @@ export default function TranslatePage() {
         text: sourceText.trim(),
         sourceLanguage: languageLabel(sourceLang),
         targetLanguage: languageLabel(targetLang),
+        style: tone,
       });
       setTranslatedText(result.translatedText);
     } catch (e) {
@@ -144,6 +151,22 @@ export default function TranslatePage() {
               translatedPlaceholder={t('translatedPlaceholder')}
               rows={5}
             />
+
+            <div className="max-w-sm">
+              <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.18em] text-muted">
+                Translate style
+              </label>
+              <select
+                value={tone}
+                onChange={(e) => setTone(e.target.value as TranslateTone)}
+                className="box-border block h-10 w-full rounded-lg border border-glass-border bg-glass/80 px-3 pr-9 text-sm text-foreground outline-none backdrop-blur-sm focus:border-foreground"
+              >
+                <option value="casual_social_media">Casual / Social Media (spoken)</option>
+                <option value="polite_educational">Polite & Educational (spoken)</option>
+                <option value="formal_corporate">Formal / Corporate (literary)</option>
+                <option value="youthful_trendy">Youthful / Trendy (Gen Z)</option>
+              </select>
+            </div>
 
             {error ? (
               <p className="text-sm text-destructive" role="alert">

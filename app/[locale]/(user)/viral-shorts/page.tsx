@@ -29,7 +29,9 @@ export default function ViralShortsPage() {
   const [videoName, setVideoName] = useState('');
   const [transcriptText, setTranscriptText] = useState('');
   const [translatedText, setTranslatedText] = useState('');
-  const [translateTone, setTranslateTone] = useState<'narrative' | 'formal' | 'informal'>('narrative');
+  const [translateTone, setTranslateTone] = useState<
+    'casual_social_media' | 'polite_educational' | 'formal_corporate' | 'youthful_trendy'
+  >('casual_social_media');
   const [voiceOverAudioUrl, setVoiceOverAudioUrl] = useState('');
   const [voiceOverS3Key, setVoiceOverS3Key] = useState('');
   const [voiceOverVoice, setVoiceOverVoice] = useState<string>('kore');
@@ -163,8 +165,12 @@ export default function ViralShortsPage() {
             : 22,
         );
           const t = (typeof parsed.tone === 'string' ? parsed.tone : '').toLowerCase();
-          if (t === 'formal' || t === 'informal' || t === 'narrative') {
+          if (t === 'casual_social_media' || t === 'polite_educational' || t === 'formal_corporate' || t === 'youthful_trendy') {
             setTranslateTone(t);
+          } else if (t === 'informal' || t === 'narrative') {
+            setTranslateTone('casual_social_media');
+          } else if (t === 'formal') {
+            setTranslateTone('formal_corporate');
           }
           setStep('studio');
         }
@@ -191,7 +197,7 @@ export default function ViralShortsPage() {
       setVideoName(file.name);
       setTranscriptText('');
       setTranslatedText('');
-      setTranslateTone('narrative');
+      setTranslateTone('casual_social_media');
       setVoiceOverAudioUrl('');
       setVoiceOverS3Key('');
       setVoiceOverVoice('kore');
@@ -217,7 +223,7 @@ export default function ViralShortsPage() {
           videoName: file.name,
           transcriptText: '',
           translatedText: '',
-          tone: 'narrative',
+          tone: 'casual_social_media',
           voiceOverAudioUrl: '',
           voiceOverS3Key: '',
           voiceOverVoice: 'kore',
@@ -322,7 +328,7 @@ export default function ViralShortsPage() {
     setVideoName('');
     setTranscriptText('');
     setTranslatedText('');
-    setTranslateTone('narrative');
+    setTranslateTone('casual_social_media');
     setVoiceOverAudioUrl('');
     setVoiceOverS3Key('');
     setVoiceOverVoice('kore');

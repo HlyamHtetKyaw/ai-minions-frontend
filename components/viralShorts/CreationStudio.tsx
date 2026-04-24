@@ -43,7 +43,11 @@ import {
   type VoiceToneGroupId,
 } from '@/lib/voice-over-tone-groups';
 
-type TranslateTone = 'narrative' | 'formal' | 'informal';
+type TranslateTone =
+  | 'casual_social_media'
+  | 'polite_educational'
+  | 'formal_corporate'
+  | 'youthful_trendy';
 
 function formatVoiceIdDisplay(id: string): string {
   const t = (id ?? '').trim();
@@ -352,7 +356,7 @@ export default function CreationStudio({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [subtitlesSrtText]);
 
-  const [tone, setTone] = useState<TranslateTone>(() => initialTone ?? 'narrative');
+  const [tone, setTone] = useState<TranslateTone>(() => initialTone ?? 'casual_social_media');
   const [selectedVoiceId, setSelectedVoiceId] = useState(() => normalizePersistedVoiceId(initialVoiceOverVoice));
   const [voiceToneGroupId, setVoiceToneGroupId] = useState<VoiceToneGroupId>(() =>
     defaultToneGroupForVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice)),
@@ -1889,9 +1893,10 @@ export default function CreationStudio({
                     onChange={(e) => setTone(e.target.value as TranslateTone)}
                     className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-card-border bg-card px-3 pr-9 text-sm text-foreground outline-none focus:border-foreground"
                   >
-                    <option value="narrative">Narrative</option>
-                    <option value="formal">Formal</option>
-                    <option value="informal">Informal</option>
+                    <option value="casual_social_media">Casual / Social Media (spoken)</option>
+                    <option value="polite_educational">Polite & Educational (spoken)</option>
+                    <option value="formal_corporate">Formal / Corporate (literary)</option>
+                    <option value="youthful_trendy">Youthful / Trendy (Gen Z)</option>
                   </select>
                 </div>
                 <ActionButton
