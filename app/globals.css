@@ -139,6 +139,32 @@ body {
   border: 1px solid var(--card-border);
 }
 
+/*
+ * Viral Shorts (and similar) dialogs over a busy canvas: `bg-card` in .dark is nearly transparent,
+ * so use this opaque surface for readable text in light and dark.
+ */
+.viral-modal-panel {
+  background-color: #ffffff;
+  color: #0a0a0a;
+  border: 1px solid #e4e4e7;
+  box-shadow: 0 25px 80px rgba(15, 23, 42, 0.22);
+}
+
+.dark .viral-modal-panel {
+  background-color: #101b2e;
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.78);
+}
+
+.viral-modal-divider {
+  border-color: #e4e4e7;
+}
+
+.dark .viral-modal-divider {
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
 /* Feature tool shells — shared glass panel (transcribe, content creator, voice-over, video-edit, …) */
 .transcribe-shell,
 .content-creator-shell,

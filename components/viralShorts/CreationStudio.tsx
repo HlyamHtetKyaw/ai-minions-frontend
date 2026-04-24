@@ -1530,7 +1530,7 @@ export default function CreationStudio({
             setTranscriptText(text);
             setTranslatedText('');
             setScriptText(text);
-            setTranscribeProgress({ percent: 100, label: 'Finished' });
+            setTranscribeProgress(null);
           } else {
             const raw = payload.message ?? 'No transcript text returned.';
             setTranscribeError(raw);
@@ -1704,7 +1704,7 @@ export default function CreationStudio({
               setVoiceOverAudioUrl(url);
               if (key) setVoiceOverS3Key(key);
               setIsGenerated(true);
-              setVoiceOverProgress({ percent: 100, label: tVo('progress.finished') });
+              setVoiceOverProgress(null);
               setVoiceOverEnabled(true);
               setOriginalAudioEnabled(false);
               return;
@@ -1722,6 +1722,125 @@ export default function CreationStudio({
       setIsGenerating(false);
     }
   };
+
+  /** Single status strip for transcribe / translate / voice / balanced sync / subtitles / export / media buffer. */
+  const viralUnifiedJobBar = useMemo(() => {
+    // Completed jobs often leave progress at 100% — ignore so later steps (e.g. voice over) still show.
+    if (transcribeProgress != null && transcribeProgress.percent < 100) {
+      const pct = transcribeProgress.percent;
+      return {
+        key: 'transcribe',
+        title: 'Transcription',
+        label: transcribeProgress.label,
+        percent: pct,
+        done: false,
+        barClass: 'bg-violet-500',
+      };
+    }
+    if (isTranscribing) {
+      return {
+        key: 'transcribe',
+        title: 'Transcription',
+        label: 'Preparing…',
+        percent: -1,
+        done: false,
+        barClass: 'bg-violet-500',
+      };
+    }
+    if (isTranslating) {
+      return {
+        key: 'translate',
+        title: 'Translation',
+        label: 'Translating script…',
+        percent: -1,
+        done: false,
+        barClass: 'bg-sky-500',
+      };
+    }
+    if (voiceOverProgress != null && voiceOverProgress.percent < 100) {
+      const pct = voiceOverProgress.percent;
+      return {
+        key: 'voice',
+        title: 'Voice over',
+        label: voiceOverProgress.label,
+        percent: pct,
+        done: false,
+        barClass: 'bg-violet-500',
+      };
+    }
+    if (isGenerating) {
+      return {
+        key: 'voice',
+        title: 'Voice over',
+        label: 'Starting…',
+        percent: -1,
+        done: false,
+        barClass: 'bg-violet-500',
+      };
+    }
+    if (balancedSyncProgress != null && balancedSyncProgress.percent < 100) {
+      const pct = balancedSyncProgress.percent;
+      return {
+        key: 'balanced',
+        title: 'Balanced sync',
+        label: balancedSyncProgress.label,
+        percent: pct,
+        done: false,
+        barClass: 'bg-amber-500',
+      };
+    }
+    if (subtitlesProgress != null && subtitlesProgress.percent < 100) {
+      const pct = subtitlesProgress.percent;
+      return {
+        key: 'subtitles',
+        title: 'Subtitles',
+        label: subtitlesProgress.label,
+        percent: pct,
+        done: false,
+        barClass: 'bg-cyan-500',
+      };
+    }
+    if (exporting) {
+      return {
+        key: 'export',
+        title: 'Export',
+        label: 'Rendering final video…',
+        percent: -1,
+        done: false,
+        barClass: 'bg-emerald-500',
+      };
+    }
+    if (!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)) {
+      const vPct = Math.round(videoBufferPct * 100);
+      const aPct = Math.round(audioBufferPct * 100);
+      const blended = voiceOverAudioUrl
+        ? Math.round((videoBufferPct + audioBufferPct) * 50)
+        : vPct;
+      return {
+        key: 'buffer',
+        title: 'Loading media',
+        label: voiceOverAudioUrl ? `Video ${vPct}% · Voice ${aPct}%` : `Video ${vPct}%`,
+        percent: Math.min(99, Math.max(0, blended)),
+        done: false,
+        barClass: 'bg-zinc-400',
+      };
+    }
+    return null;
+  }, [
+    transcribeProgress,
+    isTranscribing,
+    isTranslating,
+    voiceOverProgress,
+    isGenerating,
+    balancedSyncProgress,
+    subtitlesProgress,
+    exporting,
+    videoFullyLoaded,
+    voiceFullyLoaded,
+    voiceOverAudioUrl,
+    videoBufferPct,
+    audioBufferPct,
+  ]);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
@@ -1751,8 +1870,51 @@ export default function CreationStudio({
         </div>
       </header>
 
-      <div className="grid min-h-[640px] grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr]">
-        <aside className="border-r border-card-border bg-subtle/20 p-3 lg:p-4">
+      {viralUnifiedJobBar ? (
+        <div
+          className="border-b border-card-border bg-subtle/35 px-3 py-2.5 lg:px-4"
+          role="status"
+          aria-live="polite"
+          aria-label={`${viralUnifiedJobBar.title}: ${viralUnifiedJobBar.label}`}
+        >
+          <div className="flex flex-wrap items-center justify-between gap-2 gap-y-1">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              {viralUnifiedJobBar.title}
+            </p>
+            <p
+              className={`text-[11px] font-semibold tabular-nums ${
+                viralUnifiedJobBar.done ? 'text-emerald-400' : 'text-muted-foreground'
+              }`}
+            >
+              {viralUnifiedJobBar.percent >= 0 ? `${viralUnifiedJobBar.percent}%` : '…'}
+            </p>
+          </div>
+          <p className="mt-0.5 text-xs text-foreground">{viralUnifiedJobBar.label}</p>
+          <div
+            className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
+            role="progressbar"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={viralUnifiedJobBar.percent >= 0 ? viralUnifiedJobBar.percent : undefined}
+          >
+            {viralUnifiedJobBar.percent >= 0 ? (
+              <div
+                className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${viralUnifiedJobBar.barClass}`}
+                style={{
+                  width: `${Math.min(100, Math.max(0, viralUnifiedJobBar.percent))}%`,
+                }}
+              />
+            ) : (
+              <div
+                className={`h-2.5 w-[40%] max-w-[12rem] animate-pulse rounded-full ${viralUnifiedJobBar.barClass}`}
+              />
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="grid min-h-[640px] grid-cols-1 auto-rows-auto lg:grid-cols-[minmax(300px,420px)_1fr] lg:grid-rows-[auto_1fr] 2xl:grid-cols-[minmax(272px,360px)_minmax(0,1fr)_minmax(296px,400px)] 2xl:grid-rows-1">
+        <aside className="flex min-h-0 flex-col border-b border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto">
           <div className="space-y-2">
             <button
               type="button"
@@ -1762,11 +1924,6 @@ export default function CreationStudio({
             >
               {isTranscribing ? 'Transcribing...' : '1. Transcribe Video'}
             </button>
-            {transcribeProgress ? (
-              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
-                {transcribeProgress.label} ({transcribeProgress.percent}%)
-              </div>
-            ) : null}
             {transcribeError ? (
               <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
                 {transcribeError}
@@ -2072,602 +2229,10 @@ export default function CreationStudio({
               )}
             </div>
           </div>
-
-          <div className="mt-6 space-y-4">
-            <div className="rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                {tViral('translateSectionTitle')}
-              </p>
-              <div className="mt-3 flex flex-row items-stretch gap-3">
-                <div className="min-w-0 flex-1 basis-0">
-                  <select
-                    value={tone}
-                    onChange={(e) => setTone(e.target.value as TranslateTone)}
-                    className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-card-border bg-card px-3 pr-9 text-sm text-foreground outline-none focus:border-foreground"
-                  >
-                    <option value="casual_social_media">Casual / Social Media (spoken)</option>
-                    <option value="polite_educational">Polite & Educational (spoken)</option>
-                    <option value="formal_corporate">Formal / Corporate (literary)</option>
-                    <option value="youthful_trendy">Youthful / Trendy (Gen Z)</option>
-                  </select>
-                </div>
-                <ActionButton
-                  onClick={handleTranslateClick}
-                  isLoading={isTranslating}
-                  disabled={!isTranscribed || isTranslating}
-                  label="Translate"
-                  loadingLabel="Translating..."
-                  className="btn-viral-shorts-analyze btn-viral-shorts-translate-inline h-10 shrink-0 rounded-xl px-5 text-sm font-semibold whitespace-nowrap"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-4 rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
-              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{tViral('sectionTitle')}</p>
-
-              <div className="flex items-stretch gap-3 rounded-lg border border-card-border bg-card/40 px-3 py-2.5">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                    {tViral('voiceStyleKicker')}
-                  </p>
-                  <p className="mt-0.5 truncate text-sm font-medium text-foreground">
-                    {voiceModelsLoading
-                      ? '…'
-                      : `${tVo(`toneGroups.${voiceToneGroupId}.title`)} · ${formatVoiceIdDisplay(selectedVoiceId)}`}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 self-center rounded-lg border border-card-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-                  onClick={() => setShowVoiceStyleModal(true)}
-                  disabled={voiceModelsLoading || isGenerating}
-                >
-                  {tViral('chooseVoiceStyleButton')}
-                </button>
-              </div>
-
-              <ActionButton
-                onClick={() => void handleGenerate()}
-                isLoading={isGenerating}
-                disabled={!isTranslated || isGenerating}
-                label="Generate"
-                loadingLabel="Generating..."
-                className="btn-viral-shorts h-11 w-full rounded-xl px-4 text-sm font-semibold"
-              />
-
-              {voiceOverProgress ? (
-                <div
-                  className={`rounded-xl border border-card-border bg-card px-3 py-3 ${
-                    voiceOverProgress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
-                  }`}
-                  role="status"
-                  aria-live="polite"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p
-                      className={`text-xs ${
-                        voiceOverProgress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {voiceOverProgress.label}
-                    </p>
-                    <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
-                      {voiceOverProgress.percent}%
-                    </p>
-                  </div>
-                  <div
-                    className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={voiceOverProgress.percent}
-                    aria-label={voiceOverProgress.label}
-                  >
-                    <div
-                      className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${
-                        voiceOverProgress.percent >= 100 ? 'bg-emerald-600' : 'bg-violet-500'
-                      }`}
-                      style={{
-                        width: `${Math.min(100, Math.max(0, voiceOverProgress.percent))}%`,
-                      }}
-                    />
-                  </div>
-                </div>
-              ) : null}
-
-              {voiceOverError ? (
-                <p className="text-xs leading-relaxed text-red-400">{voiceOverError}</p>
-              ) : null}
-
-              <div className="space-y-3 border-t border-card-border/80 pt-4">
-                <button
-                  type="button"
-                  onClick={() => void handleSyncVoiceToVideo()}
-                  disabled={!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-                >
-                  Sync voice length to audio
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void handleBalancedSyncClick()}
-                  disabled={
-                    isBalancedPreviewMode ||
-                    !voiceOverAudioUrl ||
-                    !voiceOverS3Key ||
-                    !videoFullyLoaded ||
-                    !voiceFullyLoaded ||
-                    Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100) ||
-                    balancedSyncEstimateLoading
-                  }
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-                >
-                  {'Balanced sync (render & combine)'}
-                </button>
-                {balancedSyncEstimateError ? (
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
-                    {balancedSyncEstimateError}
-                  </div>
-                ) : null}
-                {balancedSyncProgress ? (
-                  <div className="rounded-lg border border-card-border bg-subtle/20 px-3 py-2 text-xs text-muted">
-                    {balancedSyncProgress.label} ({balancedSyncProgress.percent}%)
-                  </div>
-                ) : null}
-                {balancedSyncError ? (
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
-                    {balancedSyncError}
-                  </div>
-                ) : null}
-                {!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded) ? (
-                  <div className="rounded-lg border border-card-border bg-subtle/20 px-3 py-2 text-xs leading-relaxed text-muted">
-                    Loading media… Video {Math.round(videoBufferPct * 100)}%
-                    {voiceOverAudioUrl ? ` · Voice ${Math.round(audioBufferPct * 100)}%` : ''}
-                  </div>
-                ) : null}
-                <label className="flex cursor-pointer items-start gap-3 rounded-lg px-0.5 py-1 text-xs leading-relaxed text-muted-foreground">
-                  <input
-                    type="checkbox"
-                    className="mt-1 shrink-0"
-                    checked={allowStrongerSync}
-                    onChange={(e) => setAllowStrongerSync(e.target.checked)}
-                  />
-                  <span>Allow stronger sync (may sound less natural)</span>
-                </label>
-                <button
-                  type="button"
-                  onClick={() => {
-                    const next = !(protectFlip || protectHueDeg > 0);
-                    setProtectFlip(next);
-                    setProtectHueDeg(next ? 25 : 0);
-                  }}
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface"
-                >
-                  Protection (flip + hue)
-                </button>
-                {syncUi.kind !== 'idle' ? (
-                  <div
-                    className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
-                      syncUi.kind === 'error'
-                        ? 'border-red-500/30 bg-red-500/10 text-red-200'
-                        : syncUi.kind === 'warn'
-                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                          : 'border-card-border bg-subtle/20 text-muted'
-                    }`}
-                  >
-                    {syncUi.message}
-                  </div>
-                ) : null}
-                <button
-                  type="button"
-                  onMouseEnter={() => void ensureSubtitlesEstimate()}
-                  onFocus={() => void ensureSubtitlesEstimate()}
-                  onClick={handleSubtitlesClick}
-                  disabled={!workspaceS3Key || Boolean(subtitlesProgress && subtitlesProgress.percent < 100)}
-                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-                >
-                  Generate subtitles
-                </button>
-                {subtitlesProgress ? (
-                  <div className="rounded-lg border border-card-border bg-subtle/20 px-3 py-2 text-xs text-muted">
-                    {subtitlesProgress.label} ({subtitlesProgress.percent}%)
-                  </div>
-                ) : null}
-                {subtitlesError ? (
-                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
-                    {subtitlesError}
-                  </div>
-                ) : null}
-                {subtitlesDownloadUrl ? (
-                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
-                    <button
-                      type="button"
-                      className="flex min-h-10 w-full items-center justify-center rounded-lg bg-[#7c5cff] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                      onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
-                    >
-                      Download (.srt)
-                    </button>
-                    <button
-                      type="button"
-                      className="flex min-h-10 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-surface"
-                      onClick={() => setLeftTab('srt')}
-                    >
-                      Open SRT editor
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          </div>
         </aside>
 
-        {showTranscribeConfirm ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm transcription"
-            onMouseDown={() => setShowTranscribeConfirm(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Transcribe this video?</p>
-              <p className="mt-2 text-sm text-muted">
-                This will use{' '}
-                <span className="font-semibold text-foreground">{estimate?.reserveCostPoints ?? '—'}</span> points to
-                generate a transcript for your viral workspace.
-              </p>
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => setShowTranscribeConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={isTranscribing || !workspaceS3Key}
-                  onClick={() => {
-                    setShowTranscribeConfirm(false);
-                    void startTranscribe();
-                  }}
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        <div className="flex min-h-0 flex-col border-b border-card-border bg-background/20 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0 2xl:col-start-2 2xl:row-span-1 2xl:border-r 2xl:border-card-border">
 
-        {showTranslateConfirm ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm translation"
-            onMouseDown={() => setShowTranslateConfirm(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Translate this transcript?</p>
-              <p className="mt-2 text-sm text-muted">
-                This will translate your transcript and use{' '}
-                <span className="font-semibold text-foreground">
-                  {translateEstimateLoading ? '…' : translateEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {translateEstimateError ? (
-                <p className="mt-2 text-sm text-red-300">{translateEstimateError}</p>
-              ) : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => setShowTranslateConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={!isTranscribed || isTranslating || translateEstimateLoading}
-                  onClick={() => {
-                    setShowTranslateConfirm(false);
-                    void handleTranslate();
-                  }}
-                >
-                  Continue
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showSubtitlesConfirm ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm subtitles"
-            onMouseDown={() => setShowSubtitlesConfirm(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Generate subtitles?</p>
-              <p className="mt-2 text-sm text-muted">
-                This will generate subtitles for your video and use{' '}
-                <span className="font-semibold text-foreground">
-                  {subtitlesEstimateLoading ? '…' : subtitlesEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {subtitlesEstimateError ? <p className="mt-2 text-sm text-red-300">{subtitlesEstimateError}</p> : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => setShowSubtitlesConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={subtitlesEstimateLoading}
-                  onClick={() => {
-                    setShowSubtitlesConfirm(false);
-                    void startSubtitles();
-                  }}
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showExportConfirm ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm export"
-            onMouseDown={() => setShowExportConfirm(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Export final video?</p>
-              <p className="mt-2 text-sm text-muted">
-                This will export your current edits (protection + subtitles if enabled) and use{' '}
-                <span className="font-semibold text-foreground">
-                  {exportEstimateLoading ? '…' : exportEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {exportEstimateError ? <p className="mt-2 text-sm text-red-300">{exportEstimateError}</p> : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => setShowExportConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-                  disabled={exportEstimateLoading || exporting}
-                  onClick={() => {
-                    setShowExportConfirm(false);
-                    void startFinalExport();
-                  }}
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showVoiceStyleModal ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="voice-style-modal-title"
-            onMouseDown={() => setShowVoiceStyleModal(false)}
-          >
-            <div
-              className="flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col rounded-2xl border border-card-border bg-card shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="border-b border-card-border px-4 py-3">
-                <p id="voice-style-modal-title" className="text-sm font-semibold text-foreground">
-                  {tViral('voiceStyleModalTitle')}
-                </p>
-                <p className="mt-1 text-xs text-muted-foreground">{tViral('voiceStyleModalSubtitle')}</p>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
-                <VoiceToneVoicePicker
-                  catalog={voiceModelCatalog}
-                  loading={voiceModelsLoading}
-                  error={voiceModelsError}
-                  toneGroupId={voiceToneGroupId}
-                  onToneGroupChange={setVoiceToneGroupId}
-                  selectedVoiceId={selectedVoiceId}
-                  onVoiceIdChange={setSelectedVoiceId}
-                  disabled={isGenerating}
-                />
-              </div>
-              <div className="flex justify-end border-t border-card-border px-4 py-3">
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                  onClick={() => setShowVoiceStyleModal(false)}
-                >
-                  {tViral('voiceStyleModalDone')}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showVoiceOverConfirm ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm voice over"
-            onMouseDown={() => setShowVoiceOverConfirm(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Generate voice over?</p>
-              <p className="mt-2 text-sm text-muted">
-                This will generate an audio voice over for your script and use{' '}
-                <span className="font-semibold text-foreground">
-                  {voiceOverEstimateLoading ? '…' : voiceOverPointsEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {voiceOverEstimateError ? (
-                <p className="mt-2 text-sm text-red-300">{voiceOverEstimateError}</p>
-              ) : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => setShowVoiceOverConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={!isTranslated || isGenerating}
-                  onClick={() => {
-                    setShowVoiceOverConfirm(false);
-                    void startVoiceOver();
-                  }}
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showBalancedSyncConfirm ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm balanced sync"
-            onMouseDown={() => setShowBalancedSyncConfirm(false)}
-          >
-            <div
-              className="w-full max-w-md rounded-2xl border border-card-border bg-card p-4 shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Render balanced sync?</p>
-              <p className="mt-2 text-sm text-muted">
-                This will create a combined video preview and use{' '}
-                <span className="font-semibold text-foreground">
-                  {balancedSyncEstimateLoading ? '…' : balancedSyncPointsEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {balancedSyncEstimateError ? (
-                <p className="mt-2 text-sm text-red-300">{balancedSyncEstimateError}</p>
-              ) : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => setShowBalancedSyncConfirm(false)}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={balancedSyncEstimateLoading}
-                  onClick={() => {
-                    setShowBalancedSyncConfirm(false);
-                    void handleStartBalancedSync();
-                  }}
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showBalancedPreview && isBalancedPreviewMode ? (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Balanced sync preview"
-          >
-            <div className="w-full max-w-3xl overflow-hidden rounded-2xl border border-card-border bg-card shadow-[0_25px_80px_rgba(0,0,0,0.55)]">
-              <div className="flex items-center justify-between border-b border-card-border px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Balanced sync preview</p>
-                  <p className="mt-0.5 text-xs text-muted">Listen carefully — accept only if it feels aligned.</p>
-                </div>
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => void handleRejectBalancedSync()}
-                >
-                  Close
-                </button>
-              </div>
-              <div className="bg-black p-3">
-                <video
-                  src={balancedSyncPreviewUrl}
-                  controls
-                  playsInline
-                  preload="auto"
-                  className="mx-auto h-[420px] w-full max-w-[900px] rounded-lg object-contain"
-                />
-              </div>
-              <div className="flex flex-wrap items-center justify-end gap-2 border-t border-card-border px-4 py-3">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-card-border bg-card px-3 text-xs font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => void handleRejectBalancedSync()}
-                >
-                  Reject
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                  onClick={() => void handleAcceptBalancedSync()}
-                >
-                  Accept
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        <div className="flex flex-col bg-background/20">
           <div className="flex items-center justify-between border-b border-card-border px-3 py-2 text-[11px] text-muted">
             <span>Editing Mode</span>
             <span>{isGenerated ? `Voiceover ready: ${voiceLabel}` : 'No Project Loaded'}</span>
@@ -2844,7 +2409,7 @@ export default function CreationStudio({
           ) : null}
 
           <div className="border-b border-card-border px-3 py-3 text-[11px] text-muted">
-            Edit the script directly in the left Script panel.
+            Edit the script in the left column (Script / SRT).
           </div>
 
           <div className="px-3 py-2.5">
@@ -2882,7 +2447,549 @@ export default function CreationStudio({
             ) : null}
           </div>
         </div>
+
+        <aside className="flex min-h-0 flex-col border-t border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 2xl:col-start-3 2xl:row-start-1 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto 2xl:border-t-0 2xl:border-l 2xl:border-card-border">
+          <div className="space-y-4 pt-1">
+            <div className="rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                {tViral('translateSectionTitle')}
+              </p>
+              <div className="mt-3 flex flex-row items-stretch gap-3">
+                <div className="min-w-0 flex-1 basis-0">
+                  <select
+                    value={tone}
+                    onChange={(e) => setTone(e.target.value as TranslateTone)}
+                    className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-card-border bg-card px-3 pr-9 text-sm text-foreground outline-none focus:border-foreground"
+                  >
+                    <option value="casual_social_media">Casual / Social Media (spoken)</option>
+                    <option value="polite_educational">Polite & Educational (spoken)</option>
+                    <option value="formal_corporate">Formal / Corporate (literary)</option>
+                    <option value="youthful_trendy">Youthful / Trendy (Gen Z)</option>
+                  </select>
+                </div>
+                <ActionButton
+                  onClick={handleTranslateClick}
+                  isLoading={isTranslating}
+                  disabled={!isTranscribed || isTranslating}
+                  label="Translate"
+                  loadingLabel="Translating..."
+                  className="btn-viral-shorts-analyze btn-viral-shorts-translate-inline h-10 shrink-0 rounded-xl px-5 text-sm font-semibold whitespace-nowrap"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{tViral('sectionTitle')}</p>
+
+              <div className="flex items-stretch gap-3 rounded-lg border border-card-border bg-card/40 px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {tViral('voiceStyleKicker')}
+                  </p>
+                  <p className="mt-0.5 truncate text-sm font-medium text-foreground">
+                    {voiceModelsLoading
+                      ? '…'
+                      : `${tVo(`toneGroups.${voiceToneGroupId}.title`)} · ${formatVoiceIdDisplay(selectedVoiceId)}`}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 self-center rounded-lg border border-card-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                  onClick={() => setShowVoiceStyleModal(true)}
+                  disabled={voiceModelsLoading || isGenerating}
+                >
+                  {tViral('chooseVoiceStyleButton')}
+                </button>
+              </div>
+
+              <ActionButton
+                onClick={() => void handleGenerate()}
+                isLoading={isGenerating}
+                disabled={!isTranslated || isGenerating}
+                label="Generate"
+                loadingLabel="Generating..."
+                className="btn-viral-shorts h-11 w-full rounded-xl px-4 text-sm font-semibold"
+              />
+
+              {voiceOverError ? (
+                <p className="text-xs leading-relaxed text-red-400">{voiceOverError}</p>
+              ) : null}
+
+              <div className="space-y-3 border-t border-card-border/80 pt-4">
+                <button
+                  type="button"
+                  onClick={() => void handleSyncVoiceToVideo()}
+                  disabled={!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                >
+                  Sync voice length to audio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleBalancedSyncClick()}
+                  disabled={
+                    isBalancedPreviewMode ||
+                    !voiceOverAudioUrl ||
+                    !voiceOverS3Key ||
+                    !videoFullyLoaded ||
+                    !voiceFullyLoaded ||
+                    Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100) ||
+                    balancedSyncEstimateLoading
+                  }
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                >
+                  {'Balanced sync (render & combine)'}
+                </button>
+                {balancedSyncEstimateError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
+                    {balancedSyncEstimateError}
+                  </div>
+                ) : null}
+                {balancedSyncError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
+                    {balancedSyncError}
+                  </div>
+                ) : null}
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg px-0.5 py-1 text-xs leading-relaxed text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-1 shrink-0"
+                    checked={allowStrongerSync}
+                    onChange={(e) => setAllowStrongerSync(e.target.checked)}
+                  />
+                  <span>Allow stronger sync (may sound less natural)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !(protectFlip || protectHueDeg > 0);
+                    setProtectFlip(next);
+                    setProtectHueDeg(next ? 25 : 0);
+                  }}
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface"
+                >
+                  Protection (flip + hue)
+                </button>
+                {syncUi.kind !== 'idle' ? (
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
+                      syncUi.kind === 'error'
+                        ? 'border-red-500/30 bg-red-500/10 text-red-200'
+                        : syncUi.kind === 'warn'
+                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                          : 'border-card-border bg-subtle/20 text-muted'
+                    }`}
+                  >
+                    {syncUi.message}
+                  </div>
+                ) : null}
+                <button
+                  type="button"
+                  onMouseEnter={() => void ensureSubtitlesEstimate()}
+                  onFocus={() => void ensureSubtitlesEstimate()}
+                  onClick={handleSubtitlesClick}
+                  disabled={!workspaceS3Key || Boolean(subtitlesProgress && subtitlesProgress.percent < 100)}
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                >
+                  Generate subtitles
+                </button>
+                {subtitlesError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
+                    {subtitlesError}
+                  </div>
+                ) : null}
+                {subtitlesDownloadUrl ? (
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+                    <button
+                      type="button"
+                      className="flex min-h-10 w-full items-center justify-center rounded-lg bg-[#7c5cff] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                      onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
+                    >
+                      Download (.srt)
+                    </button>
+                    <button
+                      type="button"
+                      className="flex min-h-10 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-surface"
+                      onClick={() => setLeftTab('srt')}
+                    >
+                      Open SRT editor
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </div>
+        </aside>
       </div>
+
+        {showTranscribeConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm transcription"
+            onMouseDown={() => setShowTranscribeConfirm(false)}
+          >
+            <div
+              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Transcribe this video?</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+                This will use{' '}
+                <span className="font-semibold text-foreground">{estimate?.reserveCostPoints ?? '—'}</span> points to
+                generate a transcript for your viral workspace.
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowTranscribeConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={isTranscribing || !workspaceS3Key}
+                  onClick={() => {
+                    setShowTranscribeConfirm(false);
+                    void startTranscribe();
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showTranslateConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm translation"
+            onMouseDown={() => setShowTranslateConfirm(false)}
+          >
+            <div
+              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Translate this transcript?</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+                This will translate your transcript and use{' '}
+                <span className="font-semibold text-foreground">
+                  {translateEstimateLoading ? '…' : translateEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {translateEstimateError ? (
+                <p className="mt-2 text-sm text-red-300">{translateEstimateError}</p>
+              ) : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowTranslateConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={!isTranscribed || isTranslating || translateEstimateLoading}
+                  onClick={() => {
+                    setShowTranslateConfirm(false);
+                    void handleTranslate();
+                  }}
+                >
+                  Continue
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showSubtitlesConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm subtitles"
+            onMouseDown={() => setShowSubtitlesConfirm(false)}
+          >
+            <div
+              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Generate subtitles?</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+                This will generate subtitles for your video and use{' '}
+                <span className="font-semibold text-foreground">
+                  {subtitlesEstimateLoading ? '…' : subtitlesEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {subtitlesEstimateError ? <p className="mt-2 text-sm text-red-300">{subtitlesEstimateError}</p> : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowSubtitlesConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={subtitlesEstimateLoading}
+                  onClick={() => {
+                    setShowSubtitlesConfirm(false);
+                    void startSubtitles();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showExportConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm export"
+            onMouseDown={() => setShowExportConfirm(false)}
+          >
+            <div
+              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Export final video?</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+                This will export your current edits (protection + subtitles if enabled) and use{' '}
+                <span className="font-semibold text-foreground">
+                  {exportEstimateLoading ? '…' : exportEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {exportEstimateError ? <p className="mt-2 text-sm text-red-300">{exportEstimateError}</p> : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowExportConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                  disabled={exportEstimateLoading || exporting}
+                  onClick={() => {
+                    setShowExportConfirm(false);
+                    void startFinalExport();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showVoiceStyleModal ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="voice-style-modal-title"
+            onMouseDown={() => setShowVoiceStyleModal(false)}
+          >
+            <div
+              className="viral-modal-panel flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col rounded-2xl"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="viral-modal-divider border-b px-4 py-3">
+                <p id="voice-style-modal-title" className="text-sm font-semibold text-foreground">
+                  {tViral('voiceStyleModalTitle')}
+                </p>
+                <p className="mt-1 text-xs text-zinc-600 dark:text-slate-400">{tViral('voiceStyleModalSubtitle')}</p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-100 px-4 py-4 dark:bg-[#0b1424]">
+                <VoiceToneVoicePicker
+                  catalog={voiceModelCatalog}
+                  loading={voiceModelsLoading}
+                  error={voiceModelsError}
+                  toneGroupId={voiceToneGroupId}
+                  onToneGroupChange={setVoiceToneGroupId}
+                  selectedVoiceId={selectedVoiceId}
+                  onVoiceIdChange={setSelectedVoiceId}
+                  disabled={isGenerating}
+                />
+              </div>
+              <div className="viral-modal-divider flex justify-end border-t px-4 py-3">
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                  onClick={() => setShowVoiceStyleModal(false)}
+                >
+                  {tViral('voiceStyleModalDone')}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showVoiceOverConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm voice over"
+            onMouseDown={() => setShowVoiceOverConfirm(false)}
+          >
+            <div
+              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Generate voice over?</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+                This will generate an audio voice over for your script and use{' '}
+                <span className="font-semibold text-foreground">
+                  {voiceOverEstimateLoading ? '…' : voiceOverPointsEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {voiceOverEstimateError ? (
+                <p className="mt-2 text-sm text-red-300">{voiceOverEstimateError}</p>
+              ) : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowVoiceOverConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={!isTranslated || isGenerating}
+                  onClick={() => {
+                    setShowVoiceOverConfirm(false);
+                    void startVoiceOver();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showBalancedSyncConfirm ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Confirm balanced sync"
+            onMouseDown={() => setShowBalancedSyncConfirm(false)}
+          >
+            <div
+              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <p className="text-sm font-semibold text-foreground">Render balanced sync?</p>
+              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+                This will create a combined video preview and use{' '}
+                <span className="font-semibold text-foreground">
+                  {balancedSyncEstimateLoading ? '…' : balancedSyncPointsEstimate?.reserveCostPoints ?? '—'}
+                </span>{' '}
+                points.
+              </p>
+              {balancedSyncEstimateError ? (
+                <p className="mt-2 text-sm text-red-300">{balancedSyncEstimateError}</p>
+              ) : null}
+              <div className="mt-4 flex items-center justify-end gap-2">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowBalancedSyncConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                  disabled={balancedSyncEstimateLoading}
+                  onClick={() => {
+                    setShowBalancedSyncConfirm(false);
+                    void handleStartBalancedSync();
+                  }}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {showBalancedPreview && isBalancedPreviewMode ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Balanced sync preview"
+          >
+            <div className="viral-modal-panel w-full max-w-3xl overflow-hidden rounded-2xl">
+              <div className="viral-modal-divider flex items-center justify-between border-b px-4 py-3">
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Balanced sync preview</p>
+                  <p className="mt-0.5 text-xs text-zinc-600 dark:text-slate-400">
+                    Listen carefully — accept only if it feels aligned.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => void handleRejectBalancedSync()}
+                >
+                  Close
+                </button>
+              </div>
+              <div className="bg-black p-3">
+                <video
+                  src={balancedSyncPreviewUrl}
+                  controls
+                  playsInline
+                  preload="auto"
+                  className="mx-auto h-[420px] w-full max-w-[900px] rounded-lg object-contain"
+                />
+              </div>
+              <div className="viral-modal-divider flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
+                <button
+                  type="button"
+                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => void handleRejectBalancedSync()}
+                >
+                  Reject
+                </button>
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                  onClick={() => void handleAcceptBalancedSync()}
+                >
+                  Accept
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
     </section>
   );
 }

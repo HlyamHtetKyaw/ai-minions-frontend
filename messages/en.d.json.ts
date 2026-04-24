@@ -683,7 +683,11 @@ declare const messages: {
     "page": {
       "title": "Viral Shorts",
       "subtitle": "Upload long-form video up to 1 hour 30 min (e.g. podcast, event, interview). AI finds viral moments; trim, preview, download, or combine any two segments into a 9:16 vertical.",
-      "helpAria": "Help with Viral Shorts"
+      "helpAria": "Help with Viral Shorts",
+      "loadingWorkspace": "Loading your workspace…",
+      "loadingWorkspaceHint": "Checking for a saved viral video session.",
+      "preparingWorkspace": "Opening your workspace…",
+      "preparingWorkspaceHint": "Saving your upload and loading the editor."
     },
     "uploadCard": {
       "title": "Upload long-form video"

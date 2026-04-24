@@ -14,7 +14,7 @@ import { viralShortsClearWorkspace, viralShortsGetWorkspace, viralShortsSaveSnap
 import { parseViralWorkspacePayloadForRestore } from '@/lib/viral-workspace-persistence';
 import { normalizePersistedVoiceId } from '@/lib/voice-over-api';
 
-type PageStep = 'upload' | 'uploading' | 'studio';
+type PageStep = 'upload' | 'uploading' | 'preparing_workspace' | 'studio';
 
 export default function ViralShortsPage() {
   const t = useTranslations('viralShorts');
@@ -49,8 +49,13 @@ export default function ViralShortsPage() {
   const [subtitlesBackgroundBlur, setSubtitlesBackgroundBlur] = useState(0);
   const [subtitlesBackgroundOpacity, setSubtitlesBackgroundOpacity] = useState(65);
   const [error, setError] = useState<string | null>(null);
+  /** After first signed-in workspace fetch (empty or restored). Until then, avoid flashing the upload UI. */
+  const [workspaceHydrated, setWorkspaceHydrated] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
-  const canContinue = useMemo(() => Boolean(file) && step !== 'uploading', [file, step]);
+  const canContinue = useMemo(
+    () => Boolean(file) && step !== 'uploading' && step !== 'preparing_workspace',
+    [file, step],
+  );
 
   useEffect(() => {
     const resolve = () => setIsSignedIn(Boolean(getStoredAccessToken()));
@@ -60,7 +65,11 @@ export default function ViralShortsPage() {
   }, []);
 
   useEffect(() => {
-    if (!isSignedIn) return;
+    if (!isSignedIn) {
+      setWorkspaceHydrated(false);
+      return;
+    }
+    setWorkspaceHydrated(false);
     let cancelled = false;
     (async () => {
       try {
@@ -188,6 +197,8 @@ export default function ViralShortsPage() {
         }
       } catch {
         // ignore
+      } finally {
+        if (!cancelled) setWorkspaceHydrated(true);
       }
     })();
     return () => {
@@ -226,7 +237,7 @@ export default function ViralShortsPage() {
       setSubtitlesSrtKey('');
       setSubtitlesDownloadUrl('');
       setSubtitlesSrtText('');
-      setStep('studio');
+      setStep('preparing_workspace');
 
       const viralPayload = {
         videoUrl: videoUrlWithKey,
@@ -257,6 +268,7 @@ export default function ViralShortsPage() {
         step: 'studio',
       };
       await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
+      setStep('studio');
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed';
       setError(msg);
@@ -452,8 +464,27 @@ export default function ViralShortsPage() {
         <LoginGate />
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-8 sm:px-6 sm:py-10">
-          <div className={`mx-auto w-full space-y-8 ${step === 'studio' ? 'max-w-7xl' : 'max-w-2xl'}`}>
-            {step !== 'studio' ? (
+          <div
+            className={`mx-auto w-full space-y-8 ${
+              step === 'studio' || step === 'preparing_workspace' ? 'max-w-7xl' : 'max-w-2xl'
+            }`}
+          >
+            {!workspaceHydrated ? (
+              <div
+                className="flex min-h-[min(420px,55vh)] flex-col items-center justify-center gap-4 rounded-2xl border border-card-border bg-card/40 px-6 py-16 text-center shadow-[0_18px_40px_rgba(0,0,0,0.12)]"
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+              >
+                <Loader2 className="h-10 w-10 shrink-0 animate-spin text-[#7c5cff]" aria-hidden />
+                <div>
+                  <p className="text-base font-semibold text-foreground">{t('page.loadingWorkspace')}</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{t('page.loadingWorkspaceHint')}</p>
+                </div>
+              </div>
+            ) : (
+              <>
+            {step !== 'studio' && step !== 'preparing_workspace' ? (
               <PageHeader
                 icon={
                   <PageHeader.Icon tileClassName="viral-shorts-icon-tile">
@@ -463,6 +494,21 @@ export default function ViralShortsPage() {
                 title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
                 subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
               />
+            ) : null}
+
+            {step === 'preparing_workspace' ? (
+              <div
+                className="flex min-h-[min(420px,55vh)] flex-col items-center justify-center gap-4 rounded-2xl border border-card-border bg-card/40 px-6 py-16 text-center shadow-[0_18px_40px_rgba(0,0,0,0.12)]"
+                role="status"
+                aria-live="polite"
+                aria-busy="true"
+              >
+                <Loader2 className="h-10 w-10 shrink-0 animate-spin text-[#7c5cff]" aria-hidden />
+                <div>
+                  <p className="text-base font-semibold text-foreground">{t('page.preparingWorkspace')}</p>
+                  <p className="mt-1.5 text-sm text-muted-foreground">{t('page.preparingWorkspaceHint')}</p>
+                </div>
+              </div>
             ) : null}
 
             <section
@@ -575,6 +621,8 @@ export default function ViralShortsPage() {
                 {error}
               </p>
             ) : null}
+              </>
+            )}
           </div>
         </div>
       )}
