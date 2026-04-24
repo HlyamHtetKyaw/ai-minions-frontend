@@ -5,6 +5,7 @@ import { useEditorStore } from '@/store/editorStore';
 
 const FONT_OPTIONS = [
   'Inter',
+  'Noto Sans Myanmar',
   'Montserrat',
   'Playfair Display',
   'Roboto Mono',
@@ -69,6 +70,9 @@ export function TextProperties() {
                 queueMicrotask(syncTextareaHeight);
               }}
               className="w-full resize-none rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1.5 text-sm text-zinc-100 outline-none ring-zinc-600 focus:ring-1"
+              style={{
+                fontFamily: `"${layer.fontFamily}", "Noto Sans Myanmar", "Pyidaungsu", "Myanmar Text", sans-serif`,
+              }}
             />
           </section>
 
