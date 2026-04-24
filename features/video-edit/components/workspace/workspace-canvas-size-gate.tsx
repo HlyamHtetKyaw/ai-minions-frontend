@@ -46,7 +46,7 @@ function aspectToRatioKey(id: CanvasGateAspectId): 'ratio16_9' | 'ratio9_16' | '
 function MiniFramePreview({ aspect }: { aspect: CanvasGateAspectId }) {
   const inner =
     aspect === '9:16' ? (
-      <div className="h-8 w-[42%] max-w-[2.25rem] rounded-sm bg-gradient-to-b from-zinc-600 to-zinc-800 ring-1 ring-white/10" />
+      <div className="mx-auto aspect-[9/16] h-10 max-h-full w-auto rounded-sm bg-gradient-to-b from-zinc-600 to-zinc-800 ring-1 ring-white/10" />
     ) : aspect === '1:1' ? (
       <div className="size-8 rounded-sm bg-gradient-to-br from-zinc-600 to-zinc-800 ring-1 ring-white/10" />
     ) : aspect === '4:3' ? (
@@ -77,14 +77,17 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
 
   const isLandscapeFamily = pending === '16:9' || pending === '4:3';
 
-  const previewFrameStyle = useMemo(
-    () =>
-      getWorkspacePreviewFrameStyle(pending, {
-        // Short viewports: cap preview height; tall screens still get a large frame (up to 440px / 52dvh).
-        maxHeight: 'clamp(160px, 36dvh, min(52dvh, 440px))',
-      }),
-    [pending],
-  );
+  const previewFrameStyle = useMemo(() => {
+    // Portrait aspects need a taller max than landscape so the left preview reads as a real phone frame,
+    // not a tiny chip in a wide column (36dvh was too small on desktop).
+    const maxHeight =
+      pending === '9:16'
+        ? 'clamp(220px, min(58dvh, 76vh), min(78dvh, 640px))'
+        : pending === '1:1'
+          ? 'clamp(200px, min(44dvh, 58vh), min(62dvh, 520px))'
+          : 'clamp(160px, 36dvh, min(52dvh, 440px))';
+    return getWorkspacePreviewFrameStyle(pending, { maxHeight });
+  }, [pending]);
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#050508]">
@@ -101,7 +104,11 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
       <div className="relative z-10 flex min-h-min w-full flex-col items-center justify-start px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-8 sm:py-8 lg:min-h-0 lg:flex-1 lg:justify-center lg:py-10">
         <div className="grid w-full max-w-5xl gap-6 sm:gap-8 lg:grid-cols-[1fr_minmax(0,26rem)] lg:items-center lg:gap-14">
           {/* Live canvas preview */}
-          <div className="flex min-h-0 items-center justify-center py-1 sm:min-h-[160px] lg:min-h-[320px]">
+          <div
+            className={`flex min-h-0 items-center justify-center py-1 sm:min-h-[160px] lg:min-h-[320px] ${
+              pending === '9:16' ? 'lg:min-h-[min(72dvh,720px)]' : pending === '1:1' ? 'lg:min-h-[420px]' : ''
+            }`}
+          >
             <div
               className={`relative flex justify-center ${
                 pending === '9:16' || pending === '1:1' ? 'w-full' : 'w-full max-w-[min(92vw,520px)]'
