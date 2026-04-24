@@ -156,7 +156,7 @@ function serializeWorkspaceForPersistence(state: ReturnType<typeof useEditorStor
     .map((track) => Object.fromEntries(Object.entries(track).filter(([key]) => key !== 'audioBuffer')));
 
   const hasVideo = persistedVideoSrc != null || videoSrcKey != null;
-  return JSON.stringify({
+  const core = {
     ...snapshot,
     videoSrc: persistedVideoSrc,
     videoSrcKey: videoSrcKey ?? undefined,
@@ -170,12 +170,16 @@ function serializeWorkspaceForPersistence(state: ReturnType<typeof useEditorStor
     galleryImages: safeGalleryImages,
     imageLayers: safeImageLayers,
     audioTracks,
-  });
+  } as Record<string, unknown>;
+  return JSON.stringify(core);
 }
 
 function parseWorkspaceFromPersistence(rawJson: string): WorkspaceHistorySnapshot | null {
   try {
-    const raw = JSON.parse(rawJson) as WorkspaceHistorySnapshot & {
+    const root = JSON.parse(rawJson) as Record<string, unknown>;
+    // Legacy: viral lived nested in the same document; never hydrate the editor from it.
+    delete root.viralShortsWorkspace;
+    const raw = root as WorkspaceHistorySnapshot & {
       audioTracks?: Array<Omit<WorkspaceHistorySnapshot['audioTracks'][number], 'audioBuffer'>>;
       videoSrcKey?: string;
     };

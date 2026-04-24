@@ -27,6 +27,7 @@ import {
   type PointsEstimate as SubtitlesPointsEstimate,
 } from '@/lib/subtitles-api';
 import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
+import { previewSubtitleFontPxToFfmpegFontPx } from '@/lib/subtitle-export-font-map';
 import {
   extractTranscriptTextFromOutputData,
   openGenerationJobSseStream,
@@ -214,6 +215,8 @@ type Props = {
   onSubtitlesBackgroundBlurChange?: (blur: number) => void;
   onSubtitlesBackgroundOpacityChange?: (opacity: number) => void;
   onDiscardWorkspace?: () => void;
+  /** Persist viral workspace to the server right after export (avoids losing state if URLs refresh). */
+  onExportSuccess?: () => void | Promise<void>;
 };
 
 export default function CreationStudio({
@@ -268,6 +271,7 @@ export default function CreationStudio({
   onSubtitlesBackgroundBlurChange,
   onSubtitlesBackgroundOpacityChange,
   onDiscardWorkspace,
+  onExportSuccess,
 }: Props) {
   const tVo = useTranslations('voice-over');
   const tViral = useTranslations('viralShorts.voiceStudio');
@@ -375,6 +379,7 @@ export default function CreationStudio({
   const [showSubtitlesOverlay, setShowSubtitlesOverlay] = useState(true);
   const [activeSubtitleText, setActiveSubtitleText] = useState('');
 
+  const lastNonEmptyWorkspaceS3KeyRef = useRef<string | null>(null);
   const srtSyncFromTableRef = useRef(false);
   const [editableCues, setEditableCues] = useState<EditableSrtCue[]>(() => {
     try {
@@ -807,46 +812,58 @@ export default function CreationStudio({
   }, [editableCues, showSubtitlesOverlay]);
 
   useEffect(() => {
-    // Reset derived state when switching videos.
-    const restoredTranscript = typeof initialTranscriptText === 'string' ? initialTranscriptText : '';
-    const restoredTranslated = typeof initialTranslatedText === 'string' ? initialTranslatedText : '';
-    setTranscriptText(restoredTranscript);
-    setTranslatedText(restoredTranslated);
-    setIsTranscribed(Boolean(restoredTranscript.trim()));
-    setIsTranslated(Boolean(restoredTranslated.trim()));
-    setIsGenerated(false);
-    setScriptText(restoredTranslated.trim() ? restoredTranslated : restoredTranscript);
-    setTranscribeError(null);
-    setTranscribeProgress(null);
-    setEstimate(null);
-    setEstimateError(null);
-    setShowTranscribeConfirm(false);
-    setShowTranslateConfirm(false);
-    setTranslateEstimate(null);
-    setTranslateEstimateError(null);
-    setTranslateEstimateLoading(false);
-    setShowVoiceOverConfirm(false);
-    setVoiceOverProgress(null);
-    setVoiceOverError(null);
-    if (initialTone) setTone(initialTone);
-    setSelectedVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice));
-    setVoiceToneGroupId(defaultToneGroupForVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice)));
-    setVoiceOverAudioUrl(typeof initialVoiceOverAudioUrl === 'string' ? initialVoiceOverAudioUrl : '');
-    setVoiceOverS3Key(typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key : '');
-    setVoiceOverEnabled(Boolean(initialVoiceOverEnabled));
-    setOriginalAudioEnabled(initialOriginalAudioEnabled == null ? true : Boolean(initialOriginalAudioEnabled));
-    const r = typeof initialVoiceOverPlaybackRate === 'number' ? initialVoiceOverPlaybackRate : 1;
-    {
-      const max = Boolean(initialAllowStrongerSync) ? MAX_SYNC_RATE_STRONG : MAX_SYNC_RATE;
-      setVoiceOverPlaybackRate(Number.isFinite(r) ? Math.max(MIN_SYNC_RATE, Math.min(max, r)) : 1);
+    const key = workspaceS3Key.trim();
+    const previous = lastNonEmptyWorkspaceS3KeyRef.current;
+
+    if (!key) {
+      // videoUrl lost #wk= (transient presign / navigation) — never reset studio state or we wipe transcript/SRT.
+      return;
     }
-    setAllowStrongerSync(Boolean(initialAllowStrongerSync));
-    if (!workspaceS3Key) return;
+
+    const switchedToDifferentVideo = previous != null && previous !== key;
+
+    if (switchedToDifferentVideo) {
+      const restoredTranscript = typeof initialTranscriptText === 'string' ? initialTranscriptText : '';
+      const restoredTranslated = typeof initialTranslatedText === 'string' ? initialTranslatedText : '';
+      setTranscriptText(restoredTranscript);
+      setTranslatedText(restoredTranslated);
+      setIsTranscribed(Boolean(restoredTranscript.trim()));
+      setIsTranslated(Boolean(restoredTranslated.trim()));
+      setIsGenerated(false);
+      setScriptText(restoredTranslated.trim() ? restoredTranslated : restoredTranscript);
+      setTranscribeError(null);
+      setTranscribeProgress(null);
+      setEstimate(null);
+      setEstimateError(null);
+      setShowTranscribeConfirm(false);
+      setShowTranslateConfirm(false);
+      setTranslateEstimate(null);
+      setTranslateEstimateError(null);
+      setTranslateEstimateLoading(false);
+      setShowVoiceOverConfirm(false);
+      setVoiceOverProgress(null);
+      setVoiceOverError(null);
+      if (initialTone) setTone(initialTone);
+      setSelectedVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice));
+      setVoiceToneGroupId(defaultToneGroupForVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice)));
+      setVoiceOverAudioUrl(typeof initialVoiceOverAudioUrl === 'string' ? initialVoiceOverAudioUrl : '');
+      setVoiceOverS3Key(typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key : '');
+      setVoiceOverEnabled(Boolean(initialVoiceOverEnabled));
+      setOriginalAudioEnabled(initialOriginalAudioEnabled == null ? true : Boolean(initialOriginalAudioEnabled));
+      const r = typeof initialVoiceOverPlaybackRate === 'number' ? initialVoiceOverPlaybackRate : 1;
+      {
+        const max = Boolean(initialAllowStrongerSync) ? MAX_SYNC_RATE_STRONG : MAX_SYNC_RATE;
+        setVoiceOverPlaybackRate(Number.isFinite(r) ? Math.max(MIN_SYNC_RATE, Math.min(max, r)) : 1);
+      }
+      setAllowStrongerSync(Boolean(initialAllowStrongerSync));
+    }
+
+    lastNonEmptyWorkspaceS3KeyRef.current = key;
 
     setEstimateLoading(true);
     (async () => {
       try {
-        const est = await transcribeEstimatePointsFromExisting(workspaceS3Key, 'video');
+        const est = await transcribeEstimatePointsFromExisting(key, 'video');
         setEstimate(est);
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -855,6 +872,8 @@ export default function CreationStudio({
         setEstimateLoading(false);
       }
     })();
+    // initial* only consulted when `switchedToDifferentVideo`; deps intentionally workspace key only.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- avoid re-running on every parent field edit
   }, [workspaceS3Key]);
 
   useEffect(() => {
@@ -1604,6 +1623,16 @@ export default function CreationStudio({
       }
       const baseUrl = String(videoUrl ?? '');
       const noFrag = baseUrl.includes('#') ? baseUrl.slice(0, baseUrl.indexOf('#')) : baseUrl;
+      const canvasW = Math.max(1, Math.round(previewFramePx.w));
+      const canvasH = Math.max(1, Math.round(previewFramePx.h));
+      const intrinsicW = previewIntrinsicPx?.w ?? v.videoWidth ?? 0;
+      const intrinsicH = previewIntrinsicPx?.h ?? v.videoHeight ?? 0;
+      const canMapPreviewFont =
+        intrinsicW > 0 &&
+        intrinsicH > 0 &&
+        Number.isFinite(previewBurnedSubtitleFontPx) &&
+        previewBurnedSubtitleFontPx > 0;
+
       const payload = {
         videoUrl: noFrag,
         duration,
@@ -1620,6 +1649,13 @@ export default function CreationStudio({
         subtitlesSrtText: subtitlesSrtText,
         subtitlesPosition: subtitlesPosition,
         subtitlesFontSize: subtitlesFontSize,
+        ...(canMapPreviewFont
+          ? {
+              subtitlesPreviewFontPx: previewBurnedSubtitleFontPx,
+              subtitlesPreviewCanvasW: canvasW,
+              subtitlesPreviewCanvasH: canvasH,
+            }
+          : {}),
         subtitlesBackgroundBlur: subtitlesBackgroundBlur,
         subtitlesBackgroundOpacity: subtitlesBackgroundOpacity,
       };
@@ -1627,6 +1663,7 @@ export default function CreationStudio({
       setExportedVideoUrl(res.downloadUrl);
       setExportedVideoKey(res.s3Key);
       await triggerWorkspaceExportDownload(res.downloadUrl, res.s3Key);
+      await onExportSuccess?.();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setExportError(msg || 'Export failed');
@@ -2715,7 +2752,17 @@ export default function CreationStudio({
                       lineHeight: 1.25,
                       backgroundColor: `rgba(0, 0, 0, ${subtitlesBackgroundOpacity / 100})`,
                     }}
-                    title={`Burn-in size: ${subtitlesFontSize}px at ${previewIntrinsicPx ? `${previewIntrinsicPx.w}×${previewIntrinsicPx.h}` : '…'} output`}
+                    title={
+                      previewIntrinsicPx
+                        ? `Preview ${Math.round(previewBurnedSubtitleFontPx)}px → burn ~${previewSubtitleFontPxToFfmpegFontPx(
+                            previewBurnedSubtitleFontPx,
+                            Math.max(1, Math.round(previewFramePx.w)),
+                            Math.max(1, Math.round(previewFramePx.h)),
+                            previewIntrinsicPx.w,
+                            previewIntrinsicPx.h,
+                          )}px at ${previewIntrinsicPx.w}×${previewIntrinsicPx.h}`
+                        : `Burn-in (slider): ${subtitlesFontSize}px — load preview to map to output`
+                    }
                   >
                     {activeSubtitleText}
                   </div>

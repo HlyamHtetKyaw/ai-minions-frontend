@@ -9,13 +9,9 @@ import UploadZone from '@/components/shared/components/upload-zone';
 import ActionButton from '@/components/shared/components/action-button';
 import CreationStudio from '@/components/viralShorts/CreationStudio';
 import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
-import {
-  uploadFileToPresignedUrl,
-  videoEditorClearWorkspace,
-  videoEditorGetWorkspace,
-  videoEditorPrepareUploadUrl,
-  videoEditorSaveSnapshot,
-} from '@/lib/video-editor-api';
+import { uploadFileToPresignedUrl, videoEditorPrepareUploadUrl } from '@/lib/video-editor-api';
+import { viralShortsClearWorkspace, viralShortsGetWorkspace, viralShortsSaveSnapshot } from '@/lib/viral-shorts-workspace-api';
+import { parseViralWorkspacePayloadForRestore } from '@/lib/viral-workspace-persistence';
 import { normalizePersistedVoiceId } from '@/lib/voice-over-api';
 
 type PageStep = 'upload' | 'uploading' | 'studio';
@@ -68,11 +64,13 @@ export default function ViralShortsPage() {
     let cancelled = false;
     (async () => {
       try {
-        const snap = await videoEditorGetWorkspace();
+        const snap = await viralShortsGetWorkspace();
         if (cancelled) return;
         const raw = (snap.workspaceJson ?? '').trim();
         if (!raw || raw === '{}' || raw === 'null') return;
-        const parsed = JSON.parse(raw) as {
+        const blob = parseViralWorkspacePayloadForRestore(raw);
+        if (!blob) return;
+        const parsed = blob as {
           videoUrl?: string | null;
           videoName?: string | null;
           videoSrc?: string | null;
@@ -230,37 +228,35 @@ export default function ViralShortsPage() {
       setSubtitlesSrtText('');
       setStep('studio');
 
-      // Persist as the "current" viral workspace.
-      await videoEditorSaveSnapshot(
-        JSON.stringify({
-          videoUrl: videoUrlWithKey,
-          videoName: file.name,
-          transcriptText: '',
-          translatedText: '',
-          tone: 'casual_social_media',
-          voiceOverAudioUrl: '',
-          voiceOverS3Key: '',
-          voiceOverVoice: 'kore',
-          voiceOverEnabled: false,
-          originalAudioEnabled: true,
-          voiceOverPlaybackRate: 1,
-          allowStrongerSync: false,
-          protectFlip: false,
-          protectHueDeg: 0,
-          balancedSyncGenerationId: null,
-          balancedSyncPreviewUrl: '',
-          balancedSyncPreviewS3Key: '',
-          subtitlesGenerationId: null,
-          subtitlesSrtKey: '',
-          subtitlesDownloadUrl: '',
-          subtitlesSrtText: '',
-          subtitlesPosition: { x: 0.5, y: 0.88 },
-          subtitlesFontSize: 22,
-          subtitlesBackgroundBlur: 0,
-          subtitlesBackgroundOpacity: 65,
-          step: 'studio',
-        }),
-      );
+      const viralPayload = {
+        videoUrl: videoUrlWithKey,
+        videoName: file.name,
+        transcriptText: '',
+        translatedText: '',
+        tone: 'casual_social_media',
+        voiceOverAudioUrl: '',
+        voiceOverS3Key: '',
+        voiceOverVoice: 'kore',
+        voiceOverEnabled: false,
+        originalAudioEnabled: true,
+        voiceOverPlaybackRate: 1,
+        allowStrongerSync: false,
+        protectFlip: false,
+        protectHueDeg: 0,
+        balancedSyncGenerationId: null,
+        balancedSyncPreviewUrl: '',
+        balancedSyncPreviewS3Key: '',
+        subtitlesGenerationId: null,
+        subtitlesSrtKey: '',
+        subtitlesDownloadUrl: '',
+        subtitlesSrtText: '',
+        subtitlesPosition: { x: 0.5, y: 0.88 },
+        subtitlesFontSize: 22,
+        subtitlesBackgroundBlur: 0,
+        subtitlesBackgroundOpacity: 65,
+        step: 'studio',
+      };
+      await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Upload failed';
       setError(msg);
@@ -276,36 +272,41 @@ export default function ViralShortsPage() {
       window.clearTimeout(saveTimerRef.current);
     }
     saveTimerRef.current = window.setTimeout(() => {
-      void videoEditorSaveSnapshot(
-        JSON.stringify({
-          videoUrl,
-          videoName,
-          transcriptText,
-          translatedText,
-          tone: translateTone,
-          voiceOverAudioUrl,
-          voiceOverS3Key,
-          voiceOverVoice,
-          voiceOverEnabled,
-          originalAudioEnabled,
-          voiceOverPlaybackRate,
-          allowStrongerSync,
-          protectFlip,
-          protectHueDeg,
-          balancedSyncGenerationId,
-          balancedSyncPreviewUrl,
-          balancedSyncPreviewS3Key,
-          subtitlesGenerationId,
-          subtitlesSrtKey,
-          subtitlesDownloadUrl,
-          subtitlesSrtText,
-          subtitlesPosition,
-          subtitlesFontSize,
-          subtitlesBackgroundBlur,
-          subtitlesBackgroundOpacity,
-          step: 'studio',
-        }),
-      ).catch(() => {});
+      void (async () => {
+        try {
+          const viralPayload = {
+            videoUrl,
+            videoName,
+            transcriptText,
+            translatedText,
+            tone: translateTone,
+            voiceOverAudioUrl,
+            voiceOverS3Key,
+            voiceOverVoice,
+            voiceOverEnabled,
+            originalAudioEnabled,
+            voiceOverPlaybackRate,
+            allowStrongerSync,
+            protectFlip,
+            protectHueDeg,
+            balancedSyncGenerationId,
+            balancedSyncPreviewUrl,
+            balancedSyncPreviewS3Key,
+            subtitlesGenerationId,
+            subtitlesSrtKey,
+            subtitlesDownloadUrl,
+            subtitlesSrtText,
+            subtitlesPosition,
+            subtitlesFontSize,
+            subtitlesBackgroundBlur,
+            subtitlesBackgroundOpacity,
+            step: 'studio',
+          };
+          await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
+        } catch {
+          /* ignore */
+        }
+      })();
     }, 600);
     return () => {
       if (saveTimerRef.current) {
@@ -371,7 +372,7 @@ export default function ViralShortsPage() {
   const handleDiscardWorkspace = useCallback(async () => {
     setError(null);
     try {
-      await videoEditorClearWorkspace();
+      await viralShortsClearWorkspace();
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to discard workspace';
       setError(msg);
@@ -379,6 +380,71 @@ export default function ViralShortsPage() {
     }
     handleNewVideo();
   }, [handleNewVideo]);
+
+  const flushViralWorkspaceToServer = useCallback(async () => {
+    if (!isSignedIn || step !== 'studio' || !videoUrl) return;
+    try {
+      const viralPayload = {
+        videoUrl,
+        videoName,
+        transcriptText,
+        translatedText,
+        tone: translateTone,
+        voiceOverAudioUrl,
+        voiceOverS3Key,
+        voiceOverVoice,
+        voiceOverEnabled,
+        originalAudioEnabled,
+        voiceOverPlaybackRate,
+        allowStrongerSync,
+        protectFlip,
+        protectHueDeg,
+        balancedSyncGenerationId,
+        balancedSyncPreviewUrl,
+        balancedSyncPreviewS3Key,
+        subtitlesGenerationId,
+        subtitlesSrtKey,
+        subtitlesDownloadUrl,
+        subtitlesSrtText,
+        subtitlesPosition,
+        subtitlesFontSize,
+        subtitlesBackgroundBlur,
+        subtitlesBackgroundOpacity,
+        step: 'studio',
+      };
+      await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
+    } catch {
+      /* best-effort after export */
+    }
+  }, [
+    isSignedIn,
+    step,
+    videoUrl,
+    videoName,
+    transcriptText,
+    translatedText,
+    translateTone,
+    voiceOverAudioUrl,
+    voiceOverS3Key,
+    voiceOverVoice,
+    voiceOverEnabled,
+    originalAudioEnabled,
+    voiceOverPlaybackRate,
+    allowStrongerSync,
+    protectFlip,
+    protectHueDeg,
+    balancedSyncGenerationId,
+    balancedSyncPreviewUrl,
+    balancedSyncPreviewS3Key,
+    subtitlesGenerationId,
+    subtitlesSrtKey,
+    subtitlesDownloadUrl,
+    subtitlesSrtText,
+    subtitlesPosition,
+    subtitlesFontSize,
+    subtitlesBackgroundBlur,
+    subtitlesBackgroundOpacity,
+  ]);
 
   return (
     <>
@@ -500,6 +566,7 @@ export default function ViralShortsPage() {
                 onVideoUrlChange={(next) => setVideoUrl(next)}
                 onVideoNameChange={(next) => setVideoName(next)}
                 onDiscardWorkspace={() => void handleDiscardWorkspace()}
+                onExportSuccess={() => void flushViralWorkspaceToServer()}
               />
             ) : null}
 
