@@ -57,6 +57,28 @@ export type GenerationJobSseHandlers = {
  * - Main-service hello: `{ status: "subscribed", generationId, jobId, featureName?, … }`
  * - Processing-service: `{ status: "processing", stage, jobId, generationId }` (see {@code GenerationStatusPublisher})
  */
+/** First non-empty string among common worker field names for pipeline step. */
+function coalesceStageOrStep(o: Record<string, unknown>): string | null {
+  for (const k of ['stage', 'step', 'phase', 'currentStage', 'jobStage'] as const) {
+    const v = o[k];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return null;
+}
+
+/** Normalize e.g. {@code extractAudio} → {@code extract_audio} for stage map lookup. */
+function stageKeyForLookup(raw: string): string {
+  const t = raw.trim();
+  if (!t) return t;
+  if (t.includes('_')) {
+    return t.replace(/\s+/g, '_').toLowerCase();
+  }
+  if (/[A-Z]/.test(t) && /[a-z]/.test(t)) {
+    return t.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/\s+/g, '_').toLowerCase();
+  }
+  return t.replace(/\s+/g, '_').toLowerCase();
+}
+
 export type GenerationSseProgressLabelOverrides = {
   /** Optional overrides for known `stage` values from processing-service. */
   stages?: Partial<Record<string, { percent: number; label: string }>>;
@@ -77,9 +99,13 @@ export function parseGenerationSseProgressPayload(
     const o = JSON.parse(raw) as Record<string, unknown>;
     const statusRaw = String(o.status ?? '').toLowerCase();
 
-    const stepOrStage =
-      (typeof o.stage === 'string' && o.stage.trim() ? o.stage : null) ??
-      (typeof o.step === 'string' && o.step.trim() ? o.step : null);
+    // Terminal chunks are delivered to onStatus before onTerminal; do not map them to 100%
+    // or in-flight UIs will skip simulated / staged progress.
+    if (statusRaw === 'completed' || statusRaw === 'failed' || statusRaw === 'error' || statusRaw === 'timeout') {
+      return null;
+    }
+
+    const stepOrStage = coalesceStageOrStep(o);
 
     if (statusRaw === 'subscribed') {
       const subscribedPctDefault = 38;
@@ -107,7 +133,7 @@ export function parseGenerationSseProgressPayload(
     }
 
     if (statusRaw === 'processing' && stepOrStage) {
-      const stage = stepOrStage.toLowerCase();
+      const stage = stageKeyForLookup(stepOrStage);
       const stages: Record<string, { percent: number; label: string }> = {
         download: { percent: 22, label: 'Downloading media' },
         extract_audio: { percent: 38, label: 'Extracting audio' },

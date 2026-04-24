@@ -1559,8 +1559,8 @@ export default function CreationStudio({
         </div>
       </header>
 
-      <div className="grid min-h-[640px] grid-cols-1 lg:grid-cols-[280px_1fr]">
-        <aside className="border-r border-card-border bg-subtle/20 p-2.5">
+      <div className="grid min-h-[640px] grid-cols-1 lg:grid-cols-[380px_1fr] xl:grid-cols-[420px_1fr]">
+        <aside className="border-r border-card-border bg-subtle/20 p-3 lg:p-4">
           <div className="space-y-2">
             <button
               type="button"
@@ -1811,60 +1811,72 @@ export default function CreationStudio({
             </div>
           </div>
 
-          <div className="mt-6 space-y-2">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">2. Translate</p>
-            <select
-              value={tone}
-              onChange={(e) => setTone(e.target.value as TranslateTone)}
-              className="h-8 w-full rounded-md border border-card-border bg-card px-2.5 text-xs text-foreground outline-none focus:border-foreground"
-            >
-              <option value="narrative">Narrative</option>
-              <option value="formal">Formal</option>
-              <option value="informal">Informal</option>
-            </select>
-            <ActionButton
-              onClick={handleTranslateClick}
-              isLoading={isTranslating}
-              disabled={!isTranscribed || isTranslating}
-              label="Translate"
-              loadingLabel="Translating..."
-              className="btn-viral-shorts-analyze h-11 w-full rounded-xl px-4 text-sm font-semibold"
-            />
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-muted">{tViral('sectionTitle')}</p>
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
-              <p className="w-full shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted sm:w-auto">
-                {tViral('voiceStyleKicker')}
+          <div className="mt-6 space-y-4">
+            <div className="rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
+                {tViral('translateSectionTitle')}
               </p>
-              <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-                {(
-                  [
-                    { id: 'woman-kore' as const, label: tViral('womanKore') },
-                    { id: 'man' as const, label: tViral('man') },
-                  ] as const
-                ).map(({ id, label }) => (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => setVoice(id)}
-                    disabled={isGenerating}
-                    aria-pressed={voice === id}
-                    className={`voice-style-chip ${voice === id ? 'voice-style-chip-active' : ''}`}
+              <div className="mt-3 flex flex-row items-stretch gap-3">
+                <div className="min-w-0 flex-1 basis-0">
+                  <select
+                    value={tone}
+                    onChange={(e) => setTone(e.target.value as TranslateTone)}
+                    className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-card-border bg-card px-3 pr-9 text-sm text-foreground outline-none focus:border-foreground"
                   >
-                    <Volume2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                    {label}
-                  </button>
-                ))}
+                    <option value="narrative">Narrative</option>
+                    <option value="formal">Formal</option>
+                    <option value="informal">Informal</option>
+                  </select>
+                </div>
+                <ActionButton
+                  onClick={handleTranslateClick}
+                  isLoading={isTranslating}
+                  disabled={!isTranscribed || isTranslating}
+                  label="Translate"
+                  loadingLabel="Translating..."
+                  className="btn-viral-shorts-analyze btn-viral-shorts-translate-inline h-10 shrink-0 rounded-xl px-5 text-sm font-semibold whitespace-nowrap"
+                />
               </div>
-              <div className="ml-auto flex w-full shrink-0 flex-wrap items-center gap-2 sm:mt-0 sm:w-auto sm:gap-x-3">
-                <span className="mx-0.5 hidden h-5 w-px shrink-0 bg-card-border sm:block" aria-hidden />
-                <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+            </div>
+
+            <div className="space-y-4 rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+              <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{tViral('sectionTitle')}</p>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  {tViral('voiceStyleKicker')}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {(
+                    [
+                      { id: 'woman-kore' as const, label: tViral('womanKore') },
+                      { id: 'man' as const, label: tViral('man') },
+                    ] as const
+                  ).map(({ id, label }) => (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => setVoice(id)}
+                      disabled={isGenerating}
+                      aria-pressed={voice === id}
+                      className={`voice-style-chip ${voice === id ? 'voice-style-chip-active' : ''}`}
+                    >
+                      <Volume2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                   {tVo('provider.label')}
                 </p>
-                <div className="voice-provider-select-wrap shrink-0">
+                <div className="voice-provider-select-wrap relative flex w-full">
                   <select
                     value={voiceOverProvider}
                     onChange={(e) => setVoiceOverProvider(e.target.value as VoiceOverProviderChoice)}
-                    className="voice-provider-select"
+                    className="voice-provider-select min-w-0! w-full max-w-md"
                     disabled={isGenerating}
                     aria-label={tVo('provider.aria')}
                   >
@@ -1875,199 +1887,205 @@ export default function CreationStudio({
                   <ChevronDown className="voice-provider-select-chevron" strokeWidth={2.25} aria-hidden />
                 </div>
               </div>
-            </div>
 
-            <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-3 py-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{tVo('estimate.kicker')}</p>
-              {!isTranslated ? (
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tViral('estimateHintTranslate')}</p>
-              ) : voiceOverEstimateLoading ? (
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tVo('estimate.loading')}</p>
-              ) : typeof voiceOverEstimate?.reserveCostPoints === 'number' &&
-                Number.isFinite(voiceOverEstimate.reserveCostPoints) ? (
-                <>
-                  <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                    <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
-                      {voiceOverEstimate.reserveCostPoints.toLocaleString()}
-                    </span>
-                    <span className="text-xs font-semibold text-muted-foreground">{tVo('estimate.unit')}</span>
+              <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-4 py-4">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+                  {tVo('estimate.kicker')}
+                </p>
+                {!isTranslated ? (
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tViral('estimateHintTranslate')}</p>
+                ) : voiceOverEstimateLoading ? (
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tVo('estimate.loading')}</p>
+                ) : typeof voiceOverEstimate?.reserveCostPoints === 'number' &&
+                  Number.isFinite(voiceOverEstimate.reserveCostPoints) ? (
+                  <>
+                    <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                      <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
+                        {voiceOverEstimate.reserveCostPoints.toLocaleString()}
+                      </span>
+                      <span className="text-xs font-semibold text-muted-foreground">{tVo('estimate.unit')}</span>
+                    </div>
+                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tVo('estimate.caption')}</p>
+                  </>
+                ) : voiceOverEstimateError ? (
+                  <p className="mt-3 text-sm leading-relaxed text-red-300">{voiceOverEstimateError}</p>
+                ) : (
+                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tVo('estimate.hint')}</p>
+                )}
+              </div>
+
+              <ActionButton
+                onClick={() => void handleGenerate()}
+                isLoading={isGenerating}
+                disabled={!isTranslated || isGenerating}
+                label="Generate"
+                loadingLabel="Generating..."
+                className="btn-viral-shorts h-11 w-full rounded-xl px-4 text-sm font-semibold"
+              />
+
+              {voiceOverProgress ? (
+                <div
+                  className={`rounded-xl border border-card-border bg-card px-3 py-3 ${
+                    voiceOverProgress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
+                  }`}
+                  role="status"
+                  aria-live="polite"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p
+                      className={`text-xs ${
+                        voiceOverProgress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'
+                      }`}
+                    >
+                      {voiceOverProgress.label}
+                    </p>
+                    <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
+                      {voiceOverProgress.percent}%
+                    </p>
                   </div>
-                  <p className="mt-3 text-[11px] leading-relaxed text-muted-foreground">{tVo('estimate.caption')}</p>
-                </>
-              ) : voiceOverEstimateError ? (
-                <p className="mt-2 text-xs leading-relaxed text-red-300">{voiceOverEstimateError}</p>
-              ) : (
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{tVo('estimate.hint')}</p>
-              )}
-            </div>
+                  <div
+                    className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
+                    role="progressbar"
+                    aria-valuemin={0}
+                    aria-valuemax={100}
+                    aria-valuenow={voiceOverProgress.percent}
+                    aria-label={voiceOverProgress.label}
+                  >
+                    <div
+                      className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${
+                        voiceOverProgress.percent >= 100 ? 'bg-emerald-600' : 'bg-violet-500'
+                      }`}
+                      style={{
+                        width: `${Math.min(100, Math.max(0, voiceOverProgress.percent))}%`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ) : null}
 
-            <ActionButton
-              onClick={() => void handleGenerate()}
-              isLoading={isGenerating}
-              disabled={!isTranslated || isGenerating}
-              label="Generate"
-              loadingLabel="Generating..."
-              className="btn-viral-shorts h-11 w-full rounded-xl px-4 text-sm font-semibold"
-            />
+              {voiceOverError ? (
+                <p className="text-xs leading-relaxed text-red-400">{voiceOverError}</p>
+              ) : null}
 
-            {voiceOverProgress ? (
-              <div
-                className={`rounded-xl border border-card-border bg-card px-3 py-3 ${
-                  voiceOverProgress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
-                }`}
-                role="status"
-                aria-live="polite"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <p
-                    className={`text-xs ${
-                      voiceOverProgress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'
+              <div className="space-y-3 border-t border-card-border/80 pt-4">
+                <button
+                  type="button"
+                  onClick={() => void handleSyncVoiceToVideo()}
+                  disabled={!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                >
+                  Sync voice length to audio
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleBalancedSyncClick()}
+                  disabled={
+                    isBalancedPreviewMode ||
+                    !voiceOverAudioUrl ||
+                    !voiceOverS3Key ||
+                    !videoFullyLoaded ||
+                    !voiceFullyLoaded ||
+                    Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100) ||
+                    balancedSyncEstimateLoading
+                  }
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                >
+                  {'Balanced sync (render & combine)'}
+                </button>
+                {balancedSyncEstimateError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
+                    {balancedSyncEstimateError}
+                  </div>
+                ) : null}
+                {balancedSyncProgress ? (
+                  <div className="rounded-lg border border-card-border bg-subtle/20 px-3 py-2 text-xs text-muted">
+                    {balancedSyncProgress.label} ({balancedSyncProgress.percent}%)
+                  </div>
+                ) : null}
+                {balancedSyncError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
+                    {balancedSyncError}
+                  </div>
+                ) : null}
+                {!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded) ? (
+                  <div className="rounded-lg border border-card-border bg-subtle/20 px-3 py-2 text-xs leading-relaxed text-muted">
+                    Loading media… Video {Math.round(videoBufferPct * 100)}%
+                    {voiceOverAudioUrl ? ` · Voice ${Math.round(audioBufferPct * 100)}%` : ''}
+                  </div>
+                ) : null}
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg px-0.5 py-1 text-xs leading-relaxed text-muted-foreground">
+                  <input
+                    type="checkbox"
+                    className="mt-1 shrink-0"
+                    checked={allowStrongerSync}
+                    onChange={(e) => setAllowStrongerSync(e.target.checked)}
+                  />
+                  <span>Allow stronger sync (may sound less natural)</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = !(protectFlip || protectHueDeg > 0);
+                    setProtectFlip(next);
+                    setProtectHueDeg(next ? 25 : 0);
+                  }}
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface"
+                >
+                  Protection (flip + hue)
+                </button>
+                {syncUi.kind !== 'idle' ? (
+                  <div
+                    className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
+                      syncUi.kind === 'error'
+                        ? 'border-red-500/30 bg-red-500/10 text-red-200'
+                        : syncUi.kind === 'warn'
+                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                          : 'border-card-border bg-subtle/20 text-muted'
                     }`}
                   >
-                    {voiceOverProgress.label}
-                  </p>
-                  <p className="text-[11px] font-semibold text-muted-foreground tabular-nums">
-                    {voiceOverProgress.percent}%
-                  </p>
-                </div>
-                <div
-                  className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
-                  role="progressbar"
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-valuenow={voiceOverProgress.percent}
-                  aria-label={voiceOverProgress.label}
-                >
-                  <div
-                    className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${
-                      voiceOverProgress.percent >= 100 ? 'bg-emerald-600' : 'bg-violet-500'
-                    }`}
-                    style={{
-                      width: `${Math.min(100, Math.max(0, voiceOverProgress.percent))}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            ) : null}
-
-            {voiceOverError ? (
-              <p className="text-xs leading-relaxed text-red-400">{voiceOverError}</p>
-            ) : null}
-            <button
-              type="button"
-              onClick={() => void handleSyncVoiceToVideo()}
-              disabled={!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
-              className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
-            >
-              Sync Voice Length to Audio
-            </button>
-            <button
-              type="button"
-              onClick={() => void handleBalancedSyncClick()}
-              disabled={
-                isBalancedPreviewMode ||
-                !voiceOverAudioUrl ||
-                !voiceOverS3Key ||
-                !videoFullyLoaded ||
-                !voiceFullyLoaded ||
-                Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100) ||
-                balancedSyncEstimateLoading
-              }
-              className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
-            >
-              Balanced Sync (Render & Combine)
-            </button>
-            {balancedSyncEstimateError ? (
-              <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
-                {balancedSyncEstimateError}
-              </div>
-            ) : null}
-            {balancedSyncProgress ? (
-              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
-                {balancedSyncProgress.label} ({balancedSyncProgress.percent}%)
-              </div>
-            ) : null}
-            {balancedSyncError ? (
-              <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
-                {balancedSyncError}
-              </div>
-            ) : null}
-            {!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded) ? (
-              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
-                Loading media… Video {Math.round(videoBufferPct * 100)}%
-                {voiceOverAudioUrl ? ` · Voice ${Math.round(audioBufferPct * 100)}%` : ''}
-              </div>
-            ) : null}
-            <label className="flex items-center gap-2 text-[10px] text-muted">
-              <input
-                type="checkbox"
-                checked={allowStrongerSync}
-                onChange={(e) => setAllowStrongerSync(e.target.checked)}
-              />
-              Allow stronger sync (may sound less natural)
-            </label>
-            <button
-              type="button"
-              onClick={() => {
-                const next = !(protectFlip || protectHueDeg > 0);
-                setProtectFlip(next);
-                setProtectHueDeg(next ? 25 : 0);
-              }}
-              className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
-            >
-              Protection (Flip + Hue)
-            </button>
-            {syncUi.kind !== 'idle' ? (
-              <div
-                className={`rounded border px-2 py-1.5 text-[10px] ${
-                  syncUi.kind === 'error'
-                    ? 'border-red-500/30 bg-red-500/10 text-red-200'
-                    : syncUi.kind === 'warn'
-                      ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                      : 'border-card-border bg-subtle/20 text-muted'
-                }`}
-              >
-                {syncUi.message}
-              </div>
-            ) : null}
-            <button
-              type="button"
-              onMouseEnter={() => void ensureSubtitlesEstimate()}
-              onFocus={() => void ensureSubtitlesEstimate()}
-              onClick={handleSubtitlesClick}
-              disabled={!workspaceS3Key || Boolean(subtitlesProgress && subtitlesProgress.percent < 100)}
-              className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
-            >
-              Generate Subtitles
-            </button>
-            {subtitlesProgress ? (
-              <div className="rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
-                {subtitlesProgress.label} ({subtitlesProgress.percent}%)
-              </div>
-            ) : null}
-            {subtitlesError ? (
-              <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
-                {subtitlesError}
-              </div>
-            ) : null}
-            {subtitlesDownloadUrl ? (
-              <div className="grid grid-cols-2 gap-2">
+                    {syncUi.message}
+                  </div>
+                ) : null}
                 <button
                   type="button"
-                  className="h-8 w-full rounded-md bg-[#7c5cff] px-2 text-[10px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                  onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
+                  onMouseEnter={() => void ensureSubtitlesEstimate()}
+                  onFocus={() => void ensureSubtitlesEstimate()}
+                  onClick={handleSubtitlesClick}
+                  disabled={!workspaceS3Key || Boolean(subtitlesProgress && subtitlesProgress.percent < 100)}
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                 >
-                  Download (.srt)
+                  Generate subtitles
                 </button>
-                <button
-                  type="button"
-                  className="h-8 w-full rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
-                  onClick={() => setLeftTab('srt')}
-                >
-                  Open SRT editor
-                </button>
+                {subtitlesProgress ? (
+                  <div className="rounded-lg border border-card-border bg-subtle/20 px-3 py-2 text-xs text-muted">
+                    {subtitlesProgress.label} ({subtitlesProgress.percent}%)
+                  </div>
+                ) : null}
+                {subtitlesError ? (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
+                    {subtitlesError}
+                  </div>
+                ) : null}
+                {subtitlesDownloadUrl ? (
+                  <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3">
+                    <button
+                      type="button"
+                      className="flex min-h-10 w-full items-center justify-center rounded-lg bg-[#7c5cff] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                      onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
+                    >
+                      Download (.srt)
+                    </button>
+                    <button
+                      type="button"
+                      className="flex min-h-10 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-surface"
+                      onClick={() => setLeftTab('srt')}
+                    >
+                      Open SRT editor
+                    </button>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
+            </div>
           </div>
         </aside>
 

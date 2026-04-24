@@ -216,6 +216,10 @@ export default function ContentGenerationPage() {
           },
         });
       });
+    } catch (e) {
+      const raw = e instanceof Error ? e.message : String(e);
+      setStatus(toUserSafeError(raw));
+      setProgress(null);
     } finally {
       clearProgressSimulator();
       setIsLoading(false);

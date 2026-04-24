@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Mic } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
@@ -23,6 +23,36 @@ import {
 
 export default function TranscribePage() {
   const t = useTranslations('transcribe');
+  const transcribeRunRef = useRef(0);
+  const progressSimTickRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const sseProgressFloorRef = useRef(0);
+
+  const transcribeSseOverrides = useMemo(
+    () => ({
+      stages: {
+        download: { percent: 22, label: t('stages.download') },
+        extract_audio: { percent: 38, label: t('stages.extract_audio') },
+        normalize_audio: { percent: 48, label: t('stages.normalize_audio') },
+        silence_removal: { percent: 58, label: t('stages.silence_removal') },
+        segment_audio: { percent: 62, label: t('stages.segment_audio') },
+        ai_transcription: { percent: 78, label: t('stages.ai_transcription') },
+        ai_subtitles: { percent: 80, label: t('stages.ai_subtitles') },
+        upload_srt: { percent: 92, label: t('stages.upload_srt') },
+      },
+      subscribedLabel: t('sse.subscribed'),
+      /** Lower than default 38 so real stage events can jump the bar; monotonic UI keeps upload phase % until SSE catches up. */
+      subscribedPercent: 28,
+    }),
+    [t],
+  );
+
+  const clearProgressSimulator = () => {
+    if (progressSimTickRef.current != null) {
+      clearInterval(progressSimTickRef.current);
+      progressSimTickRef.current = null;
+    }
+  };
+
   const [isSignedIn, setIsSignedIn] = useState<boolean>(false);
 
   useEffect(() => {
@@ -157,56 +187,97 @@ export default function TranscribePage() {
 
   const handleTranscribe = async () => {
     if (!uploadedFile) return;
+    const runId = ++transcribeRunRef.current;
+    clearProgressSimulator();
+
     setIsLoading(true);
     setStatus('');
     setProgress(null);
     try {
-      setProgress({ percent: 10, label: 'Preparing upload…' });
+      setProgress({ percent: 10, label: t('progress.preparingUpload') });
       const prep = await withTimeout(
         transcribePrepareUpload(uploadedFile),
         20000,
         'Prepare upload timed out. The server may be unavailable.',
       );
 
-      setProgress({ percent: 25, label: 'Uploading…' });
+      setProgress({ percent: 25, label: t('progress.uploading') });
       await withTimeout(
         transcribeUploadToSignedUrl(prep.uploadUrl, uploadedFile),
         120000,
         'Upload timed out. Check your network and try again.',
       );
 
-      setProgress({ percent: 35, label: 'Starting transcription…' });
+      setProgress({ percent: 35, label: t('progress.startingJob') });
       const complete = await withTimeout(
         transcribeCompleteUpload(prep.uploadSessionId),
         20000,
         'Starting job timed out. The server may be unhealthy (DB/Redis).',
       );
 
-      openGenerationJobSseStream(complete.jobId, {
-        onStatus: (raw) => {
-          const p = parseGenerationSseProgressPayload(raw);
-          if (p) {
-            setProgress(p);
+      await new Promise<void>((resolve) => {
+        sseProgressFloorRef.current = 35;
+        progressSimTickRef.current = setInterval(() => {
+          if (transcribeRunRef.current !== runId) {
+            clearProgressSimulator();
+            return;
           }
-        },
-        onDone: () => {},
-        onError: (msg) => {
-          console.warn('[Transcribe SSE] error:', msg);
-          setStatus(toUserSafeError(msg));
-          setProgress(null);
-        },
-        onTerminal: (payload) => {
-          const text = extractTranscriptTextFromOutputData(payload.outputData);
-          if (text) {
-            setTranscribedText(text);
-            setStatus('');
-            setProgress({ percent: 100, label: 'Finished 🎉' });
-          } else {
-            const raw = payload.message ?? 'No transcript text returned.';
-            setStatus(toUserSafeError(raw));
+          setProgress((prev) => {
+            if (!prev) return prev;
+            const floor = Math.min(sseProgressFloorRef.current, 94);
+            const next = Math.min(95, Math.max(prev.percent + 1, floor));
+            if (next <= prev.percent) return prev;
+            const useSimulatedCopy = prev.percent >= floor + 8;
+            return {
+              percent: next,
+              label: useSimulatedCopy ? t('progress.simulated') : prev.label,
+            };
+          });
+        }, 420);
+
+        openGenerationJobSseStream(complete.jobId, {
+          onStatus: (raw) => {
+            if (transcribeRunRef.current !== runId) return;
+            const p = parseGenerationSseProgressPayload(raw, transcribeSseOverrides);
+            if (p) {
+              if (p.percent >= 100) {
+                clearProgressSimulator();
+              }
+              sseProgressFloorRef.current = Math.max(
+                sseProgressFloorRef.current,
+                p.percent >= 100 ? p.percent : Math.min(p.percent, 99),
+              );
+              setProgress((prev) => ({
+                percent: Math.max(p.percent, prev?.percent ?? 0),
+                label: p.label,
+              }));
+            }
+          },
+          onDone: () => {},
+          onError: (msg) => {
+            if (transcribeRunRef.current !== runId) return;
+            console.warn('[Transcribe SSE] error:', msg);
+            clearProgressSimulator();
+            setStatus(toUserSafeError(msg));
             setProgress(null);
-          }
-        },
+            resolve();
+          },
+          onTerminal: (payload) => {
+            if (transcribeRunRef.current !== runId) return;
+            clearProgressSimulator();
+            const text = extractTranscriptTextFromOutputData(payload.outputData);
+            if (text) {
+              setTranscribedText(text);
+              setStatus('');
+              setProgress({ percent: 100, label: t('progress.finished') });
+            } else {
+              const raw = payload.message ?? 'No transcript text returned.';
+              setStatus(toUserSafeError(raw));
+              setProgress(null);
+            }
+            resolve();
+          },
+        });
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -219,6 +290,7 @@ export default function TranscribePage() {
         setIsSignedIn(false);
       }
     } finally {
+      clearProgressSimulator();
       setIsLoading(false);
     }
   };

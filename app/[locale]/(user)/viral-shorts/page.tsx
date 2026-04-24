@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Film, Upload } from 'lucide-react';
+import { Film, Loader2, Upload } from 'lucide-react';
 import PageHeader from '@/components/layout/page-header';
 import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
@@ -374,8 +374,11 @@ export default function ViralShortsPage() {
 
             <section
               aria-labelledby="viral-shorts-panel-heading"
-              className={step === 'upload' ? 'viral-shorts-upload-panel' : 'hidden'}
-              aria-hidden={step !== 'upload'}
+              className={
+                step === 'upload' || step === 'uploading' ? 'viral-shorts-upload-panel' : 'hidden'
+              }
+              aria-hidden={step !== 'upload' && step !== 'uploading'}
+              aria-busy={step === 'uploading'}
             >
               <h2 id="viral-shorts-panel-heading" className="sr-only">
                 {t('uploadCard.title')}
@@ -468,16 +471,6 @@ export default function ViralShortsPage() {
                 onDiscardWorkspace={() => void handleDiscardWorkspace()}
               />
             ) : null}
-
-            {step === 'studio' ? null : (
-              <button
-                type="button"
-                onClick={handleNewVideo}
-                className="text-sm font-medium text-muted underline-offset-2 hover:text-foreground hover:underline"
-              >
-                Upload a different video
-              </button>
-            )}
 
             {step === 'studio' && error ? (
               <p className="text-sm text-red-400" role="alert">

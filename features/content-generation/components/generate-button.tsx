@@ -18,7 +18,7 @@ export default function GenerateButton({ topic, isLoading, onClick }: Props) {
       <ActionButton
         onClick={onClick}
         isLoading={isLoading}
-        disabled={!topic.trim()}
+        disabled={!topic.trim() || isLoading}
         label={t('generateButton.label')}
         loadingLabel={t('generateButton.loading')}
         icon={<Sparkles className="h-4 w-4 shrink-0" strokeWidth={2.25} />}

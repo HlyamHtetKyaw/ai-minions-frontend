@@ -640,6 +640,10 @@ declare const messages: {
       "label": "Upload & continue",
       "loading": "Preparing…"
     },
+    "uploading": {
+      "title": "Uploading to cloud storage…",
+      "hint": "This can take a while for long videos. Please keep this tab open until the upload completes."
+    },
     "analyze": {
       "status": "Video uploaded. Run AI to detect viral moments.",
       "primary": {
@@ -649,7 +653,8 @@ declare const messages: {
       "back": "Back"
     },
     "voiceStudio": {
-      "sectionTitle": "3. AI Voiceover",
+      "translateSectionTitle": "2 · TRANSLATE",
+      "sectionTitle": "3 · AI Voiceover",
       "voiceStyleKicker": "Voice style",
       "womanKore": "Woman (Kore)",
       "man": "Man",
@@ -674,6 +679,26 @@ declare const messages: {
     "transcribeButton": {
       "label": "Transcribe to Text",
       "loading": "Transcribing…"
+    },
+    "sse": {
+      "subscribed": "Hang tight — we're preparing your transcript."
+    },
+    "progress": {
+      "preparingUpload": "Preparing upload…",
+      "uploading": "Uploading…",
+      "startingJob": "Starting transcription…",
+      "simulated": "Still processing…",
+      "finished": "Finished 🎉"
+    },
+    "stages": {
+      "download": "Downloading media",
+      "extract_audio": "Extracting audio",
+      "normalize_audio": "Normalizing audio",
+      "silence_removal": "Removing silence",
+      "segment_audio": "Segmenting audio",
+      "ai_transcription": "Transcribing with AI",
+      "ai_subtitles": "Generating subtitles with AI",
+      "upload_srt": "Uploading SRT"
     },
     "transcriptResult": {
       "title": "Transcript",

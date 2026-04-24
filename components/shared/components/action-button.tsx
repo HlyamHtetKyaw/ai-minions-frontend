@@ -23,9 +23,9 @@ export default function ActionButton({
   return (
     <button
       type="button"
-      disabled={disabled || isLoading}
       className={className}
       {...props}
+      disabled={Boolean(disabled) || isLoading}
     >
       {isLoading ? (
         <Loader2 className="h-4 w-4 shrink-0 animate-spin" />
