@@ -6,6 +6,7 @@ import {
   AUTH_CHANGED_EVENT,
   getStoredAccessToken,
 } from '@/lib/auth-token';
+import { USER_CREDIT_BALANCE_REFRESH_EVENT } from '@/lib/user-credit-balance';
 import { fetchMe, type MeUser } from '@/lib/auth';
 
 type AuthSessionValue = {
@@ -20,7 +21,10 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
   const userRef = useRef<MeUser | null>(null);
-  userRef.current = user;
+
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
 
   useEffect(() => {
     let cancelled = false;
@@ -61,6 +65,27 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       cancelled = true;
       window.removeEventListener(AUTH_CHANGED_EVENT, onAuthChanged);
       window.removeEventListener('storage', onStorage);
+    };
+  }, []);
+
+  /** Refetch `/me` when points change (generation, translate, …) so header balance updates without reload. */
+  useEffect(() => {
+    let cancelled = false;
+    const onCreditsRefresh = () => {
+      void (async () => {
+        const token = getStoredAccessToken();
+        if (!token) {
+          if (!cancelled) setUser(null);
+          return;
+        }
+        const me = await fetchMe();
+        if (!cancelled) setUser(me);
+      })();
+    };
+    window.addEventListener(USER_CREDIT_BALANCE_REFRESH_EVENT, onCreditsRefresh);
+    return () => {
+      cancelled = true;
+      window.removeEventListener(USER_CREDIT_BALANCE_REFRESH_EVENT, onCreditsRefresh);
     };
   }, []);
 

@@ -1,6 +1,7 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
 import { authHeaders, errorMessageFromBody, fetchInit, fetchWithAuthRetry } from '@/lib/api-auth-fetch';
 import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 
 export type PointsEstimate = {
   baseCostPoints: number;
@@ -9,12 +10,55 @@ export type PointsEstimate = {
   tokenOut: string | number;
   mbAudio: string | number;
   mbVideo: string | number;
+  /** Voice-over / TTS workload units (when returned by voice-over estimate). */
+  voiceOverTokenUnits?: string | number | null;
   fileSizeBytes?: number | null;
 };
 
 export type VoiceOverStartResponse = {
   jobId: string;
 };
+
+/** Gemini TTS catalog entry from GET /api/v1/ai/voice-over/models */
+export type VoiceModelDescriptor = {
+  id: string;
+  style: string;
+};
+
+export type VoiceOverProviderModels = {
+  provider: string;
+  models: VoiceModelDescriptor[];
+};
+
+export type VoiceOverModelsResponse = {
+  providers: VoiceOverProviderModels[];
+};
+
+/**
+ * Maps persisted workspace values to a Gemini {@code aiModel} id.
+ * Legacy {@code woman-kore} / {@code man} are normalized to API voice names.
+ */
+export function normalizePersistedVoiceId(raw: string | null | undefined): string {
+  const v = (raw ?? '').trim().toLowerCase();
+  if (v === 'woman-kore' || v === '') return 'kore';
+  if (v === 'man') return 'charon';
+  return v;
+}
+
+export async function fetchVoiceOverModels(): Promise<VoiceOverModelsResponse> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set');
+  const res = await fetchWithAuthRetry(`${base}/api/v1/ai/voice-over/models`, {
+    ...fetchInit,
+    method: 'GET',
+    headers: { Accept: 'application/json', ...authHeaders() },
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<VoiceOverModelsResponse>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `voice-over models failed (${res.status})`));
+  }
+  return json.data;
+}
 
 export type VoiceOverResult = {
   audioUrl?: string | null;
@@ -45,20 +89,29 @@ export async function voiceOverEstimatePoints(text: string): Promise<PointsEstim
 
 export async function voiceOverStart(params: {
   text: string;
+  /** Gemini prebuilt voice id (e.g. {@code kore}, {@code zephyr}). */
+  aiModel: string;
+  /** Script delivery tone for the voice-over pipeline (not the voice “style” label). */
   style?: string;
-  provider?: string | null;
+  sourceLanguage?: string;
+  targetLanguage?: string;
+  textLength?: string;
 }): Promise<VoiceOverStartResponse> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set');
+  const body: Record<string, unknown> = {
+    text: params.text,
+    aiModel: params.aiModel,
+  };
+  if (params.style != null) body.style = params.style;
+  if (params.sourceLanguage != null) body.sourceLanguage = params.sourceLanguage;
+  if (params.targetLanguage != null) body.targetLanguage = params.targetLanguage;
+  if (params.textLength != null) body.textLength = params.textLength;
   const res = await fetchWithAuthRetry(`${base}/api/v1/ai/voice-over/start`, {
     ...fetchInit,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify({
-      text: params.text,
-      style: params.style,
-      provider: params.provider ?? null,
-    }),
+    body: JSON.stringify(body),
   });
   const json = (await res.json().catch(() => ({}))) as ApiEnvelope<VoiceOverStartResponse>;
   if (!res.ok || !json.success || !json.data?.jobId) {
@@ -100,6 +153,9 @@ export function openVoiceOverSse(jobId: string, handlers: {
           message: typeof o.message === 'string' ? o.message : undefined,
           data: o.data,
         });
+        if (s === 'completed') {
+          notifyUserCreditBalanceRefresh();
+        }
         finish();
       }
     } catch {

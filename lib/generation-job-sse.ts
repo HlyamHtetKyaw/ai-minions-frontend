@@ -1,5 +1,6 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
 import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 
 /**
  * Worker / main DB stores {@code outputData} as JSON object or string; transcript may be at {@code text} or
@@ -249,6 +250,9 @@ export function openGenerationJobSseStream(
           jobId: Number.isFinite(jobId) ? jobId : undefined,
           generationId: Number.isFinite(generationIdNum) ? generationIdNum : undefined,
         });
+        if (s === 'completed') {
+          notifyUserCreditBalanceRefresh();
+        }
         finish();
       }
     } catch {

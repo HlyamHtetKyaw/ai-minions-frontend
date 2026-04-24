@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { CircleHelp, Sparkles } from 'lucide-react';
+import { Check, CircleHelp, Copy, Sparkles } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import PageHeader from '@/components/layout/page-header';
 import ContentTypePicker, { type ContentTypeKey } from '@/features/content-generation/components/content-type-picker';
@@ -11,10 +11,18 @@ import TopicInput from '@/features/content-generation/components/topic-input';
 import TonePicker, { type ToneKey } from '@/features/content-generation/components/tone-picker';
 import GenerateButton from '@/features/content-generation/components/generate-button';
 import FacebookPreview from '@/features/content-generation/components/FacebookPreview';
+import { DEFAULT_TOON_STYLE, TOON_STYLE_OPTIONS } from '@/features/content-generation/content-toon-styles';
 import UploadZone from '@/components/shared/components/upload-zone';
-import { fileToDataUrl, openContentGenerationSse, startGenerateContentV2 } from '@/lib/content-generation-api';
+import {
+  contentGenerationEstimatePoints,
+  fileToDataUrl,
+  normalizeContentGenerateV2Result,
+  openContentGenerationSse,
+  startGenerateContentV2,
+  type ContentGenerateV2Params,
+  type PointsEstimate,
+} from '@/lib/content-generation-api';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
-import { voiceOverEstimatePoints, type PointsEstimate } from '@/lib/voice-over-api';
 
 function isEstimateNotFoundError(message: string): boolean {
   const m = (message ?? '').toLowerCase();
@@ -50,7 +58,7 @@ export default function ContentGenerationPage() {
   const [textLength, setTextLength] = useState<'short' | 'long'>('short');
   const [targetLanguage, setTargetLanguage] = useState<'English' | 'Myanmar'>('Myanmar');
   const [tone, setTone] = useState<ToneKey>('inspiring');
-  const [toonStyle, setToonStyle] = useState('toon comic style, social media meme layout');
+  const [toonStyle, setToonStyle] = useState(DEFAULT_TOON_STYLE);
   const [topic, setTopic] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [aiOverlayTextEnabled, setAiOverlayTextEnabled] = useState(false);
@@ -63,18 +71,46 @@ export default function ContentGenerationPage() {
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
+  const [scriptCopied, setScriptCopied] = useState(false);
+  const scriptCopyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isVisualOutput = outputMode === 'imageAndText' || outputMode === 'imageOnly';
 
-  /** Voice-over estimate API uses plain text; combine topic + optional overlay as a length proxy. */
-  const voiceEstimateText = useMemo(() => {
+  /** Image-only mode drops all body text server-side — unusable for scripts. */
+  useEffect(() => {
+    if (contentType === 'script' && outputMode === 'imageOnly') {
+      setOutputMode('textOnly');
+    }
+  }, [contentType, outputMode]);
+
+  /** Same payload shape as generate/start — server uses topic + textLength + outputMode for points. */
+  const contentEstimateParams = useMemo((): ContentGenerateV2Params | null => {
     const t0 = topic.trim();
-    if (!t0) return '';
-    const overlay = userOverlayText.trim();
-    return overlay ? `${t0}\n\n${overlay}` : t0;
-  }, [topic, userOverlayText]);
+    if (!t0) return null;
+    return {
+      topic: t0,
+      contentType,
+      textLength,
+      targetLanguage,
+      outputMode,
+      tone,
+      toonStyle,
+      aiOverlayTextEnabled,
+      userOverlayText: userOverlayText.trim() || undefined,
+    };
+  }, [topic, contentType, textLength, targetLanguage, outputMode, tone, toonStyle, aiOverlayTextEnabled, userOverlayText]);
 
   useEffect(() => {
-    if (!voiceEstimateText) {
+    setScriptCopied(false);
+  }, [generatedText]);
+
+  useEffect(() => {
+    return () => {
+      if (scriptCopyResetRef.current) clearTimeout(scriptCopyResetRef.current);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!contentEstimateParams) {
       setEstimate(null);
       setEstimateError(null);
       setEstimateLoading(false);
@@ -87,7 +123,7 @@ export default function ContentGenerationPage() {
       void (async () => {
         try {
           const d = await withTimeout(
-            voiceOverEstimatePoints(voiceEstimateText),
+            contentGenerationEstimatePoints(contentEstimateParams),
             12000,
             t('timeouts.estimate'),
           );
@@ -108,7 +144,7 @@ export default function ContentGenerationPage() {
       cancelled = true;
       clearTimeout(tmr);
     };
-  }, [voiceEstimateText, t, toUserSafeError]);
+  }, [contentEstimateParams, t, toUserSafeError]);
 
   const contentSseProgressOverrides = useMemo(
     () => ({
@@ -203,8 +239,10 @@ export default function ContentGenerationPage() {
             if (generationRunRef.current !== runId) return;
             clearProgressSimulator();
             if (payload.status === 'completed' && payload.data) {
-              const result = payload.data;
-              setGeneratedText(result.generatedText || '');
+              const result = normalizeContentGenerateV2Result(payload.data);
+              const body = (result.generatedText || '').trim();
+              const titleLine = (result.shortTextOnImage || '').trim();
+              setGeneratedText(body || (contentType === 'script' ? titleLine : ''));
               setGeneratedImageDataUrl(result.imageBase64 ? `data:image/png;base64,${result.imageBase64}` : '');
               setProgress({ percent: 100, label: t('progress.finished') });
               setStatus('');
@@ -226,6 +264,25 @@ export default function ContentGenerationPage() {
     }
   };
 
+  const handleCopyScript = useCallback(async () => {
+    if (!generatedText.trim()) return;
+    try {
+      await navigator.clipboard.writeText(generatedText);
+      setScriptCopied(true);
+      if (scriptCopyResetRef.current) clearTimeout(scriptCopyResetRef.current);
+      scriptCopyResetRef.current = setTimeout(() => {
+        setScriptCopied(false);
+        scriptCopyResetRef.current = null;
+      }, 2500);
+    } catch {
+      setScriptCopied(false);
+    }
+  }, [generatedText]);
+
+  const showScriptResultPanel =
+    contentType === 'script' && (generatedText.trim().length > 0 || generatedImageDataUrl.length > 0);
+  const showFacebookPreview = !showScriptResultPanel && (generatedText || generatedImageDataUrl);
+
   return (
     <>
       {!isSignedIn ? (
@@ -233,7 +290,7 @@ export default function ContentGenerationPage() {
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
           <div className="mx-auto w-full max-w-7xl">
-            <div className="content-creator-shell space-y-10">
+            <div className="content-creator-shell">
               <PageHeader
                 icon={
                   <PageHeader.Icon tileClassName="content-creator-icon-tile">
@@ -249,8 +306,13 @@ export default function ContentGenerationPage() {
                 subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
               />
 
+              <div className="mt-8 flex flex-col gap-10 lg:mt-10 lg:flex-row lg:items-start lg:gap-8 xl:gap-10">
+                <div className="min-w-0 flex-1 space-y-8">
               <ContentTypePicker value={contentType} onChange={setContentType} />
               <OutputModePicker value={outputMode} onChange={setOutputMode} />
+              {outputMode === 'imageOnly' ? (
+                <p className="text-xs leading-relaxed text-muted-foreground">{t('imageOnlyContextHint')}</p>
+              ) : null}
               {isVisualOutput ? (
                 <UploadZone
                   accept="image/png,image/jpeg"
@@ -289,27 +351,20 @@ export default function ContentGenerationPage() {
                   </div>
                 </div>
               ) : null}
-              {isVisualOutput ? (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted">Toon style</p>
-                  <select
-                    value={toonStyle}
-                    onChange={(e) => setToonStyle(e.target.value)}
-                    className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none"
-                  >
-                    <option value="toon comic style, social media meme layout">Comic Toon (Default)</option>
-                    <option value="anime toon style, bold outlines, vibrant colors">Anime Toon</option>
-                    <option value="realistic style, semi-realistic characters, detailed lighting">Realistic</option>
-                    <option value="flat vector style, clean shapes, pastel palette">Flat Vector</option>
-                    <option value="retro pop-art style, halftone dots, high contrast">Retro Pop Art</option>
-                    <option value="cinematic style, dramatic lighting, dynamic composition">Cinematic</option>
-                  </select>
-                </div>
-              ) : null}
               {outputMode === 'imageAndText' || outputMode === 'textOnly' ? (
-                <div className="space-y-1">
-                  <p className="text-xs text-muted">Generated text length</p>
-                  <div className="flex items-center gap-6 rounded-md border border-card-border bg-background px-3 py-2">
+                <div className="space-y-2">
+                  <p className="text-xs text-muted">
+                    {contentType === 'hook'
+                      ? t('textLength.hookSectionTitle')
+                      : contentType === 'caption'
+                        ? t('textLength.captionSectionTitle')
+                        : contentType === 'hashtags'
+                          ? t('textLength.hashtagsSectionTitle')
+                          : contentType === 'script'
+                            ? t('textLength.scriptSectionTitle')
+                            : t('textLength.genericSectionTitle')}
+                  </p>
+                  <div className="flex flex-wrap items-center gap-6 rounded-md border border-card-border bg-background px-3 py-2">
                     <label className="flex items-center gap-2 text-sm text-foreground">
                       <input
                         type="radio"
@@ -318,7 +373,7 @@ export default function ContentGenerationPage() {
                         checked={textLength === 'short'}
                         onChange={() => setTextLength('short')}
                       />
-                      Short
+                      {t('textLength.short')}
                     </label>
                     <label className="flex items-center gap-2 text-sm text-foreground">
                       <input
@@ -328,97 +383,203 @@ export default function ContentGenerationPage() {
                         checked={textLength === 'long'}
                         onChange={() => setTextLength('long')}
                       />
-                      Long
+                      {t('textLength.long')}
                     </label>
                   </div>
+                  {contentType === 'hook' ? (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {textLength === 'short' ? t('textLength.hookShortHelp') : t('textLength.hookLongHelp')}
+                    </p>
+                  ) : null}
+                  {contentType === 'caption' ? (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {textLength === 'short' ? t('textLength.captionShortHelp') : t('textLength.captionLongHelp')}
+                    </p>
+                  ) : null}
+                  {contentType === 'hashtags' ? (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {textLength === 'short' ? t('textLength.hashtagsShortHelp') : t('textLength.hashtagsLongHelp')}
+                    </p>
+                  ) : null}
+                  {contentType === 'script' ? (
+                    <p className="text-xs leading-relaxed text-muted-foreground">
+                      {textLength === 'short' ? t('textLength.scriptShortHelp') : t('textLength.scriptLongHelp')}
+                    </p>
+                  ) : null}
                 </div>
               ) : null}
-              {isVisualOutput ? (
-                <div className="space-y-3 rounded-xl border border-card-border bg-card/30 p-4">
-                  <label className="flex items-center gap-2 text-sm text-foreground">
-                    <input
-                      type="checkbox"
-                      checked={aiOverlayTextEnabled}
-                      onChange={(e) => setAiOverlayTextEnabled(e.target.checked)}
-                    />
-                    Show AI overlay text
-                  </label>
-                  <div className="space-y-1">
-                    <p className="text-xs text-muted">User overlay text (optional)</p>
-                    <input
-                      value={userOverlayText}
-                      onChange={(e) => setUserOverlayText(e.target.value)}
-                      placeholder="Enter your own overlay text..."
-                      className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none"
-                    />
+                </div>
+
+                <aside className="content-creator-output-aside w-full shrink-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] lg:w-[min(100%,440px)] lg:overflow-y-auto lg:self-start xl:w-[min(100%,500px)]">
+                  <div className="space-y-6 lg:rounded-2xl lg:border lg:border-card-border lg:bg-card/25 lg:p-4 xl:p-5">
+                    <div className="space-y-6">
+                      <h2 className="text-sm font-semibold tracking-tight text-foreground">
+                        {t('layout.styleAndActionsHeading')}
+                      </h2>
+                      {isVisualOutput ? (
+                        <div className="space-y-1">
+                          <p className="text-xs text-muted">Toon style</p>
+                          <select
+                            value={toonStyle}
+                            onChange={(e) => setToonStyle(e.target.value)}
+                            className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none"
+                          >
+                            {TOON_STYLE_OPTIONS.map((o) => (
+                              <option key={o.label} value={o.value}>
+                                {o.label}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : null}
+                      {isVisualOutput ? (
+                        <div className="space-y-3 rounded-xl border border-card-border bg-card/30 p-4">
+                          <label className="flex items-center gap-2 text-sm text-foreground">
+                            <input
+                              type="checkbox"
+                              checked={aiOverlayTextEnabled}
+                              onChange={(e) => setAiOverlayTextEnabled(e.target.checked)}
+                            />
+                            Show AI overlay text
+                          </label>
+                          <div className="space-y-1">
+                            <p className="text-xs text-muted">User overlay text (optional)</p>
+                            <input
+                              value={userOverlayText}
+                              onChange={(e) => setUserOverlayText(e.target.value)}
+                              placeholder="Enter your own overlay text..."
+                              className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none"
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                      <TonePicker value={tone} onChange={setTone} />
+                      <div className="rounded-xl border border-card-border bg-card px-4 py-3">
+                        <p className="text-sm text-muted-foreground">
+                          {estimateLoading
+                            ? t('estimate.loading')
+                            : estimate
+                              ? t('estimate.cost', { points: estimate.reserveCostPoints })
+                              : estimateError
+                                ? isEstimateNotFoundError(estimateError)
+                                  ? t('estimate.backendMissing')
+                                  : t('estimate.unavailable', { message: estimateError })
+                                : t('estimate.prompt')}
+                        </p>
+                      </div>
+                      <GenerateButton topic={topic} isLoading={isLoading} onClick={handleGenerate} />
+                      {progress ? (
+                        <div
+                          className={`rounded-xl border border-card-border bg-card px-4 py-3 ${progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}
+                        >
+                          <div className="flex items-center justify-between gap-3">
+                            <p
+                              className={`text-sm ${progress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}
+                            >
+                              {progress.label}
+                            </p>
+                            <p className="text-xs font-semibold text-muted-foreground tabular-nums">
+                              {progress.percent}%
+                            </p>
+                          </div>
+                          <div className="mt-2 h-2 w-full rounded-full bg-subtle">
+                            <div
+                              className={`h-2 rounded-full transition-[width] ${progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'}`}
+                              style={{ width: `${progress.percent}%` }}
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                      {!progress && status ? (
+                        <div className="rounded-xl border border-card-border bg-card px-4 py-3">
+                          <p className="text-sm text-muted-foreground">{status}</p>
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="border-t border-card-border pt-6">
+                      <h2 className="mb-4 text-sm font-semibold tracking-tight text-foreground">
+                        {t('layout.outputHeading')}
+                      </h2>
+                    {showScriptResultPanel ? (
+                      <div className="w-full space-y-4">
+                        {generatedText.trim() ? (
+                          <div className="overflow-hidden rounded-xl border border-card-border bg-card">
+                            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-card-border bg-card/50 px-4 py-2">
+                              <p className="text-sm font-medium text-foreground">{t('result.scriptOutputTitle')}</p>
+                              <button
+                                type="button"
+                                onClick={() => void handleCopyScript()}
+                                className="inline-flex items-center justify-center gap-2 rounded-md border border-card-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground transition-colors hover:bg-subtle"
+                                aria-label={t('result.copyScriptAria')}
+                              >
+                                {scriptCopied ? (
+                                  <Check className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                ) : (
+                                  <Copy className="h-3.5 w-3.5 shrink-0" aria-hidden />
+                                )}
+                                {scriptCopied ? t('result.copied') : t('result.copy')}
+                              </button>
+                            </div>
+                            <pre className="max-h-[min(70vh,48rem)] overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-sans text-sm leading-relaxed text-foreground lg:max-h-[min(60vh,36rem)]">
+                              {generatedText}
+                            </pre>
+                          </div>
+                        ) : null}
+                        {generatedImageDataUrl && outputMode !== 'textOnly' ? (
+                          <div className="overflow-hidden rounded-xl border border-card-border bg-card">
+                            {/* eslint-disable-next-line @next/next/no-img-element -- data URL from generation API */}
+                            <img
+                              src={generatedImageDataUrl}
+                              alt={t('result.title')}
+                              className="mx-auto max-h-[min(50vh,520px)] w-full object-contain lg:max-h-[min(45vh,400px)]"
+                            />
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+                    {showFacebookPreview ? (
+                      <FacebookPreview
+                        contentType={outputMode as 'imageAndText' | 'textOnly' | 'imageOnly'}
+                        imageUrl={generatedImageDataUrl || null}
+                        textContent={generatedText}
+                        onDownload={() => {
+                          if (!generatedImageDataUrl) return;
+                          const byteCharacters = atob(generatedImageDataUrl.split(',')[1]);
+                          const byteNumbers = new Array(byteCharacters.length);
+                          for (let i = 0; i < byteCharacters.length; i++) {
+                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                          }
+                          const byteArray = new Uint8Array(byteNumbers);
+                          const blob = new Blob([byteArray], { type: 'image/png' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a');
+                          a.href = url;
+                          a.download = `ai-minions-content-${Date.now()}.png`;
+                          document.body.appendChild(a);
+                          a.click();
+                          document.body.removeChild(a);
+                          URL.revokeObjectURL(url);
+                        }}
+                      />
+                    ) : null}
+                    {!showScriptResultPanel && !showFacebookPreview && isLoading ? (
+                      <div
+                        className="flex min-h-[8rem] items-center justify-center rounded-xl border border-dashed border-card-border bg-card/40 px-4 py-8 text-center"
+                        aria-live="polite"
+                      >
+                        <p className="text-sm text-muted-foreground">{t('layout.outputWorking')}</p>
+                      </div>
+                    ) : null}
+                    {!showScriptResultPanel && !showFacebookPreview && !isLoading ? (
+                      <div className="hidden min-h-[6rem] items-center justify-center rounded-xl border border-dashed border-card-border bg-card/20 px-4 py-8 text-center lg:flex">
+                        <p className="text-sm text-muted-foreground">{t('layout.outputEmpty')}</p>
+                      </div>
+                    ) : null}
+                    </div>
                   </div>
-                </div>
-              ) : null}
-              <TonePicker value={tone} onChange={setTone} />
-              <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-                <p className="text-sm text-muted-foreground">
-                  {estimateLoading
-                    ? t('estimate.loading')
-                    : estimate
-                      ? t('estimate.cost', { points: estimate.reserveCostPoints })
-                      : estimateError
-                        ? isEstimateNotFoundError(estimateError)
-                          ? t('estimate.backendMissing')
-                          : t('estimate.unavailable', { message: estimateError })
-                        : t('estimate.prompt')}
-                </p>
+                </aside>
               </div>
-              <GenerateButton topic={topic} isLoading={isLoading} onClick={handleGenerate} />
-              {progress ? (
-                <div className={`rounded-xl border border-card-border bg-card px-4 py-3 ${progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}>
-                  <div className="flex items-center justify-between gap-3">
-                    <p className={`text-sm ${progress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
-                      {progress.label}
-                    </p>
-                    <p className="text-xs font-semibold text-muted-foreground tabular-nums">
-                      {progress.percent}%
-                    </p>
-                  </div>
-                  <div className="mt-2 h-2 w-full rounded-full bg-subtle">
-                    <div
-                      className={`h-2 rounded-full transition-[width] ${progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'}`}
-                      style={{ width: `${progress.percent}%` }}
-                    />
-                  </div>
-                </div>
-              ) : null}
-              {!progress && status ? (
-                <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-                  <p className="text-sm text-muted-foreground">{status}</p>
-                </div>
-              ) : null}
-               {generatedText || generatedImageDataUrl ? (
-                 <FacebookPreview
-                   contentType={outputMode as 'imageAndText' | 'textOnly' | 'imageOnly'}
-                   imageUrl={generatedImageDataUrl || null}
-                   textContent={generatedText}
-                   onDownload={() => {
-                     if (!generatedImageDataUrl) return;
-                     // Convert base64 to blob and trigger download
-                     const byteCharacters = atob(generatedImageDataUrl.split(',')[1]);
-                     const byteNumbers = new Array(byteCharacters.length);
-                     for (let i = 0; i < byteCharacters.length; i++) {
-                       byteNumbers[i] = byteCharacters.charCodeAt(i);
-                     }
-                     const byteArray = new Uint8Array(byteNumbers);
-                     const blob = new Blob([byteArray], { type: 'image/png' });
-                     const url = URL.createObjectURL(blob);
-                     
-                     const a = document.createElement('a');
-                     a.href = url;
-                     a.download = `ai-minions-content-${Date.now()}.png`;
-                     document.body.appendChild(a);
-                     a.click();
-                     document.body.removeChild(a);
-                     URL.revokeObjectURL(url);
-                   }}
-                 />
-               ) : null}
             </div>
           </div>
         </div>

@@ -720,7 +720,7 @@ select.viral-translate-tone-select:focus {
   box-shadow: 0 4px 18px rgba(236, 72, 153, 0.5);
 }
 
-/* Horizontal content-type bar: icon → label → hint (hint only on active item) */
+/* Horizontal content-type bar: icon → label → ? hint popover */
 .content-type-row {
   display: flex;
   flex-direction: row;
@@ -780,6 +780,51 @@ select.viral-translate-tone-select:focus {
   .content-type-hint {
     font-size: 0.6875rem;
   }
+}
+
+/* Hint popover + ? trigger — solid fills (dark --card is translucent and bleeds UI behind) */
+.content-type-hint-trigger {
+  background-color: #ffffff;
+  color: #3f3f46;
+  border: 1px solid #d4d4d8;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+.dark .content-type-hint-trigger {
+  background-color: #152238;
+  color: #e2e8f0;
+  border-color: rgba(255, 255, 255, 0.28);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.content-type-hint-trigger:hover {
+  border-color: rgba(236, 72, 153, 0.55);
+  color: #0a0a0a;
+}
+
+.dark .content-type-hint-trigger:hover {
+  color: #f8fafc;
+  border-color: rgba(244, 114, 182, 0.55);
+}
+
+.content-type-hint-popover {
+  background-color: #ffffff;
+  color: #18181b;
+  border: 1px solid #d4d4d8;
+  box-shadow: 0 12px 42px rgba(15, 23, 42, 0.2);
+}
+
+.dark .content-type-hint-popover {
+  background-color: #101b2e;
+  color: #f1f5f9;
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.65);
+}
+
+.content-type-hint-popover .content-type-hint {
+  color: inherit;
+  font-weight: 400;
+  line-height: 1.45;
 }
 
 .textarea-content-creator {
@@ -892,6 +937,11 @@ select.viral-translate-tone-select:focus {
   background: var(--subtle);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
+}
+
+/* Content creator — sticky output column scroll */
+.content-creator-output-aside {
+  scrollbar-gutter: stable;
 }
 
 /* Voice over / AI Voice studio */

@@ -1,38 +1,111 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, Mic } from 'lucide-react';
+import { Mic } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import ScriptInput from '@/components/shared/components/script-input';
-import VoiceSelector from '@/components/shared/components/voice-selector';
 import AudioPlayer from '@/components/shared/components/audio-player';
-import type { VoiceStyle } from '@/components/shared/types';
 import PageHeader from '@/components/layout/page-header';
 import GenerateButton from '@/features/voice-over/components/generate-button';
-import { voiceOverEstimatePoints, voiceOverStart, openVoiceOverSse } from '@/lib/voice-over-api';
+import VoiceToneVoicePicker from '@/features/voice-over/components/voice-tone-voice-picker';
+import {
+  defaultToneGroupForVoiceId,
+  deliveryStyleForToneGroup,
+  firstVoiceIdInTone,
+  voicesForToneGroup,
+  type VoiceToneGroupId,
+} from '@/lib/voice-over-tone-groups';
+import {
+  fetchVoiceOverModels,
+  voiceOverStart,
+  openVoiceOverSse,
+  type VoiceModelDescriptor,
+} from '@/lib/voice-over-api';
+import { useVoiceOverEstimate } from '@/lib/use-voice-over-estimate';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 
 // TODO: replace with real auth state
 const isSignedIn = true;
 
-type ProviderChoice = 'auto' | 'gemini' | 'openai';
-
 export default function VoiceOverPage() {
   const t = useTranslations('voice-over');
 
   const [scriptText, setScriptText] = useState('');
-  const [selectedVoice, setSelectedVoice] = useState<VoiceStyle>('woman');
-  const [provider, setProvider] = useState<ProviderChoice>('auto');
+  const [selectedVoiceId, setSelectedVoiceId] = useState('kore');
+  const [voiceToneGroupId, setVoiceToneGroupId] = useState<VoiceToneGroupId>(() =>
+    defaultToneGroupForVoiceId('kore'),
+  );
+  const [voiceModelCatalog, setVoiceModelCatalog] = useState<VoiceModelDescriptor[]>([]);
+  const [voiceModelsLoading, setVoiceModelsLoading] = useState(false);
+  const [voiceModelsError, setVoiceModelsError] = useState<string | null>(null);
   const [audioSrc, setAudioSrc] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [progress, setProgress] = useState<{ percent: number; label: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [estimateCost, setEstimateCost] = useState<number | null>(null);
-  const [estimateLoading, setEstimateLoading] = useState(false);
-  const [estimateUnavailable, setEstimateUnavailable] = useState(false);
+  const {
+    estimate: voiceOverPointsEstimate,
+    loading: estimateLoading,
+    error: estimateError,
+  } = useVoiceOverEstimate(scriptText, { enabled: scriptText.trim().length > 0 });
+
+  const estimateCost =
+    typeof voiceOverPointsEstimate?.reserveCostPoints === 'number' &&
+    Number.isFinite(voiceOverPointsEstimate.reserveCostPoints)
+      ? voiceOverPointsEstimate.reserveCostPoints
+      : null;
+  const estimateUnavailable = Boolean(estimateError);
 
   const canGenerate = useMemo(() => scriptText.trim().length > 0 && !isLoading, [scriptText, isLoading]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setVoiceModelsLoading(true);
+    setVoiceModelsError(null);
+    void fetchVoiceOverModels()
+      .then((data) => {
+        if (cancelled) return;
+        const gemini = data.providers?.find((p) => String(p.provider).toUpperCase() === 'GEMINI');
+        const list = gemini?.models ?? data.providers?.[0]?.models ?? [];
+        setVoiceModelCatalog(Array.isArray(list) ? list : []);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setVoiceModelCatalog([]);
+          setVoiceModelsError(e instanceof Error ? e.message : String(e));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setVoiceModelsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (voiceModelCatalog.length === 0) return;
+    const ids = new Set(voiceModelCatalog.map((m) => m.id.toLowerCase()));
+    const sel = selectedVoiceId.toLowerCase();
+
+    if (!ids.has(sel)) {
+      const pick =
+        firstVoiceIdInTone(voiceModelCatalog, voiceToneGroupId) ??
+        firstVoiceIdInTone(voiceModelCatalog, 'conversational') ??
+        voiceModelCatalog[0]?.id ??
+        'kore';
+      setSelectedVoiceId(pick);
+      setVoiceToneGroupId(defaultToneGroupForVoiceId(pick));
+      return;
+    }
+
+    const inTone = voicesForToneGroup(voiceModelCatalog, voiceToneGroupId).some(
+      (m) => m.id.toLowerCase() === sel,
+    );
+    if (!inTone) {
+      setVoiceToneGroupId(defaultToneGroupForVoiceId(selectedVoiceId));
+    }
+  }, [voiceModelCatalog, selectedVoiceId, voiceToneGroupId]);
 
   const handleGenerate = async () => {
     const text = scriptText.trim();
@@ -40,31 +113,12 @@ export default function VoiceOverPage() {
     setIsLoading(true);
     setError(null);
     setAudioSrc('');
-    setEstimateCost(null);
-    setEstimateUnavailable(false);
-    setEstimateLoading(true);
-    setProgress({ percent: 10, label: t('progress.estimating') });
+    setProgress({ percent: 15, label: t('progress.starting') });
     try {
-      try {
-        const est = await voiceOverEstimatePoints(text);
-        const pts = est.reserveCostPoints;
-        if (typeof pts === 'number' && Number.isFinite(pts)) {
-          setEstimateCost(pts);
-          setEstimateUnavailable(false);
-        } else {
-          setEstimateUnavailable(true);
-        }
-      } catch {
-        setEstimateUnavailable(true);
-      } finally {
-        setEstimateLoading(false);
-      }
-
-      setProgress({ percent: 25, label: t('progress.starting') });
       const started = await voiceOverStart({
         text,
-        style: selectedVoice,
-        provider: provider === 'auto' ? null : provider.toUpperCase(),
+        aiModel: selectedVoiceId,
+        style: deliveryStyleForToneGroup(voiceToneGroupId),
       });
 
       openVoiceOverSse(started.jobId, {
@@ -114,118 +168,110 @@ export default function VoiceOverPage() {
                 subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
               />
 
-              <ScriptInput
-                value={scriptText}
-                onChange={setScriptText}
-                kicker={t('scriptInput.kicker')}
-                placeholder={t('scriptInput.placeholder')}
-                exampleHint={t('scriptInput.example')}
-                variant="voiceStudio"
-                showCharacterCount={false}
-                disabled={isLoading}
-              />
+              <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-0">
+                {/* Left: script + estimate (wide screens) */}
+                <div className="flex min-w-0 flex-col gap-6">
+                  <ScriptInput
+                    value={scriptText}
+                    onChange={setScriptText}
+                    kicker={t('scriptInput.kicker')}
+                    placeholder={t('scriptInput.placeholder')}
+                    exampleHint={t('scriptInput.example')}
+                    variant="voiceStudio"
+                    showCharacterCount={false}
+                    disabled={isLoading}
+                  />
 
-              <VoiceSelector
-                value={selectedVoice}
-                onChange={setSelectedVoice}
-                variant="chips"
-                inlineEnd={
-                  <div className="ml-auto flex shrink-0 flex-wrap items-center gap-x-2 gap-y-2 sm:gap-x-3">
-                    <span
-                      className="mx-0.5 hidden h-5 w-px shrink-0 bg-card-border sm:block"
-                      aria-hidden
-                    />
-                    <p className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                      {t('provider.label')}
+                  <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-4 py-4 sm:px-5">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+                      {t('estimate.kicker')}
                     </p>
-                    <div className="voice-provider-select-wrap shrink-0">
-                      <select
-                        value={provider}
-                        onChange={(e) => setProvider(e.target.value as ProviderChoice)}
-                        className="voice-provider-select"
-                        disabled={isLoading}
-                        aria-label={t('provider.aria')}
-                      >
-                        <option value="auto">{t('provider.auto')}</option>
-                        <option value="gemini">{t('provider.gemini')}</option>
-                        <option value="openai">{t('provider.openai')}</option>
-                      </select>
-                      <ChevronDown className="voice-provider-select-chevron" strokeWidth={2.25} aria-hidden />
-                    </div>
-                  </div>
-                }
-              />
-
-              <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-4 py-4 sm:px-5">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                  {t('estimate.kicker')}
-                </p>
-                {estimateLoading ? (
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('estimate.loading')}</p>
-                ) : estimateCost != null ? (
-                  <>
-                    <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <span className="text-3xl font-semibold tabular-nums tracking-tight text-foreground sm:text-4xl">
-                        {estimateCost.toLocaleString()}
-                      </span>
-                      <span className="text-sm font-semibold text-muted-foreground">{t('estimate.unit')}</span>
-                    </div>
-                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t('estimate.caption')}</p>
-                  </>
-                ) : estimateUnavailable ? (
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('estimate.unavailable')}</p>
-                ) : (
-                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('estimate.hint')}</p>
-                )}
-              </div>
-
-              <GenerateButton
-                onClick={handleGenerate}
-                isLoading={isLoading}
-                disabled={!canGenerate}
-              />
-
-              {progress ? (
-                <div
-                  className={`rounded-xl border border-card-border bg-card px-4 py-3 ${
-                    progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
-                  }`}
-                  role="status"
-                  aria-live="polite"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p
-                      className={`text-sm ${
-                        progress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'
-                      }`}
-                    >
-                      {progress.label}
-                    </p>
-                    <p className="text-xs font-semibold text-muted-foreground tabular-nums">{progress.percent}%</p>
-                  </div>
-                  <div
-                    className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
-                    role="progressbar"
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                    aria-valuenow={progress.percent}
-                    aria-label={progress.label}
-                  >
-                    <div
-                      className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${
-                        progress.percent >= 100 ? 'bg-emerald-600' : 'bg-violet-500'
-                      }`}
-                      style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
-                    />
+                    {estimateLoading ? (
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('estimate.loading')}</p>
+                    ) : estimateCost != null ? (
+                      <>
+                        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                          <span className="text-3xl font-semibold tabular-nums tracking-tight text-foreground sm:text-4xl">
+                            {estimateCost.toLocaleString()}
+                          </span>
+                          <span className="text-sm font-semibold text-muted-foreground">{t('estimate.unit')}</span>
+                        </div>
+                        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t('estimate.caption')}</p>
+                      </>
+                    ) : estimateUnavailable ? (
+                      <div className="mt-2 space-y-1">
+                        <p className="text-sm leading-relaxed text-muted-foreground">{t('estimate.unavailable')}</p>
+                        {estimateError ? (
+                          <p className="text-xs leading-relaxed text-muted-foreground/80">{estimateError}</p>
+                        ) : null}
+                      </div>
+                    ) : (
+                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('estimate.hint')}</p>
+                    )}
                   </div>
                 </div>
-              ) : null}
 
-              {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                {/* Right: voice, generate, progress, output (sticky on wide screens) */}
+                <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
+                  <div className="space-y-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{t('models.label')}</p>
+                    <VoiceToneVoicePicker
+                      catalog={voiceModelCatalog}
+                      loading={voiceModelsLoading}
+                      error={voiceModelsError}
+                      toneGroupId={voiceToneGroupId}
+                      onToneGroupChange={setVoiceToneGroupId}
+                      selectedVoiceId={selectedVoiceId}
+                      onVoiceIdChange={setSelectedVoiceId}
+                      disabled={isLoading}
+                    />
+                  </div>
 
-              {audioSrc ? (
-                <AudioPlayer src={audioSrc} filename="voice-over.mp3" />
-              ) : null}
+                  <GenerateButton onClick={handleGenerate} isLoading={isLoading} disabled={!canGenerate} />
+
+                  {progress ? (
+                    <div
+                      className={`rounded-xl border border-card-border bg-card px-4 py-3 ${
+                        progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
+                      }`}
+                      role="status"
+                      aria-live="polite"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p
+                          className={`text-sm ${
+                            progress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'
+                          }`}
+                        >
+                          {progress.label}
+                        </p>
+                        <p className="text-xs font-semibold text-muted-foreground tabular-nums">{progress.percent}%</p>
+                      </div>
+                      <div
+                        className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
+                        role="progressbar"
+                        aria-valuemin={0}
+                        aria-valuemax={100}
+                        aria-valuenow={progress.percent}
+                        aria-label={progress.label}
+                      >
+                        <div
+                          className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${
+                            progress.percent >= 100 ? 'bg-emerald-600' : 'bg-violet-500'
+                          }`}
+                          style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
+                        />
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
+                  {audioSrc ? (
+                    <AudioPlayer src={audioSrc} filename="voice-over.mp3" />
+                  ) : null}
+                </div>
+              </div>
             </div>
           </div>
         </div>

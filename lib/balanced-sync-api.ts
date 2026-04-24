@@ -1,5 +1,6 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
 import { authHeaders, errorMessageFromBody, fetchInit, fetchWithAuthRetry } from '@/lib/api-auth-fetch';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 
 type ApiEnvelope<T> = { success: boolean; message?: string; data?: T };
 
@@ -73,6 +74,7 @@ export async function balancedSyncAccept(params: {
   if (!res.ok || !json.success) {
     throw new Error(errorMessageFromBody(json, `balanced-sync accept failed (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
 }
 
 export async function balancedSyncReject(params: { balancedVideoS3Key: string }): Promise<void> {
@@ -88,5 +90,6 @@ export async function balancedSyncReject(params: { balancedVideoS3Key: string })
   if (!res.ok || !json.success) {
     throw new Error(errorMessageFromBody(json, `balanced-sync reject failed (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
 }
 

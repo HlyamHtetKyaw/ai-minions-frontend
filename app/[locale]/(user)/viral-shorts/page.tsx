@@ -16,6 +16,7 @@ import {
   videoEditorPrepareUploadUrl,
   videoEditorSaveSnapshot,
 } from '@/lib/video-editor-api';
+import { normalizePersistedVoiceId } from '@/lib/voice-over-api';
 
 type PageStep = 'upload' | 'uploading' | 'studio';
 
@@ -31,7 +32,7 @@ export default function ViralShortsPage() {
   const [translateTone, setTranslateTone] = useState<'narrative' | 'formal' | 'informal'>('narrative');
   const [voiceOverAudioUrl, setVoiceOverAudioUrl] = useState('');
   const [voiceOverS3Key, setVoiceOverS3Key] = useState('');
-  const [voiceOverVoice, setVoiceOverVoice] = useState<'woman-kore' | 'man'>('woman-kore');
+  const [voiceOverVoice, setVoiceOverVoice] = useState<string>('kore');
   const [voiceOverEnabled, setVoiceOverEnabled] = useState(false);
   const [originalAudioEnabled, setOriginalAudioEnabled] = useState(true);
   const [voiceOverPlaybackRate, setVoiceOverPlaybackRate] = useState(1);
@@ -117,8 +118,8 @@ export default function ViralShortsPage() {
           setTranslatedText(restoredTranslated);
           setVoiceOverAudioUrl(typeof parsed.voiceOverAudioUrl === 'string' ? parsed.voiceOverAudioUrl : '');
           setVoiceOverS3Key(typeof parsed.voiceOverS3Key === 'string' ? parsed.voiceOverS3Key : '');
-          const vv = (typeof parsed.voiceOverVoice === 'string' ? parsed.voiceOverVoice : '').toLowerCase();
-          setVoiceOverVoice(vv === 'man' ? 'man' : 'woman-kore');
+          const vv = typeof parsed.voiceOverVoice === 'string' ? parsed.voiceOverVoice : '';
+          setVoiceOverVoice(normalizePersistedVoiceId(vv));
           setVoiceOverEnabled(Boolean(parsed.voiceOverEnabled));
           setOriginalAudioEnabled(parsed.originalAudioEnabled == null ? true : Boolean(parsed.originalAudioEnabled));
           setVoiceOverPlaybackRate(
@@ -193,7 +194,7 @@ export default function ViralShortsPage() {
       setTranslateTone('narrative');
       setVoiceOverAudioUrl('');
       setVoiceOverS3Key('');
-      setVoiceOverVoice('woman-kore');
+      setVoiceOverVoice('kore');
       setVoiceOverEnabled(false);
       setOriginalAudioEnabled(true);
       setVoiceOverPlaybackRate(1);
@@ -219,7 +220,7 @@ export default function ViralShortsPage() {
           tone: 'narrative',
           voiceOverAudioUrl: '',
           voiceOverS3Key: '',
-          voiceOverVoice: 'woman-kore',
+          voiceOverVoice: 'kore',
           voiceOverEnabled: false,
           originalAudioEnabled: true,
           voiceOverPlaybackRate: 1,
@@ -324,7 +325,7 @@ export default function ViralShortsPage() {
     setTranslateTone('narrative');
     setVoiceOverAudioUrl('');
     setVoiceOverS3Key('');
-    setVoiceOverVoice('woman-kore');
+    setVoiceOverVoice('kore');
     setVoiceOverEnabled(false);
     setOriginalAudioEnabled(true);
     setVoiceOverPlaybackRate(1);

@@ -6,6 +6,10 @@ import {
   fetchWithAuthRetry,
 } from '@/lib/api-auth-fetch';
 import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
+import type { PointsEstimate } from '@/lib/voice-over-api';
+
+export type { PointsEstimate };
 
 export type ContentGenerateV2Params = {
   topic: string;
@@ -27,6 +31,28 @@ export type ContentGenerateV2Result = {
   storageUrl: string;
   s3Key: string;
 };
+
+/** Normalizes SSE/REST payload (camelCase or snake_case) for content v2 results. */
+export function normalizeContentGenerateV2Result(raw: unknown): ContentGenerateV2Result {
+  if (!raw || typeof raw !== 'object') {
+    return { generatedText: '', shortTextOnImage: '', imageBase64: '', storageUrl: '', s3Key: '' };
+  }
+  const r = raw as Record<string, unknown>;
+  const pick = (camel: string, snake: string): string => {
+    const a = r[camel];
+    const b = r[snake];
+    if (typeof a === 'string' && a.length > 0) return a;
+    if (typeof b === 'string' && b.length > 0) return b;
+    return '';
+  };
+  return {
+    generatedText: pick('generatedText', 'generated_text'),
+    shortTextOnImage: pick('shortTextOnImage', 'short_text_on_image'),
+    imageBase64: pick('imageBase64', 'image_base64'),
+    storageUrl: pick('storageUrl', 'storage_url'),
+    s3Key: pick('s3Key', 's3_key'),
+  };
+}
 
 export type ContentGenerateV2StartResult = {
   jobId: string;
@@ -58,6 +84,34 @@ export async function generateContentV2(params: ContentGenerateV2Params): Promis
   const json = (await res.json().catch(() => ({}))) as ApiEnvelope<ContentGenerateV2Result>;
   if (!res.ok || !json.success || json.data == null) {
     throw new Error(errorMessageFromBody(json, `Content generation failed (${res.status})`));
+  }
+  return json.data;
+}
+
+/** Same point model as content v2 generation reserve (topic, textLength, outputMode). */
+export async function contentGenerationEstimatePoints(params: ContentGenerateV2Params): Promise<PointsEstimate> {
+  const base = getPublicApiBaseUrl();
+  if (!base) throw new Error('API base URL is not set');
+  const res = await fetchWithAuthRetry(`${base}/api/v1/ai/content/v2/estimate`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
+    body: JSON.stringify({
+      topic: params.topic,
+      contentType: params.contentType,
+      textLength: params.textLength,
+      targetLanguage: params.targetLanguage,
+      outputMode: params.outputMode,
+      tone: params.tone,
+      toonStyle: params.toonStyle,
+      logoDataUrl: params.logoDataUrl,
+      aiOverlayTextEnabled: params.aiOverlayTextEnabled,
+      userOverlayText: params.userOverlayText,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<PointsEstimate>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `content generation estimate failed (${res.status})`));
   }
   return json.data;
 }
@@ -123,6 +177,9 @@ export function openContentGenerationSse(jobId: string, handlers: ContentGenerat
           data: (payload.data ?? undefined) as ContentGenerateV2Result | undefined,
           message: typeof payload.message === 'string' ? payload.message : undefined,
         });
+        if (status === 'completed') {
+          notifyUserCreditBalanceRefresh();
+        }
         finish();
       }
     } catch {

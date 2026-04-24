@@ -5,6 +5,7 @@ import {
   fetchInit,
   fetchWithAuthRetry,
 } from '@/lib/api-auth-fetch';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 
 export type TranslateResult = {
   translatedText: string;
@@ -72,6 +73,7 @@ export async function translateText(params: {
   if (typeof json.data.translatedText !== 'string') {
     throw new Error('Translate response missing text');
   }
+  notifyUserCreditBalanceRefresh();
   return json.data;
 }
 

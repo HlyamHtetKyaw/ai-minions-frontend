@@ -384,19 +384,45 @@
       "label": "Generate Voice",
       "loading": "Generating…"
     },
-    "provider": {
-      "label": "Model / Provider",
-      "aria": "Choose voice generation provider",
-      "auto": "Auto",
-      "gemini": "Gemini",
-      "openai": "OpenAI"
+    "models": {
+      "label": "Voice",
+      "loading": "Loading voices…",
+      "empty": "No voices available. Try again later."
+    },
+    "tonePicker": {
+      "step1": "Voice style",
+      "step2": "Voice",
+      "loadingVoices": "Loading voices…",
+      "emptyCatalog": "No voices available. Try again later."
+    },
+    "toneGroups": {
+      "energetic": {
+        "title": "Energetic / Hype",
+        "hint": "TikTok, Shorts, fast hooks, high-energy reveals."
+      },
+      "conversational": {
+        "title": "Conversational / Casual",
+        "hint": "Vlogs, day-in-the-life, friendly social captions."
+      },
+      "educational": {
+        "title": "Educational / Informative",
+        "hint": "Tutorials, how-tos, tech explainers, long-form scripts."
+      },
+      "professional": {
+        "title": "Professional / Corporate",
+        "hint": "LinkedIn, B2B demos, launches, straightforward presentations."
+      },
+      "cinematic": {
+        "title": "Cinematic / Storytelling",
+        "hint": "Aesthetic edits, dramatic B-roll, documentaries, deep story."
+      }
     },
     "estimate": {
       "kicker": "Estimated points",
       "unit": "pts",
       "loading": "Calculating how many points this script needs…",
       "caption": "This is an approximate reserve based on script length. Your balance is charged when the job runs.",
-      "hint": "Click Generate to see roughly how many points this narration will use.",
+      "hint": "Estimated points refresh as you edit the script (after a short pause).",
       "unavailable": "We could not estimate points for this script. You can still try generating if you have a balance."
     },
     "progress": {
@@ -655,7 +681,10 @@
       "voiceStyleKicker": "Voice style",
       "womanKore": "Woman (Kore)",
       "man": "Man",
-      "estimateHintTranslate": "Translate your script first. After that, click Generate to see how many points the voice-over needs."
+      "chooseVoiceStyleButton": "Choose voice & style",
+      "voiceStyleModalTitle": "Voice & style",
+      "voiceStyleModalSubtitle": "Pick a delivery tone and narrator voice for your script.",
+      "voiceStyleModalDone": "Done"
     }
   },
   "transcribe": {
@@ -778,18 +807,42 @@
       "subtitle": "Write hooks, captions, and social-ready scripts",
       "helpAria": "Help with content creator"
     },
+    "layout": {
+      "styleAndActionsHeading": "Style & generate",
+      "outputHeading": "Output",
+      "outputEmpty": "Generated preview and copy will appear here after you generate.",
+      "outputWorking": "Creating your content…"
+    },
     "contentTypeLabel": "Content type",
+    "contentTypeHintTriggerAria": "What is {type}?",
     "contentTypes": {
       "hook": "Hook",
       "caption": "Caption",
       "script": "Script",
       "hashtags": "Hashtags"
     },
+    "textLength": {
+      "genericSectionTitle": "Generated text length",
+      "hookSectionTitle": "Hook format",
+      "short": "Short",
+      "long": "Long",
+      "hookShortHelp": "One tight scroll-stopping opener: one or two sentences, no A/B variants.",
+      "hookLongHelp": "One narrative-style opening, then a short outline and a single transition line—in one block.",
+      "captionSectionTitle": "Caption length",
+      "captionShortHelp": "One short caption: a line or two, emojis, and a quick CTA—no hashtags.",
+      "captionLongHelp": "One micro-blog caption: strong first line (read-more safe), line breaks, story or lesson, and a CTA—no hashtags.",
+      "hashtagsSectionTitle": "Hashtag list size",
+      "hashtagsShortHelp": "Brief topic → three blank-separated groups of tags (different angles). Long topic → distilled 10–15 tags from the core idea only.",
+      "hashtagsLongHelp": "Brief topic → a wide semantic web (25+ tags). Long topic → specific tags from tools and details in your text, grouped with blank lines.",
+      "scriptSectionTitle": "Script length",
+      "scriptShortHelp": "Reels/Shorts style: ~100–150 words, [Visual:] + Audio: beats, fast hook, CTA—meant to be read aloud fast.",
+      "scriptLongHelp": "Long-form style: ~1k+ words, acts with timestamps, B-roll/visual cues, Spoken: lines—like a production doc for YouTube or podcasts."
+    },
     "contentTypeHints": {
-      "hook": "Short hooks for TikTok, Reels, and Shorts.",
-      "caption": "Social captions, CTAs, and on-screen lines.",
-      "script": "Video scripts and narratives.",
-      "hashtags": "Trending hashtag stacks for discovery."
+      "hook": "Short = one punchy opener. Long = one deeper opening plus outline and transition.",
+      "caption": "Short = one snappy line + CTA. Long = one formatted story-style caption—hashtags not included (use Hashtags type if you want tags).",
+      "script": "Short = teleprompter-style Shorts script. Long = chaptered long-form or podcast-style script with cues.",
+      "hashtags": "Short or long lists—short seeds get extrapolated; long prompts get distilled or mined for specifics."
     },
     "outputModeLabel": "Output",
     "outputModes": {
@@ -800,8 +853,9 @@
     "outputModeHints": {
       "imageAndText": "Get copy plus a visual you can post together.",
       "textOnly": "Scripts, captions, and posts without an image.",
-      "imageOnly": "A single image asset from your brief."
+      "imageOnly": "A single image asset from your brief. Content type and tone still steer the scene and overlay energy."
     },
+    "imageOnlyContextHint": "Content type and tone apply to image-only runs too — they shape the scene mood and how bold the visual feels (body copy is not generated).",
     "logoUpload": {
       "kicker": "Brand logo",
       "label": "Upload logo (optional)",
@@ -831,7 +885,7 @@
       "cost": "Estimated cost: ~{points} points",
       "unavailable": "Estimate unavailable: {message}",
       "prompt": "Enter a topic to see the estimated points cost.",
-      "backendMissing": "Point estimate isn’t available — the server returned 404 for the estimate request (route missing or wrong URL)."
+      "backendMissing": "Point estimate isn’t available — the server returned 404 for the content estimate request (route missing or wrong URL)."
     },
     "timeouts": {
       "estimate": "Estimate timed out. Please try again."
@@ -844,13 +898,15 @@
     },
     "result": {
       "title": "Generated content",
+      "scriptOutputTitle": "Script output",
       "previewAuthor": "AI Minions",
       "previewTime": "Just now",
       "download": "Download",
       "copy": "Copy",
       "copied": "Copied",
       "downloadAria": "Download generated image",
-      "copyAria": "Copy generated text to clipboard"
+      "copyAria": "Copy generated text to clipboard",
+      "copyScriptAria": "Copy script to clipboard"
     }
   },
   "translation": {

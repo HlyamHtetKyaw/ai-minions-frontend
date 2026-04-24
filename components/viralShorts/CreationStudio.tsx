@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { ChevronDown, Loader2, Play, Subtitles, Volume2 } from 'lucide-react';
+import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
 import {
   transcribeEstimatePointsFromExisting,
@@ -11,12 +11,14 @@ import {
 } from '@/lib/transcribe-api';
 import { translateEstimatePoints, translateText, type PointsEstimate as TranslatePointsEstimate } from '@/lib/translate-api';
 import {
+  fetchVoiceOverModels,
+  normalizePersistedVoiceId,
   openVoiceOverSse,
-  voiceOverEstimatePoints,
   voiceOverPresignRead,
   voiceOverStart,
-  type PointsEstimate as VoiceOverPointsEstimate,
+  type VoiceModelDescriptor,
 } from '@/lib/voice-over-api';
+import { useVoiceOverEstimate } from '@/lib/use-voice-over-estimate';
 import {
   fetchSubtitleDownloadUrl,
   fetchSubtitleSrtText,
@@ -32,10 +34,22 @@ import {
 } from '@/lib/generation-job-sse';
 import { videoEditorExportEstimateExisting, videoEditorExportWorkspace } from '@/lib/video-editor-api';
 import { balancedSyncAccept, balancedSyncEstimate, balancedSyncReject, balancedSyncStart } from '@/lib/balanced-sync-api';
+import VoiceToneVoicePicker from '@/features/voice-over/components/voice-tone-voice-picker';
+import {
+  defaultToneGroupForVoiceId,
+  deliveryStyleForToneGroup,
+  firstVoiceIdInTone,
+  voicesForToneGroup,
+  type VoiceToneGroupId,
+} from '@/lib/voice-over-tone-groups';
 
 type TranslateTone = 'narrative' | 'formal' | 'informal';
-type VoiceOption = 'woman-kore' | 'man';
-type VoiceOverProviderChoice = 'auto' | 'gemini' | 'openai';
+
+function formatVoiceIdDisplay(id: string): string {
+  const t = (id ?? '').trim();
+  if (!t) return '';
+  return t.charAt(0).toUpperCase() + t.slice(1).toLowerCase();
+}
 
 const MIN_SYNC_RATE = 0.8;
 const MAX_SYNC_RATE = 1.25;
@@ -139,7 +153,8 @@ type Props = {
   initialTone?: TranslateTone;
   initialVoiceOverAudioUrl?: string;
   initialVoiceOverS3Key?: string;
-  initialVoiceOverVoice?: VoiceOption;
+  /** Persisted Gemini voice id (e.g. {@code kore}); legacy {@code woman-kore}/{@code man} normalized on load. */
+  initialVoiceOverVoice?: string;
   initialVoiceOverEnabled?: boolean;
   initialOriginalAudioEnabled?: boolean;
   initialVoiceOverPlaybackRate?: number;
@@ -151,7 +166,7 @@ type Props = {
   onToneChange?: (tone: TranslateTone) => void;
   onVoiceOverAudioUrlChange?: (url: string) => void;
   onVoiceOverS3KeyChange?: (key: string) => void;
-  onVoiceOverVoiceChange?: (voice: VoiceOption) => void;
+  onVoiceOverVoiceChange?: (voiceId: string) => void;
   onVoiceOverEnabledChange?: (enabled: boolean) => void;
   onOriginalAudioEnabledChange?: (enabled: boolean) => void;
   onVoiceOverPlaybackRateChange?: (rate: number) => void;
@@ -236,9 +251,7 @@ export default function CreationStudio({
   const [translateEstimateLoading, setTranslateEstimateLoading] = useState(false);
 
   const [showVoiceOverConfirm, setShowVoiceOverConfirm] = useState(false);
-  const [voiceOverEstimate, setVoiceOverEstimate] = useState<VoiceOverPointsEstimate | null>(null);
-  const [voiceOverEstimateError, setVoiceOverEstimateError] = useState<string | null>(null);
-  const [voiceOverEstimateLoading, setVoiceOverEstimateLoading] = useState(false);
+  const [showVoiceStyleModal, setShowVoiceStyleModal] = useState(false);
   const [voiceOverProgress, setVoiceOverProgress] = useState<{ percent: number; label: string } | null>(null);
   const [voiceOverError, setVoiceOverError] = useState<string | null>(null);
 
@@ -340,13 +353,68 @@ export default function CreationStudio({
   }, [subtitlesSrtText]);
 
   const [tone, setTone] = useState<TranslateTone>(() => initialTone ?? 'narrative');
-  const [voice, setVoice] = useState<VoiceOption>(() => initialVoiceOverVoice ?? 'woman-kore');
-  const [voiceOverProvider, setVoiceOverProvider] = useState<VoiceOverProviderChoice>('auto');
+  const [selectedVoiceId, setSelectedVoiceId] = useState(() => normalizePersistedVoiceId(initialVoiceOverVoice));
+  const [voiceToneGroupId, setVoiceToneGroupId] = useState<VoiceToneGroupId>(() =>
+    defaultToneGroupForVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice)),
+  );
+  const [voiceModelCatalog, setVoiceModelCatalog] = useState<VoiceModelDescriptor[]>([]);
+  const [voiceModelsLoading, setVoiceModelsLoading] = useState(false);
+  const [voiceModelsError, setVoiceModelsError] = useState<string | null>(null);
 
   useEffect(() => {
-    setVoiceOverEstimate(null);
-    setVoiceOverEstimateError(null);
-  }, [voice, voiceOverProvider]);
+    let cancelled = false;
+    setVoiceModelsLoading(true);
+    setVoiceModelsError(null);
+    void fetchVoiceOverModels()
+      .then((data) => {
+        if (cancelled) return;
+        const gemini = data.providers?.find((p) => String(p.provider).toUpperCase() === 'GEMINI');
+        const list = gemini?.models ?? data.providers?.[0]?.models ?? [];
+        setVoiceModelCatalog(Array.isArray(list) ? list : []);
+      })
+      .catch((e) => {
+        if (!cancelled) {
+          setVoiceModelCatalog([]);
+          setVoiceModelsError(e instanceof Error ? e.message : String(e));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setVoiceModelsLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    const v = normalizePersistedVoiceId(initialVoiceOverVoice);
+    setSelectedVoiceId(v);
+    setVoiceToneGroupId(defaultToneGroupForVoiceId(v));
+  }, [initialVoiceOverVoice]);
+
+  useEffect(() => {
+    if (voiceModelCatalog.length === 0) return;
+    const ids = new Set(voiceModelCatalog.map((m) => m.id.toLowerCase()));
+    const sel = selectedVoiceId.toLowerCase();
+
+    if (!ids.has(sel)) {
+      const pick =
+        firstVoiceIdInTone(voiceModelCatalog, voiceToneGroupId) ??
+        firstVoiceIdInTone(voiceModelCatalog, 'conversational') ??
+        voiceModelCatalog[0]?.id ??
+        'kore';
+      setSelectedVoiceId(pick);
+      setVoiceToneGroupId(defaultToneGroupForVoiceId(pick));
+      return;
+    }
+
+    const inTone = voicesForToneGroup(voiceModelCatalog, voiceToneGroupId).some(
+      (m) => m.id.toLowerCase() === sel,
+    );
+    if (!inTone) {
+      setVoiceToneGroupId(defaultToneGroupForVoiceId(selectedVoiceId));
+    }
+  }, [voiceModelCatalog, selectedVoiceId, voiceToneGroupId]);
 
   const [isTranscribing, setIsTranscribing] = useState(false);
   const [isTranscribed, setIsTranscribed] = useState(false);
@@ -511,7 +579,13 @@ export default function CreationStudio({
     return typeof initialTranscriptText === 'string' ? initialTranscriptText : '';
   });
 
-  const voiceLabel = useMemo(() => (voice === 'woman-kore' ? 'Woman (Kore)' : 'Man'), [voice]);
+  const voiceLabel = useMemo(() => {
+    const id = selectedVoiceId.trim().toLowerCase();
+    const entry = voiceModelCatalog.find((m) => m.id.toLowerCase() === id);
+    const name = formatVoiceIdDisplay(selectedVoiceId);
+    if (entry?.style) return `${name} — ${entry.style}`;
+    return name || 'Voice';
+  }, [selectedVoiceId, voiceModelCatalog]);
   const transcriptRows = useMemo(() => {
     const source = scriptText
       .split(/[။.]/)
@@ -527,6 +601,14 @@ export default function CreationStudio({
       };
     });
   }, [scriptText]);
+
+  const {
+    estimate: voiceOverPointsEstimate,
+    loading: voiceOverEstimateLoading,
+    error: voiceOverEstimateError,
+  } = useVoiceOverEstimate(scriptText, {
+    enabled: isTranslated && scriptText.trim().length > 0,
+  });
 
   const workspaceS3Key = useMemo(() => {
     // Stored as `${storageUrl}#wk=${encodeURIComponent(s3Key)}`.
@@ -648,13 +730,11 @@ export default function CreationStudio({
     setTranslateEstimateError(null);
     setTranslateEstimateLoading(false);
     setShowVoiceOverConfirm(false);
-    setVoiceOverEstimate(null);
-    setVoiceOverEstimateError(null);
-    setVoiceOverEstimateLoading(false);
     setVoiceOverProgress(null);
     setVoiceOverError(null);
     if (initialTone) setTone(initialTone);
-    if (initialVoiceOverVoice) setVoice(initialVoiceOverVoice);
+    setSelectedVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice));
+    setVoiceToneGroupId(defaultToneGroupForVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice)));
     setVoiceOverAudioUrl(typeof initialVoiceOverAudioUrl === 'string' ? initialVoiceOverAudioUrl : '');
     setVoiceOverS3Key(typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key : '');
     setVoiceOverEnabled(Boolean(initialVoiceOverEnabled));
@@ -769,9 +849,9 @@ export default function CreationStudio({
 
   useEffect(() => {
     if (typeof onVoiceOverVoiceChange === 'function') {
-      onVoiceOverVoiceChange(voice);
+      onVoiceOverVoiceChange(selectedVoiceId);
     }
-  }, [onVoiceOverVoiceChange, voice]);
+  }, [onVoiceOverVoiceChange, selectedVoiceId]);
 
   useEffect(() => {
     if (typeof onVoiceOverEnabledChange === 'function') {
@@ -1388,25 +1468,11 @@ export default function CreationStudio({
     void ensureTranslateEstimate();
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = () => {
     if (!isTranslated) return;
-    // Voice-over uses the translated script (current `scriptText`).
-    setShowVoiceOverConfirm(true);
     const text = scriptText.trim();
     if (!text) return;
-    if (!voiceOverEstimate && !voiceOverEstimateLoading) {
-      setVoiceOverEstimateLoading(true);
-      setVoiceOverEstimateError(null);
-      try {
-        const est = await voiceOverEstimatePoints(text);
-        setVoiceOverEstimate(est);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        setVoiceOverEstimateError(msg);
-      } finally {
-        setVoiceOverEstimateLoading(false);
-      }
-    }
+    setShowVoiceOverConfirm(true);
   };
 
   const handleFinalExportClick = async () => {
@@ -1490,8 +1556,8 @@ export default function CreationStudio({
     try {
       const started = await voiceOverStart({
         text,
-        style: voice,
-        provider: voiceOverProvider === 'auto' ? null : voiceOverProvider.toUpperCase(),
+        aiModel: selectedVoiceId,
+        style: deliveryStyleForToneGroup(voiceToneGroupId),
       });
       openVoiceOverSse(started.jobId, {
         onStatus: (raw) => {
@@ -1842,76 +1908,25 @@ export default function CreationStudio({
             <div className="space-y-4 rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{tViral('sectionTitle')}</p>
 
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {tViral('voiceStyleKicker')}
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {(
-                    [
-                      { id: 'woman-kore' as const, label: tViral('womanKore') },
-                      { id: 'man' as const, label: tViral('man') },
-                    ] as const
-                  ).map(({ id, label }) => (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => setVoice(id)}
-                      disabled={isGenerating}
-                      aria-pressed={voice === id}
-                      className={`voice-style-chip ${voice === id ? 'voice-style-chip-active' : ''}`}
-                    >
-                      <Volume2 className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                      {label}
-                    </button>
-                  ))}
+              <div className="flex items-stretch gap-3 rounded-lg border border-card-border bg-card/40 px-3 py-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                    {tViral('voiceStyleKicker')}
+                  </p>
+                  <p className="mt-0.5 truncate text-sm font-medium text-foreground">
+                    {voiceModelsLoading
+                      ? '…'
+                      : `${tVo(`toneGroups.${voiceToneGroupId}.title`)} · ${formatVoiceIdDisplay(selectedVoiceId)}`}
+                  </p>
                 </div>
-              </div>
-
-              <div className="space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-                  {tVo('provider.label')}
-                </p>
-                <div className="voice-provider-select-wrap relative flex w-full">
-                  <select
-                    value={voiceOverProvider}
-                    onChange={(e) => setVoiceOverProvider(e.target.value as VoiceOverProviderChoice)}
-                    className="voice-provider-select min-w-0! w-full max-w-md"
-                    disabled={isGenerating}
-                    aria-label={tVo('provider.aria')}
-                  >
-                    <option value="auto">{tVo('provider.auto')}</option>
-                    <option value="gemini">{tVo('provider.gemini')}</option>
-                    <option value="openai">{tVo('provider.openai')}</option>
-                  </select>
-                  <ChevronDown className="voice-provider-select-chevron" strokeWidth={2.25} aria-hidden />
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-4 py-4">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-                  {tVo('estimate.kicker')}
-                </p>
-                {!isTranslated ? (
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tViral('estimateHintTranslate')}</p>
-                ) : voiceOverEstimateLoading ? (
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tVo('estimate.loading')}</p>
-                ) : typeof voiceOverEstimate?.reserveCostPoints === 'number' &&
-                  Number.isFinite(voiceOverEstimate.reserveCostPoints) ? (
-                  <>
-                    <div className="mt-3 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                      <span className="text-2xl font-semibold tabular-nums tracking-tight text-foreground">
-                        {voiceOverEstimate.reserveCostPoints.toLocaleString()}
-                      </span>
-                      <span className="text-xs font-semibold text-muted-foreground">{tVo('estimate.unit')}</span>
-                    </div>
-                    <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tVo('estimate.caption')}</p>
-                  </>
-                ) : voiceOverEstimateError ? (
-                  <p className="mt-3 text-sm leading-relaxed text-red-300">{voiceOverEstimateError}</p>
-                ) : (
-                  <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{tVo('estimate.hint')}</p>
-                )}
+                <button
+                  type="button"
+                  className="shrink-0 self-center rounded-lg border border-card-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                  onClick={() => setShowVoiceStyleModal(true)}
+                  disabled={voiceModelsLoading || isGenerating}
+                >
+                  {tViral('chooseVoiceStyleButton')}
+                </button>
               </div>
 
               <ActionButton
@@ -2268,6 +2283,49 @@ export default function CreationStudio({
           </div>
         ) : null}
 
+        {showVoiceStyleModal ? (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="voice-style-modal-title"
+            onMouseDown={() => setShowVoiceStyleModal(false)}
+          >
+            <div
+              className="flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col rounded-2xl border border-card-border bg-card shadow-[0_25px_80px_rgba(0,0,0,0.55)]"
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="border-b border-card-border px-4 py-3">
+                <p id="voice-style-modal-title" className="text-sm font-semibold text-foreground">
+                  {tViral('voiceStyleModalTitle')}
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">{tViral('voiceStyleModalSubtitle')}</p>
+              </div>
+              <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
+                <VoiceToneVoicePicker
+                  catalog={voiceModelCatalog}
+                  loading={voiceModelsLoading}
+                  error={voiceModelsError}
+                  toneGroupId={voiceToneGroupId}
+                  onToneGroupChange={setVoiceToneGroupId}
+                  selectedVoiceId={selectedVoiceId}
+                  onVoiceIdChange={setSelectedVoiceId}
+                  disabled={isGenerating}
+                />
+              </div>
+              <div className="flex justify-end border-t border-card-border px-4 py-3">
+                <button
+                  type="button"
+                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                  onClick={() => setShowVoiceStyleModal(false)}
+                >
+                  {tViral('voiceStyleModalDone')}
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         {showVoiceOverConfirm ? (
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
@@ -2284,7 +2342,7 @@ export default function CreationStudio({
               <p className="mt-2 text-sm text-muted">
                 This will generate an audio voice over for your script and use{' '}
                 <span className="font-semibold text-foreground">
-                  {voiceOverEstimateLoading ? '…' : voiceOverEstimate?.reserveCostPoints ?? '—'}
+                  {voiceOverEstimateLoading ? '…' : voiceOverPointsEstimate?.reserveCostPoints ?? '—'}
                 </span>{' '}
                 points.
               </p>
@@ -2302,7 +2360,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={!isTranslated || isGenerating || voiceOverEstimateLoading}
+                  disabled={!isTranslated || isGenerating}
                   onClick={() => {
                     setShowVoiceOverConfirm(false);
                     void startVoiceOver();

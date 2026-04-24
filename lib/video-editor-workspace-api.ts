@@ -6,6 +6,7 @@ import {
   fetchWithAuthRetry,
 } from '@/lib/api-auth-fetch';
 import { consumeSseWithAuth } from '@/lib/sse-auth-fetch';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 
 type ApiEnvelope<T> = {
   success: boolean;
@@ -138,6 +139,7 @@ export async function exportVideoEditorWorkspace(payload: unknown): Promise<Vide
   if (!res.ok || !json.success || json.data == null) {
     throw new Error(errorMessageFromBody(json, `Failed to export video (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
   return json.data;
 }
 

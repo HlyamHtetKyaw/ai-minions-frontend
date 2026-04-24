@@ -1,4 +1,5 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 import { authHeaders, errorMessageFromBody, fetchInit, fetchWithAuthRetry } from '@/lib/api-auth-fetch';
 
 type ApiEnvelope<T> = { success: boolean; message?: string; data?: T };
@@ -122,6 +123,7 @@ export async function videoEditorExportWorkspace(payload: unknown): Promise<Work
   if (!res.ok || !json.success || !json.data) {
     throw new Error(errorMessageFromBody(json, `video export failed (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
   return json.data;
 }
 
