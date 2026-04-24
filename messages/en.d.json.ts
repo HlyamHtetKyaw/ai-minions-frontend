@@ -474,7 +474,7 @@ declare const messages: {
       "deleteProject": "Delete project"
     },
     "workspace": {
-      "returnToDashboard": "Return to dashboard",
+      "history": "History",
       "aspectToggleAria": "Canvas aspect ratio",
       "aspect": {
         "ratio16_9": "16:9",

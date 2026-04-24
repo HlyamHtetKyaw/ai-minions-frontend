@@ -1,6 +1,19 @@
 import type { EditorState } from '@/store/editorStore';
 
 /**
+ * URL the export backend can fetch: not a browser-only `blob:` URL, and without the
+ * `#wk=...` fragment used to track workspace object keys in the editor.
+ */
+export function resolveExportVideoUrl(videoSrc: string | null | undefined): string | null {
+  if (videoSrc == null || typeof videoSrc !== 'string' || videoSrc.trim() === '') return null;
+  if (videoSrc.startsWith('blob:')) return null;
+  const base = videoSrc.split('#')[0]?.trim() ?? '';
+  if (base === '') return null;
+  if (/^https?:\/\//i.test(base)) return base;
+  return null;
+}
+
+/**
  * Pure snapshot of editor data for FFmpeg / API export.
  *
  * Image overlays (GIF): animated GIFs preview in the browser, but the current export
@@ -55,7 +68,7 @@ export function buildExportPayload(state: EditorState) {
    */
 
   return {
-    videoUrl: state.videoSrc,
+    videoUrl: resolveExportVideoUrl(state.videoSrc),
     duration: state.duration,
     trimStart: state.trimStart,
     trimEnd: state.trimEnd,

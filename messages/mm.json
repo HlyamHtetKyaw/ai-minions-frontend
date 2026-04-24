@@ -471,7 +471,7 @@
       "deleteProject": "ပရောဂျက်ဂျက် ဖျက်ရန်"
     },
     "workspace": {
-      "returnToDashboard": "ဒက်ရှ်ဘုတ်သို့ ပြန်သွားရန်",
+      "history": "မှတ်တမ်း",
       "aspectToggleAria": "ကင်ဗပ်အချိုးအစား",
       "aspect": {
         "ratio16_9": "16:9",

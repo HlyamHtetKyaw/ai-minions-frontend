@@ -1,11 +1,11 @@
-import { ChevronLeft, Redo2, Undo2 } from 'lucide-react';
+import { Redo2, Undo2 } from 'lucide-react';
 import { Link } from '@/i18n/navigation';
 import { WorkspaceSegmentedToggle } from './ui';
 
 export type WorkspaceAspectId = '16:9' | '9:16' | '1:1' | '4:3';
 
 type WorkspaceTopBarProps = {
-  returnToDashboardLabel: string;
+  historyLabel: string;
   aspect: WorkspaceAspectId;
   onAspectChange: (id: WorkspaceAspectId) => void;
   aspectOptions: { id: WorkspaceAspectId; label: string }[];
@@ -13,6 +13,9 @@ type WorkspaceTopBarProps = {
   landscapeLabel?: string;
   portraitLabel?: string;
   exportLabel: string;
+  /** When true, export is blocked (e.g. video is still a local blob: URL). */
+  exportDisabled?: boolean;
+  exportDisabledTitle?: string;
   resetLabel?: string;
   onExportClick?: () => void;
   onResetClick?: () => void;
@@ -24,7 +27,7 @@ type WorkspaceTopBarProps = {
 };
 
 export function WorkspaceTopBar({
-  returnToDashboardLabel,
+  historyLabel,
   aspect,
   onAspectChange,
   aspectOptions,
@@ -32,6 +35,8 @@ export function WorkspaceTopBar({
   landscapeLabel = 'Landscape',
   portraitLabel = 'Portrait',
   exportLabel,
+  exportDisabled = false,
+  exportDisabledTitle,
   resetLabel = 'Reset',
   onExportClick,
   onResetClick,
@@ -48,11 +53,10 @@ export function WorkspaceTopBar({
     <header className="flex shrink-0 flex-col gap-2 border-b border-white/10 bg-black/80 px-3 py-2 backdrop-blur-sm sm:px-4 lg:min-h-14 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
       <div className="flex min-w-0 w-full items-center lg:flex-1">
         <Link
-          href="/video-edit"
-          className="inline-flex min-w-0 items-center gap-1.5 rounded-lg py-1.5 pr-2 text-sm font-medium text-muted transition-colors hover:text-foreground"
+          href="/video-edit/history"
+          className="inline-flex min-w-0 items-center rounded-lg py-1.5 pr-2 text-sm font-medium text-muted underline underline-offset-4 decoration-muted/60 transition-colors hover:text-foreground hover:decoration-foreground"
         >
-          <ChevronLeft className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-          <span className="truncate">{returnToDashboardLabel}</span>
+          <span className="truncate">{historyLabel}</span>
         </Link>
         <div className="ml-2 flex items-center gap-1">
           <button
@@ -130,7 +134,9 @@ export function WorkspaceTopBar({
           <button
             type="button"
             onClick={onExportClick}
-            className="rounded-lg border border-white/20 bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-violet-400/40 hover:bg-violet-500/10"
+            disabled={exportDisabled}
+            title={exportDisabled ? exportDisabledTitle : undefined}
+            className="rounded-lg border border-white/20 bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-violet-400/40 hover:bg-violet-500/10 disabled:pointer-events-none disabled:opacity-40"
           >
             {exportLabel}
           </button>

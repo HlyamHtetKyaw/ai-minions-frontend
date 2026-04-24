@@ -16,10 +16,8 @@ import { TextLayer } from '@/components/editor/layers/TextLayer';
 import { BlurLayer } from '@/components/editor/layers/BlurLayer';
 import { ImageLayer } from '@/components/editor/layers/ImageLayer';
 import { CropOverlay } from '@/components/editor/layers/CropOverlay';
-import {
-  applyVideoFileToEditor,
-  VIDEO_FILE_ACCEPT_ATTR,
-} from '@/components/editor/video-file';
+import { VIDEO_FILE_ACCEPT_ATTR } from '@/components/editor/video-file';
+import { applyLocalVideoFileWithWorkspaceUpload } from '@/lib/workspace-video-source';
 import {
   GALLERY_IMAGE_DRAG_MIME,
   parseGalleryImageDragPayload,
@@ -297,7 +295,11 @@ export function VideoCanvas({ fileInputId, objectFit = 'contain' }: VideoCanvasP
           tabIndex={-1}
           onChange={(e) => {
             const file = e.target.files?.[0];
-            if (file) applyVideoFileToEditor(file, setVideoSrc);
+            if (file) {
+              void applyLocalVideoFileWithWorkspaceUpload(file, setVideoSrc).catch((err) => {
+                console.warn('[video-editor] video replace upload failed', err);
+              });
+            }
             e.target.value = '';
           }}
         />

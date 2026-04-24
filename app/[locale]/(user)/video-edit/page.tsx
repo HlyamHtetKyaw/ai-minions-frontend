@@ -1,13 +1,10 @@
-import { ProjectsDashboard } from '@/features/video-edit/components/projects-dashboard';
+import { redirect } from 'next/navigation';
 
-export default function VideoEditPage() {
-  return (
-    <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-      <div className="mx-auto w-full max-w-7xl">
-        <div className="video-edit-shell">
-          <ProjectsDashboard />
-        </div>
-      </div>
-    </div>
-  );
+type Props = {
+  params: Promise<{ locale: string }>;
+};
+
+export default async function VideoEditPage({ params }: Props) {
+  const { locale } = await params;
+  redirect(`/${locale}/video-edit/work-space`);
 }
