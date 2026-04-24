@@ -50,7 +50,7 @@ export default function ViralShortsPage() {
   const [subtitlesSrtText, setSubtitlesSrtText] = useState('');
   const [subtitlesPosition, setSubtitlesPosition] = useState<{ x: number; y: number }>({ x: 0.5, y: 0.88 });
   const [subtitlesFontSize, setSubtitlesFontSize] = useState(22);
-  const [subtitlesBackgroundBlur, setSubtitlesBackgroundBlur] = useState(8);
+  const [subtitlesBackgroundBlur, setSubtitlesBackgroundBlur] = useState(0);
   const [subtitlesBackgroundOpacity, setSubtitlesBackgroundOpacity] = useState(65);
   const [error, setError] = useState<string | null>(null);
   const saveTimerRef = useRef<number | null>(null);
@@ -256,7 +256,7 @@ export default function ViralShortsPage() {
           subtitlesSrtText: '',
           subtitlesPosition: { x: 0.5, y: 0.88 },
           subtitlesFontSize: 22,
-          subtitlesBackgroundBlur: 8,
+          subtitlesBackgroundBlur: 0,
           subtitlesBackgroundOpacity: 65,
           step: 'studio',
         }),

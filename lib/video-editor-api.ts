@@ -94,10 +94,11 @@ export async function uploadFileToPresignedUrl(
   }
 }
 
+/** Matches main-service {@code WorkspaceExportResponse} (same names as video-editor-workspace export). */
 export type WorkspaceExportResponse = {
   storageUrl: string;
-  readUrl: string;
-  key: string;
+  downloadUrl: string;
+  s3Key: string;
 };
 
 export type PointsEstimate = {
@@ -119,12 +120,59 @@ export async function videoEditorExportWorkspace(payload: unknown): Promise<Work
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
     body: JSON.stringify({ payload }),
   });
-  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<WorkspaceExportResponse>;
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<Record<string, unknown>>;
   if (!res.ok || !json.success || !json.data) {
     throw new Error(errorMessageFromBody(json, `video export failed (${res.status})`));
   }
+  const raw = json.data;
+  const storageUrl = typeof raw.storageUrl === 'string' ? raw.storageUrl : '';
+  const downloadUrl =
+    typeof raw.downloadUrl === 'string'
+      ? raw.downloadUrl
+      : typeof raw.readUrl === 'string'
+        ? raw.readUrl
+        : '';
+  const s3Key =
+    typeof raw.s3Key === 'string' ? raw.s3Key : typeof raw.key === 'string' ? raw.key : '';
+  if (!downloadUrl) {
+    throw new Error(errorMessageFromBody(json, 'video export failed: missing download URL'));
+  }
   notifyUserCreditBalanceRefresh();
-  return json.data;
+  return { storageUrl, downloadUrl, s3Key };
+}
+
+/**
+ * Save export to the user’s device (same flow as the main video-edit workspace export):
+ * fetch blob + programmatic {@code <a download>}, with anchor fallback when CORS blocks the blob path.
+ */
+export async function triggerWorkspaceExportDownload(downloadUrl: string, objectKey: string): Promise<void> {
+  const fileName = objectKey.split('/').filter(Boolean).pop() ?? 'video-export.mp4';
+  try {
+    const res = await fetch(downloadUrl, { method: 'GET' });
+    if (!res.ok) {
+      throw new Error(`Download failed (${res.status})`);
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = fileName;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+    return;
+  } catch {
+    const a = document.createElement('a');
+    a.href = downloadUrl;
+    a.download = fileName;
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
 }
 
 export async function videoEditorExportEstimateExisting(s3Key: string): Promise<PointsEstimate> {

@@ -32,7 +32,11 @@ import {
   openGenerationJobSseStream,
   parseGenerationSseProgressPayload,
 } from '@/lib/generation-job-sse';
-import { videoEditorExportEstimateExisting, videoEditorExportWorkspace } from '@/lib/video-editor-api';
+import {
+  triggerWorkspaceExportDownload,
+  videoEditorExportEstimateExisting,
+  videoEditorExportWorkspace,
+} from '@/lib/video-editor-api';
 import { balancedSyncAccept, balancedSyncEstimate, balancedSyncReject, balancedSyncStart } from '@/lib/balanced-sync-api';
 import VoiceToneVoicePicker from '@/features/voice-over/components/voice-tone-voice-picker';
 import {
@@ -57,6 +61,8 @@ function formatVoiceIdDisplay(id: string): string {
 
 const MIN_SYNC_RATE = 0.8;
 const MAX_SYNC_RATE = 1.25;
+/** Max height for the preview video inside the editor row (keeps UI stable on tall viewports). */
+const PREVIEW_MAX_VIDEO_HEIGHT_PX = 420;
 // Testing: allow up to 5x so it's obvious (production should likely be <= 1.4x).
 const MAX_SYNC_RATE_STRONG = 5;
 
@@ -138,6 +144,21 @@ function cuesToSrt(cues: EditableSrtCue[]): string {
     .join('\n')
     .trim()
     .concat('\n');
+}
+
+/** Largest rectangle with the same aspect ratio as the video that fits inside maxW×maxH. */
+function fitVideoDisplayRect(
+  intrinsicW: number,
+  intrinsicH: number,
+  maxW: number,
+  maxH: number,
+): { w: number; h: number } {
+  const iw = Math.max(1, intrinsicW);
+  const ih = Math.max(1, intrinsicH);
+  const mw = Math.max(1, maxW);
+  const mh = Math.max(1, maxH);
+  const scale = Math.min(mw / iw, mh / ih);
+  return { w: iw * scale, h: ih * scale };
 }
 
 type Props = {
@@ -274,7 +295,7 @@ export default function CreationStudio({
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
   const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
-  const autoDownloadRef = useRef<string>('');
+  const [exportedVideoKey, setExportedVideoKey] = useState('');
 
   const [balancedSyncProgress, setBalancedSyncProgress] = useState<{ percent: number; label: string } | null>(null);
   const [balancedSyncError, setBalancedSyncError] = useState<string | null>(null);
@@ -337,7 +358,7 @@ export default function CreationStudio({
     const n =
       typeof initialSubtitlesBackgroundBlur === 'number' && Number.isFinite(initialSubtitlesBackgroundBlur)
         ? initialSubtitlesBackgroundBlur
-        : 8;
+        : 0;
     return Math.max(0, Math.min(24, Math.round(n)));
   });
   const [subtitlesBackgroundOpacity, setSubtitlesBackgroundOpacity] = useState(() => {
@@ -485,6 +506,9 @@ export default function CreationStudio({
   const [videoFullyLoaded, setVideoFullyLoaded] = useState(false);
   const [voiceFullyLoaded, setVoiceFullyLoaded] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const previewSlotRef = useRef<HTMLDivElement | null>(null);
+  const [previewSlotPx, setPreviewSlotPx] = useState({ w: 800, h: PREVIEW_MAX_VIDEO_HEIGHT_PX });
+  const [previewIntrinsicPx, setPreviewIntrinsicPx] = useState<{ w: number; h: number } | null>(null);
   const voiceRef = useRef<HTMLAudioElement | null>(null);
   const voiceObjectUrlRef = useRef<string | null>(null);
 
@@ -496,6 +520,21 @@ export default function CreationStudio({
       setOriginalAudioEnabled(true);
     }
   }, [originalAudioEnabled, voiceOverEnabled]);
+
+  useEffect(() => {
+    const el = previewSlotRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const measure = () => {
+      setPreviewSlotPx({
+        w: Math.max(1, el.clientWidth),
+        h: Math.max(1, el.clientHeight),
+      });
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   // Track buffering progress (used for Sync gating + UX, but should NOT block normal playback).
   useEffect(() => {
@@ -652,6 +691,29 @@ export default function CreationStudio({
   }, [videoUrl]);
 
   const isBalancedPreviewMode = Boolean(balancedSyncPreviewUrl && balancedSyncPreviewS3Key);
+
+  const activePreviewSrc = isBalancedPreviewMode ? String(balancedSyncPreviewUrl ?? '') : String(videoUrl ?? '');
+
+  const previewFramePx = useMemo(() => {
+    const maxW = Math.max(1, previewSlotPx.w);
+    const maxH = Math.max(1, Math.min(previewSlotPx.h, PREVIEW_MAX_VIDEO_HEIGHT_PX));
+    if (!previewIntrinsicPx || previewIntrinsicPx.w <= 0 || previewIntrinsicPx.h <= 0) {
+      return fitVideoDisplayRect(16, 9, maxW, maxH);
+    }
+    return fitVideoDisplayRect(previewIntrinsicPx.w, previewIntrinsicPx.h, maxW, maxH);
+  }, [previewSlotPx, previewIntrinsicPx]);
+
+  /** ASS burn-in uses FontSize in video pixel space (PlayResY = frame height). Match preview CSS px to that. */
+  const previewBurnedSubtitleFontPx = useMemo(() => {
+    const vh = previewIntrinsicPx?.h;
+    if (!vh || vh <= 0 || !Number.isFinite(subtitlesFontSize)) return subtitlesFontSize;
+    const scale = previewFramePx.h / vh;
+    return Math.max(4, subtitlesFontSize * scale);
+  }, [previewIntrinsicPx, previewFramePx.h, subtitlesFontSize]);
+
+  useEffect(() => {
+    setPreviewIntrinsicPx(null);
+  }, [activePreviewSrc]);
 
   useEffect(() => {
     // If we are showing the combined balanced preview, force video audio ON and stop voice-over audio.
@@ -1513,6 +1575,7 @@ export default function CreationStudio({
     setExportEstimateError(null);
     setExportError(null);
     setExportedVideoUrl(null);
+    setExportedVideoKey('');
     try {
       if (!workspaceS3Key) throw new Error('Video key is missing. Please re-upload the video.');
       setExportEstimateLoading(true);
@@ -1531,6 +1594,7 @@ export default function CreationStudio({
   const startFinalExport = async () => {
     setExportError(null);
     setExportedVideoUrl(null);
+    setExportedVideoKey('');
     setExporting(true);
     try {
       const v = videoRef.current;
@@ -1560,7 +1624,9 @@ export default function CreationStudio({
         subtitlesBackgroundOpacity: subtitlesBackgroundOpacity,
       };
       const res = await videoEditorExportWorkspace(payload);
-      setExportedVideoUrl(res.readUrl);
+      setExportedVideoUrl(res.downloadUrl);
+      setExportedVideoKey(res.s3Key);
+      await triggerWorkspaceExportDownload(res.downloadUrl, res.s3Key);
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setExportError(msg || 'Export failed');
@@ -1568,19 +1634,6 @@ export default function CreationStudio({
       setExporting(false);
     }
   };
-
-  useEffect(() => {
-    if (!exportedVideoUrl) return;
-    if (autoDownloadRef.current === exportedVideoUrl) return;
-    autoDownloadRef.current = exportedVideoUrl;
-    try {
-      // Trigger download in the current tab (no popup blockers).
-      // User can press Back to return to the editor.
-      window.location.assign(exportedVideoUrl);
-    } catch {
-      // Fallback: user can still click Download.
-    }
-  }, [exportedVideoUrl]);
 
   const startVoiceOver = async () => {
     const text = scriptText.trim();
@@ -1728,216 +1781,246 @@ export default function CreationStudio({
                 />
               ) : (
                 <>
-                  <div className="flex items-center justify-between gap-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
-                    <span>{editableCues.length} cues</span>
-                    <div className="flex items-center gap-3">
-                      <label className="flex items-center gap-2">
+                  <div className="space-y-2 rounded border border-card-border bg-subtle/20 p-2 text-[10px] text-muted">
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                      <span className="font-semibold tabular-nums text-foreground">{editableCues.length} cues</span>
+                      <label className="inline-flex cursor-pointer items-center gap-1.5">
                         <input
                           type="checkbox"
                           checked={showSubtitlesOverlay}
                           onChange={(e) => setShowSubtitlesOverlay(e.target.checked)}
+                          className="shrink-0"
                         />
-                        Show on video
+                        <span>Show on video</span>
                       </label>
-                      <label className="flex items-center gap-2">
+                      <label className="inline-flex cursor-pointer items-center gap-1.5">
                         <input
                           type="checkbox"
                           checked={subtitlesEditPosition}
                           disabled={!showSubtitlesOverlay}
                           onChange={(e) => setSubtitlesEditPosition(e.target.checked)}
+                          className="shrink-0"
                         />
-                        Move
+                        <span>Move on video</span>
                       </label>
-                      <label className="flex items-center gap-2">
-                        <span className="whitespace-nowrap">Size</span>
-                        <div className="inline-flex items-center overflow-hidden rounded border border-card-border bg-card">
-                          <button
-                            type="button"
-                            className="h-6 w-6 border-r border-card-border text-[12px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
-                            onClick={() => setSubtitlesFontSize((v) => Math.max(14, v - 1))}
-                            disabled={subtitlesFontSize <= 14}
-                            aria-label="Decrease subtitle size"
-                          >
-                            –
-                          </button>
-                          <input
-                            inputMode="numeric"
-                            pattern="[0-9]*"
+                    </div>
+                    <div className="grid gap-2 border-t border-card-border/60 pt-2 sm:grid-cols-2">
+                      <div className="space-y-1.5">
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Font size (export px)
+                        </p>
+                        <p className="text-[9px] leading-snug text-muted-foreground/90">
+                          Preview scales this to your clip so on-screen size matches burned export.
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <div className="inline-flex items-center overflow-hidden rounded border border-card-border bg-card">
+                            <button
+                              type="button"
+                              className="h-7 w-7 border-r border-card-border text-[13px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
+                              onClick={() => setSubtitlesFontSize((v) => Math.max(14, v - 1))}
+                              disabled={subtitlesFontSize <= 14}
+                              aria-label="Decrease subtitle size"
+                            >
+                              –
+                            </button>
+                            <input
+                              inputMode="numeric"
+                              pattern="[0-9]*"
+                              value={String(subtitlesFontSize)}
+                              onChange={(e) => {
+                                const raw = e.target.value.replace(/[^\d]/g, '');
+                                if (!raw) return;
+                                const n = Math.max(14, Math.min(60, Number(raw)));
+                                if (Number.isFinite(n)) setSubtitlesFontSize(n);
+                              }}
+                              onBlur={(e) => {
+                                const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
+                                setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
+                              }}
+                              className="h-7 w-9 bg-transparent text-center text-[11px] font-semibold text-foreground outline-none"
+                              aria-label="Subtitle size"
+                            />
+                            <button
+                              type="button"
+                              className="h-7 w-7 border-l border-card-border text-[13px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
+                              onClick={() => setSubtitlesFontSize((v) => Math.min(60, v + 1))}
+                              disabled={subtitlesFontSize >= 60}
+                              aria-label="Increase subtitle size"
+                            >
+                              +
+                            </button>
+                          </div>
+                          <select
                             value={String(subtitlesFontSize)}
                             onChange={(e) => {
-                              const raw = e.target.value.replace(/[^\d]/g, '');
-                              if (!raw) return;
-                              const n = Math.max(14, Math.min(60, Number(raw)));
-                              if (Number.isFinite(n)) setSubtitlesFontSize(n);
-                            }}
-                            onBlur={(e) => {
                               const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
                               setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
                             }}
-                            className="h-6 w-10 bg-transparent text-center text-[11px] font-semibold text-foreground outline-none"
-                            aria-label="Subtitle size"
-                          />
-                          <button
-                            type="button"
-                            className="h-6 w-6 border-l border-card-border text-[12px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
-                            onClick={() => setSubtitlesFontSize((v) => Math.min(60, v + 1))}
-                            disabled={subtitlesFontSize >= 60}
-                            aria-label="Increase subtitle size"
+                            className="h-7 rounded border border-card-border bg-card px-1.5 text-[10px] font-semibold text-foreground outline-none hover:bg-surface"
+                            aria-label="Preset subtitle sizes"
                           >
-                            +
-                          </button>
+                            {[14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 60].map((n) => (
+                              <option key={n} value={String(n)}>
+                                {n}px
+                              </option>
+                            ))}
+                          </select>
+                          <span
+                            className="inline-flex min-h-[1.5rem] min-w-[2rem] items-center justify-center rounded border border-card-border bg-black/60 px-1 font-semibold text-white"
+                            style={{
+                              fontSize: `${Math.min(20, Math.max(8, previewBurnedSubtitleFontPx))}px`,
+                              lineHeight: 1.1,
+                            }}
+                            title="Sample at preview scale (matches video overlay)"
+                          >
+                            Aa
+                          </span>
                         </div>
-                        <select
-                          value={String(subtitlesFontSize)}
-                          onChange={(e) => {
-                            const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
-                            setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
-                          }}
-                          className="h-6 rounded border border-card-border bg-card px-1 text-[10px] font-semibold text-foreground outline-none hover:bg-surface"
-                          aria-label="Preset subtitle sizes"
-                        >
-                          {[14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 60].map((n) => (
-                            <option key={n} value={String(n)}>
-                              {n}
-                            </option>
-                          ))}
-                        </select>
-                        <span
-                          className="inline-flex min-w-[68px] items-center justify-center rounded border border-card-border bg-black/70 px-1.5 py-0.5 text-center font-semibold text-white"
-                          style={{ fontSize: `${subtitlesFontSize}px`, lineHeight: 1.05 }}
-                        >
-                          Aa
-                        </span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <span className="whitespace-nowrap">Blur</span>
-                        <input
-                          type="range"
-                          min={0}
-                          max={24}
-                          step={1}
-                          value={subtitlesBackgroundBlur}
-                          onChange={(e) => {
-                            const n = Math.max(0, Math.min(24, Number(e.target.value) || 0));
-                            setSubtitlesBackgroundBlur(Number.isFinite(n) ? n : 0);
-                          }}
-                          className="h-6 w-20 accent-[#7c5cff]"
-                          aria-label="Subtitle background blur"
-                        />
-                        <span className="w-8 text-right tabular-nums">{subtitlesBackgroundBlur}</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <span className="whitespace-nowrap">Opacity</span>
-                        <input
-                          type="range"
-                          min={0}
-                          max={100}
-                          step={1}
-                          value={subtitlesBackgroundOpacity}
-                          onChange={(e) => {
-                            const n = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                            setSubtitlesBackgroundOpacity(Number.isFinite(n) ? n : 0);
-                          }}
-                          className="h-6 w-20 accent-[#7c5cff]"
-                          aria-label="Subtitle background opacity"
-                        />
-                        <span className="w-10 text-right tabular-nums">{subtitlesBackgroundOpacity}%</span>
-                      </label>
+                      </div>
+                      <div className="space-y-1.5">
+                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
+                          Background opacity
+                        </p>
+                        <p className="text-[9px] leading-snug text-muted-foreground/90">
+                          Same value is applied to the burned export (black box alpha).
+                        </p>
+                        <label className="flex items-center gap-2 pt-0.5">
+                          <span className="w-10 shrink-0 text-foreground/80">Opacity</span>
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            step={1}
+                            value={subtitlesBackgroundOpacity}
+                            onChange={(e) => {
+                              const n = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                              setSubtitlesBackgroundOpacity(Number.isFinite(n) ? n : 0);
+                            }}
+                            className="h-2 min-w-0 flex-1 accent-[#7c5cff]"
+                            aria-label="Subtitle background opacity"
+                          />
+                          <span className="w-10 shrink-0 text-right tabular-nums text-foreground/80">{subtitlesBackgroundOpacity}%</span>
+                        </label>
+                      </div>
                     </div>
                   </div>
-                  <div className="max-h-[280px] overflow-auto rounded border border-card-border bg-subtle/10 p-2">
-                    {editableCues.length === 0 ? (
-                      <p className="text-xs text-muted">Generate subtitles first to populate cues.</p>
-                    ) : (
-                      <div className="space-y-2">
-                        {editableCues.slice(0, 80).map((c) => (
-                          <div key={c.id} className="rounded border border-card-border bg-card p-2">
-                            <div className="grid grid-cols-[1fr_1fr] gap-2">
-                              <label className="text-[10px] text-muted">
-                                Start
-                                <input
-                                  value={formatSrtTimestamp(c.startTime)}
+                  <div className="flex min-h-0 max-h-[min(420px,48vh)] flex-col gap-2">
+                    <div className="min-h-0 flex-1 overflow-auto rounded border border-card-border bg-subtle/10 p-1.5">
+                      {editableCues.length === 0 ? (
+                        <p className="px-1 py-2 text-xs text-muted">Generate subtitles first to populate cues.</p>
+                      ) : (
+                        <div className="space-y-1.5">
+                          {editableCues.slice(0, 80).map((c) => (
+                            <div key={c.id} className="rounded-md border border-card-border bg-card px-2 py-1.5">
+                              <div className="flex flex-wrap items-start gap-2">
+                                <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
+                                  Start
+                                  <input
+                                    value={formatSrtTimestamp(c.startTime)}
+                                    onChange={(e) => {
+                                      const next = parseTimeInput(e.target.value);
+                                      if (next == null) return;
+                                      setEditableCues((prev) =>
+                                        prev.map((x) =>
+                                          x.id === c.id ? { ...x, startTime: Math.max(0, next) } : x,
+                                        ),
+                                      );
+                                    }}
+                                    className="mt-0.5 h-7 w-full rounded border border-card-border bg-subtle/20 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-foreground"
+                                  />
+                                </label>
+                                <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
+                                  End
+                                  <input
+                                    value={formatSrtTimestamp(c.endTime)}
+                                    onChange={(e) => {
+                                      const next = parseTimeInput(e.target.value);
+                                      if (next == null) return;
+                                      setEditableCues((prev) =>
+                                        prev.map((x) =>
+                                          x.id === c.id ? { ...x, endTime: Math.max(next, x.startTime + 0.05) } : x,
+                                        ),
+                                      );
+                                    }}
+                                    className="mt-0.5 h-7 w-full rounded border border-card-border bg-subtle/20 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-foreground"
+                                  />
+                                </label>
+                                <div className="ml-auto flex shrink-0 gap-1">
+                                  <button
+                                    type="button"
+                                    className="h-7 rounded border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground hover:bg-surface"
+                                    onClick={() => {
+                                      const nextStart = Math.max(0, c.endTime);
+                                      const nextEnd = nextStart + 1.6;
+                                      const id = `c_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+                                      setEditableCues((prev) => {
+                                        const idx = prev.findIndex((x) => x.id === c.id);
+                                        const nextCue: EditableSrtCue = {
+                                          id,
+                                          startTime: nextStart,
+                                          endTime: nextEnd,
+                                          content: '',
+                                        };
+                                        if (idx < 0) return [...prev, nextCue];
+                                        return [...prev.slice(0, idx + 1), nextCue, ...prev.slice(idx + 1)];
+                                      });
+                                    }}
+                                  >
+                                    + After
+                                  </button>
+                                  <button
+                                    type="button"
+                                    className="h-7 rounded border border-red-500/35 bg-transparent px-2 text-[10px] font-semibold text-red-300 hover:bg-red-500/10"
+                                    onClick={() => setEditableCues((prev) => prev.filter((x) => x.id !== c.id))}
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                              <div className="mt-2 rounded-lg border-2 border-dashed border-[#7c5cff]/40 bg-subtle/15 p-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
+                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
+                                  <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                    Cue text
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground">Drag corner to resize box</span>
+                                </div>
+                                <textarea
+                                  value={c.content}
                                   onChange={(e) => {
-                                    const next = parseTimeInput(e.target.value);
-                                    if (next == null) return;
+                                    const v = e.target.value;
                                     setEditableCues((prev) =>
-                                      prev.map((x) =>
-                                        x.id === c.id ? { ...x, startTime: Math.max(0, next) } : x,
-                                      ),
+                                      prev.map((x) => (x.id === c.id ? { ...x, content: v } : x)),
                                     );
                                   }}
-                                  className="mt-1 h-8 w-full rounded border border-card-border bg-subtle/20 px-2 text-[11px] text-foreground outline-none focus:border-foreground"
+                                  rows={3}
+                                  className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-card-border bg-card px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none ring-0 transition-shadow focus:border-[#7c5cff]/70 focus:shadow-[0_0_0_1px_rgba(124,92,255,0.35)]"
                                 />
-                              </label>
-                              <label className="text-[10px] text-muted">
-                                End
-                                <input
-                                  value={formatSrtTimestamp(c.endTime)}
-                                  onChange={(e) => {
-                                    const next = parseTimeInput(e.target.value);
-                                    if (next == null) return;
-                                    setEditableCues((prev) =>
-                                      prev.map((x) =>
-                                        x.id === c.id ? { ...x, endTime: Math.max(next, x.startTime + 0.05) } : x,
-                                      ),
-                                    );
-                                  }}
-                                  className="mt-1 h-8 w-full rounded border border-card-border bg-subtle/20 px-2 text-[11px] text-foreground outline-none focus:border-foreground"
-                                />
-                              </label>
+                              </div>
                             </div>
-                            <label className="mt-2 block text-[10px] text-muted">
-                              Text
-                              <textarea
-                                value={c.content}
-                                onChange={(e) => {
-                                  const v = e.target.value;
-                                  setEditableCues((prev) => prev.map((x) => (x.id === c.id ? { ...x, content: v } : x)));
-                                }}
-                                className="mt-1 min-h-[60px] w-full resize-y rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
-                              />
-                            </label>
-                            <div className="mt-2 flex items-center justify-end gap-2">
-                              <button
-                                type="button"
-                                className="h-8 rounded-md border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground transition-colors hover:bg-surface"
-                                onClick={() => {
-                                  const nextStart = Math.max(0, c.endTime);
-                                  const nextEnd = nextStart + 1.6;
-                                  const id = `c_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-                                  setEditableCues((prev) => {
-                                    const idx = prev.findIndex((x) => x.id === c.id);
-                                    const nextCue: EditableSrtCue = { id, startTime: nextStart, endTime: nextEnd, content: '' };
-                                    if (idx < 0) return [...prev, nextCue];
-                                    return [...prev.slice(0, idx + 1), nextCue, ...prev.slice(idx + 1)];
-                                  });
-                                }}
-                              >
-                                + Add after
-                              </button>
-                              <button
-                                type="button"
-                                className="h-8 rounded-md border border-red-500/30 bg-transparent px-2 text-[10px] font-semibold text-red-300 transition-colors hover:border-red-400/60 hover:bg-red-500/10"
-                                onClick={() => setEditableCues((prev) => prev.filter((x) => x.id !== c.id))}
-                              >
-                                Remove
-                              </button>
-                              <button
-                                type="button"
-                                className="h-8 rounded-md bg-[#7c5cff] px-2 text-[10px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                                onClick={() => {
-                                  srtSyncFromTableRef.current = true;
-                                  setSubtitlesSrtText(cuesToSrt(editableCues));
-                                }}
-                              >
-                                Save SRT
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                        {editableCues.length > 80 ? <p className="text-[10px] text-muted">Showing first 80 cues.</p> : null}
+                          ))}
+                          {editableCues.length > 80 ? (
+                            <p className="px-1 py-0.5 text-[10px] text-muted">Showing first 80 cues.</p>
+                          ) : null}
+                        </div>
+                      )}
+                    </div>
+                    {editableCues.length > 0 ? (
+                      <div className="shrink-0 rounded border border-card-border bg-card/80 px-2 py-1.5">
+                        <button
+                          type="button"
+                          className="h-8 w-full rounded-md bg-[#7c5cff] text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                          onClick={() => {
+                            srtSyncFromTableRef.current = true;
+                            setSubtitlesSrtText(cuesToSrt(editableCues));
+                          }}
+                        >
+                          Save all cues to SRT
+                        </button>
+                        <p className="mt-1 text-center text-[9px] leading-tight text-muted-foreground">
+                          Applies every cue above to the workspace subtitle file.
+                        </p>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                   <details className="rounded border border-card-border bg-subtle/10 p-2">
                     <summary className="cursor-pointer text-[10px] font-semibold text-muted">Advanced: edit raw .srt</summary>
@@ -2552,18 +2635,33 @@ export default function CreationStudio({
             <span>Editing Mode</span>
             <span>{isGenerated ? `Voiceover ready: ${voiceLabel}` : 'No Project Loaded'}</span>
           </div>
-          <div className="flex min-h-[420px] items-center justify-center border-b border-card-border bg-subtle/20 px-5 py-4">
-            <div className="relative overflow-hidden rounded-lg border border-card-border bg-black">
+          <div
+            ref={previewSlotRef}
+            className="flex min-h-[420px] w-full items-center justify-center border-b border-card-border bg-subtle/20 px-5 py-4"
+          >
+            <div
+              className="relative shrink-0 overflow-hidden rounded-lg border border-card-border bg-black"
+              style={{
+                width: Math.round(previewFramePx.w),
+                height: Math.round(previewFramePx.h),
+              }}
+            >
               <video
                 ref={videoRef}
                 src={isBalancedPreviewMode ? balancedSyncPreviewUrl : videoUrl}
                 controls
                 playsInline
                 preload="auto"
-                className="h-[360px] w-[min(56vw,640px)] object-contain"
+                className="block h-full w-full object-contain"
                 style={{
                   transform: protectFlip ? 'scaleX(-1)' : undefined,
                   filter: protectHueDeg ? `hue-rotate(${protectHueDeg}deg)` : undefined,
+                }}
+                onLoadedMetadata={(e) => {
+                  const el = e.currentTarget;
+                  const iw = el.videoWidth;
+                  const ih = el.videoHeight;
+                  if (iw > 0 && ih > 0) setPreviewIntrinsicPx({ w: iw, h: ih });
                 }}
               />
               {showSubtitlesOverlay && activeSubtitleText.trim() ? (
@@ -2613,11 +2711,11 @@ export default function CreationStudio({
                   <div
                     className="max-w-[92%] rounded-lg px-3 py-2 text-center font-semibold text-white"
                     style={{
-                      fontSize: `${subtitlesFontSize}px`,
+                      fontSize: `${previewBurnedSubtitleFontPx}px`,
                       lineHeight: 1.25,
                       backgroundColor: `rgba(0, 0, 0, ${subtitlesBackgroundOpacity / 100})`,
-                      backdropFilter: `blur(${subtitlesBackgroundBlur}px)`,
                     }}
+                    title={`Burn-in size: ${subtitlesFontSize}px at ${previewIntrinsicPx ? `${previewIntrinsicPx.w}×${previewIntrinsicPx.h}` : '…'} output`}
                   >
                     {activeSubtitleText}
                   </div>
@@ -2725,13 +2823,13 @@ export default function CreationStudio({
             ) : null}
             {exportedVideoUrl ? (
               <div className="mb-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
-                Export ready.{' '}
+                Export saved — your browser should have downloaded the file.{' '}
                 <button
                   type="button"
                   className="font-semibold text-foreground underline"
-                  onClick={() => window.open(exportedVideoUrl, '_blank', 'noopener,noreferrer')}
+                  onClick={() => void triggerWorkspaceExportDownload(exportedVideoUrl, exportedVideoKey || 'video-export.mp4')}
                 >
-                  Download
+                  Download again
                 </button>
               </div>
             ) : null}

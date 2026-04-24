@@ -22,6 +22,7 @@ import {
   saveVideoEditorWorkspaceSnapshot,
   uploadVideoEditorFile,
 } from '@/lib/video-editor-workspace-api';
+import { triggerWorkspaceExportDownload } from '@/lib/video-editor-api';
 import {
   MAIN_VIDEO_TIMELINE_CLIP_ID,
   useEditorStore,
@@ -275,37 +276,6 @@ function exitDocumentFullscreen(): void {
 function requestElementFullscreen(el: HTMLElement): void {
   const node = el as HTMLElement & { webkitRequestFullscreen?: () => Promise<void> | void };
   void (el.requestFullscreen?.() ?? node.webkitRequestFullscreen?.());
-}
-
-async function triggerExportDownload(downloadUrl: string, s3Key: string): Promise<void> {
-  const fileName = s3Key.split('/').filter(Boolean).pop() ?? 'video-export.mp4';
-  try {
-    const res = await fetch(downloadUrl, { method: 'GET' });
-    if (!res.ok) {
-      throw new Error(`Download failed (${res.status})`);
-    }
-    const blob = await res.blob();
-    const objectUrl = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = objectUrl;
-    a.download = fileName;
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
-    return;
-  } catch {
-    // Fallback to direct signed URL navigation when CORS blocks blob download.
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = fileName;
-    a.rel = 'noopener noreferrer';
-    a.style.display = 'none';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-  }
 }
 
 export function VideoWorkspaceShell() {
@@ -1001,7 +971,7 @@ export function VideoWorkspaceShell() {
     try {
       const result = await exportVideoEditorWorkspace(payload);
       setWorkspaceSyncStatus('Downloading export...');
-      await triggerExportDownload(result.downloadUrl, result.s3Key);
+      await triggerWorkspaceExportDownload(result.downloadUrl, result.s3Key);
       setWorkspaceSyncStatus('Export downloaded');
     } catch (error) {
       setWorkspaceSyncStatus(
