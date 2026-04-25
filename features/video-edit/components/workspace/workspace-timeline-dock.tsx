@@ -732,6 +732,16 @@ type WorkspaceTimelineDockProps = {
   deleteSegmentAriaLabel?: string;
   deleteSegmentEnabled?: boolean;
   onDeleteVideoSegment?: () => void;
+  trimHeadLabel?: string;
+  trimHeadAriaLabel?: string;
+  onTrimHeadAtPlayhead?: () => void;
+  trimTailLabel?: string;
+  trimTailAriaLabel?: string;
+  onTrimTailAtPlayhead?: () => void;
+  trimMiddleLabel?: string;
+  trimMiddleAriaLabel?: string;
+  trimMiddleEnabled?: boolean;
+  onTrimMiddleAtPlayhead?: () => void;
   selectedAudioTrackId?: string | null;
   onTimelineAudioClipSelect?: (clipId: string) => void;
   audioUploadVisible?: boolean;
@@ -785,6 +795,16 @@ export function WorkspaceTimelineDock({
   deleteSegmentAriaLabel,
   deleteSegmentEnabled = false,
   onDeleteVideoSegment,
+  trimHeadLabel = 'Left trim',
+  trimHeadAriaLabel,
+  onTrimHeadAtPlayhead,
+  trimTailLabel = 'Right trim',
+  trimTailAriaLabel,
+  onTrimTailAtPlayhead,
+  trimMiddleLabel = 'Remove segment',
+  trimMiddleAriaLabel,
+  trimMiddleEnabled = false,
+  onTrimMiddleAtPlayhead,
   selectedAudioTrackId = null,
   onTimelineAudioClipSelect,
   audioUploadVisible = false,
@@ -890,7 +910,7 @@ export function WorkspaceTimelineDock({
           {timeDisplay}
         </span>
         {trimToolActive && !transportDisabled && onSplitAtPlayhead != null ? (
-          <div className="flex flex-wrap items-center gap-1">
+          <div className="flex max-w-[min(100%,28rem)] flex-wrap items-center gap-1">
             <button
               type="button"
               aria-label={splitAtPlayheadAriaLabel ?? splitAtPlayheadLabel}
@@ -902,6 +922,47 @@ export function WorkspaceTimelineDock({
             >
               {splitAtPlayheadLabel}
             </button>
+            {onTrimHeadAtPlayhead != null ? (
+              <button
+                type="button"
+                aria-label={trimHeadAriaLabel ?? trimHeadLabel}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTrimHeadAtPlayhead();
+                }}
+                className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100 transition-colors hover:bg-sky-500/20"
+              >
+                {trimHeadLabel}
+              </button>
+            ) : null}
+            {onTrimTailAtPlayhead != null ? (
+              <button
+                type="button"
+                aria-label={trimTailAriaLabel ?? trimTailLabel}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onTrimTailAtPlayhead();
+                }}
+                className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100 transition-colors hover:bg-sky-500/20"
+              >
+                {trimTailLabel}
+              </button>
+            ) : null}
+            {onTrimMiddleAtPlayhead != null ? (
+              <button
+                type="button"
+                aria-label={trimMiddleAriaLabel ?? trimMiddleLabel}
+                disabled={!trimMiddleEnabled}
+                title={!trimMiddleEnabled ? trimMiddleAriaLabel : undefined}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (trimMiddleEnabled) onTrimMiddleAtPlayhead();
+                }}
+                className="rounded-md border border-violet-500/40 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-100 transition-colors hover:bg-violet-500/20 disabled:pointer-events-none disabled:opacity-35"
+              >
+                {trimMiddleLabel}
+              </button>
+            ) : null}
             {onDeleteVideoSegment != null ? (
               <button
                 type="button"

@@ -345,6 +345,11 @@ export function VideoWorkspaceShell() {
   const videoTimelineSegments = useEditorStore((s) => s.videoTimelineSegments);
   const splitVideoAtPlayhead = useEditorStore((s) => s.splitVideoAtPlayhead);
   const deleteVideoTimelineSegment = useEditorStore((s) => s.deleteVideoTimelineSegment);
+  const trimHeadToPlayhead = useEditorStore((s) => s.trimHeadToPlayhead);
+  const trimTailToPlayhead = useEditorStore((s) => s.trimTailToPlayhead);
+  const deleteVideoTimelineSegmentAtPlayhead = useEditorStore(
+    (s) => s.deleteVideoTimelineSegmentAtPlayhead,
+  );
   const setCurrentTime = useEditorStore((s) => s.setCurrentTime);
   const setVideoSrc = useEditorStore((s) => s.setVideoSrc);
   const setActiveToolStore = useEditorStore((s) => s.setActiveTool);
@@ -791,6 +796,39 @@ export function VideoWorkspaceShell() {
     if (v) v.currentTime = next;
     setCurrentTime(next);
   }, [splitVideoAtPlayhead, setCurrentTime, videoElement]);
+
+  const syncVideoToStorePlayhead = useCallback(() => {
+    const v = videoElement;
+    const next = useEditorStore.getState().currentTime;
+    if (v) v.currentTime = next;
+    setCurrentTime(next);
+  }, [setCurrentTime, videoElement]);
+
+  const onTrimHeadAtPlayhead = useCallback(() => {
+    trimHeadToPlayhead();
+    syncVideoToStorePlayhead();
+  }, [trimHeadToPlayhead, syncVideoToStorePlayhead]);
+
+  const onTrimTailAtPlayhead = useCallback(() => {
+    trimTailToPlayhead();
+    syncVideoToStorePlayhead();
+  }, [trimTailToPlayhead, syncVideoToStorePlayhead]);
+
+  const onTrimMiddleAtPlayhead = useCallback(() => {
+    deleteVideoTimelineSegmentAtPlayhead();
+    syncVideoToStorePlayhead();
+  }, [deleteVideoTimelineSegmentAtPlayhead, syncVideoToStorePlayhead]);
+
+  const trimMiddleAtPlayheadEnabled = useMemo(() => {
+    if (duration <= 0) return false;
+    const segs = videoTimelineSegments;
+    if (segs.length < 2) return false;
+    return segs.some(
+      (s) =>
+        currentTime > s.startTime + 1e-4 &&
+        currentTime < s.endTime - 1e-4,
+    );
+  }, [currentTime, duration, videoTimelineSegments]);
 
   const canDeleteSelectedVideoSegment =
     activeTool === 'trim' &&
@@ -1284,6 +1322,16 @@ export function VideoWorkspaceShell() {
             splitAtPlayheadLabel={t('timeline.trim.splitAtPlayhead')}
             splitAtPlayheadAriaLabel={t('timeline.trim.splitAtPlayheadAria')}
             onSplitAtPlayhead={onSplitAtPlayhead}
+            trimHeadLabel={t('timeline.trim.trimHead')}
+            trimHeadAriaLabel={t('timeline.trim.trimHeadAria')}
+            onTrimHeadAtPlayhead={onTrimHeadAtPlayhead}
+            trimTailLabel={t('timeline.trim.trimTail')}
+            trimTailAriaLabel={t('timeline.trim.trimTailAria')}
+            onTrimTailAtPlayhead={onTrimTailAtPlayhead}
+            trimMiddleLabel={t('timeline.trim.trimMiddle')}
+            trimMiddleAriaLabel={t('timeline.trim.trimMiddleAria')}
+            trimMiddleEnabled={trimMiddleAtPlayheadEnabled}
+            onTrimMiddleAtPlayhead={onTrimMiddleAtPlayhead}
             deleteSegmentLabel={t('timeline.trim.deleteSegment')}
             deleteSegmentAriaLabel={t('timeline.trim.deleteSegmentAria')}
             deleteSegmentEnabled={canDeleteSelectedVideoSegment}

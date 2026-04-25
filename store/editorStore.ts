@@ -314,6 +314,12 @@ export type EditorState = {
   ) => void;
   /** Remove one segment (requires at least two). Remaining clips stay on the source timeline; gaps skip on playback. */
   deleteVideoTimelineSegment: (id: string) => void;
+  /** Drop source before playhead (left trim at playhead). */
+  trimHeadToPlayhead: () => void;
+  /** Drop source after playhead (right trim at playhead). */
+  trimTailToPlayhead: () => void;
+  /** Remove the timeline segment under the playhead (middle trim / cut a section). Requires ≥2 segments after split. */
+  deleteVideoTimelineSegmentAtPlayhead: () => void;
 };
 
 export const useEditorStore = create<EditorState>((set) => ({
@@ -1335,6 +1341,134 @@ export const useEditorStore = create<EditorState>((set) => ({
         trimStart,
         trimEnd,
         currentTime,
+        trimApplyNonce: state.trimApplyNonce + 1,
+      };
+    }),
+  trimHeadToPlayhead: () =>
+    set((state) => {
+      const d = state.duration;
+      if (d <= 0) return {};
+      const MIN = MIN_VIDEO_CLIP_SEC;
+      let segs = [...state.videoTimelineSegments].sort(
+        (a, b) => a.startTime - b.startTime,
+      );
+      if (segs.length === 0) {
+        segs = [
+          {
+            id: MAIN_VIDEO_TIMELINE_CLIP_ID,
+            startTime: state.trimStart,
+            endTime: state.trimEnd > state.trimStart ? state.trimEnd : d,
+          },
+        ];
+      }
+      const t = clampTimeToVideoSegments(state.currentTime, segs, d);
+      const next: VideoTimelineSegment[] = [];
+      for (const s of segs) {
+        if (s.endTime <= t + 1e-4) continue;
+        if (s.startTime >= t - 1e-4) {
+          next.push({ ...s });
+        } else {
+          const ns = Math.min(Math.max(s.startTime + MIN, t), s.endTime - MIN);
+          if (s.endTime - ns < MIN) continue;
+          next.push({ ...s, startTime: ns });
+        }
+      }
+      if (next.length === 0) return {};
+      if (next.length === 1 && next[0].id !== MAIN_VIDEO_TIMELINE_CLIP_ID) {
+        next[0] = { ...next[0], id: MAIN_VIDEO_TIMELINE_CLIP_ID };
+      }
+      const fullCover =
+        next.length > 0 &&
+        next[0].startTime <= 1e-4 &&
+        next[next.length - 1].endTime >= d - 1e-4;
+      const trimStart = fullCover ? 0 : next[0].startTime;
+      const trimEnd = fullCover ? d : next[next.length - 1].endTime;
+      const currentTime = clampTimeToVideoSegments(t, next, d);
+      return {
+        videoTimelineSegments: next,
+        trimStart,
+        trimEnd,
+        currentTime,
+        trimApplyNonce: state.trimApplyNonce + 1,
+      };
+    }),
+  trimTailToPlayhead: () =>
+    set((state) => {
+      const d = state.duration;
+      if (d <= 0) return {};
+      const MIN = MIN_VIDEO_CLIP_SEC;
+      let segs = [...state.videoTimelineSegments].sort(
+        (a, b) => a.startTime - b.startTime,
+      );
+      if (segs.length === 0) {
+        segs = [
+          {
+            id: MAIN_VIDEO_TIMELINE_CLIP_ID,
+            startTime: state.trimStart,
+            endTime: state.trimEnd > state.trimStart ? state.trimEnd : d,
+          },
+        ];
+      }
+      const t = clampTimeToVideoSegments(state.currentTime, segs, d);
+      const next: VideoTimelineSegment[] = [];
+      for (const s of segs) {
+        if (s.startTime >= t - 1e-4) continue;
+        if (s.endTime <= t + 1e-4) {
+          next.push({ ...s });
+        } else {
+          const ne = Math.max(Math.min(s.endTime - MIN, t), s.startTime + MIN);
+          if (ne - s.startTime < MIN) continue;
+          next.push({ ...s, endTime: ne });
+        }
+      }
+      if (next.length === 0) return {};
+      if (next.length === 1 && next[0].id !== MAIN_VIDEO_TIMELINE_CLIP_ID) {
+        next[0] = { ...next[0], id: MAIN_VIDEO_TIMELINE_CLIP_ID };
+      }
+      const fullCover =
+        next.length > 0 &&
+        next[0].startTime <= 1e-4 &&
+        next[next.length - 1].endTime >= d - 1e-4;
+      const trimStart = fullCover ? 0 : next[0].startTime;
+      const trimEnd = fullCover ? d : next[next.length - 1].endTime;
+      const currentTime = clampTimeToVideoSegments(t, next, d);
+      return {
+        videoTimelineSegments: next,
+        trimStart,
+        trimEnd,
+        currentTime,
+        trimApplyNonce: state.trimApplyNonce + 1,
+      };
+    }),
+  deleteVideoTimelineSegmentAtPlayhead: () =>
+    set((state) => {
+      const d = state.duration;
+      if (d <= 0) return {};
+      const segs = [...state.videoTimelineSegments].sort(
+        (a, b) => a.startTime - b.startTime,
+      );
+      if (segs.length < 2) return {};
+      const t = state.currentTime;
+      const hit = segs.find((s) => t > s.startTime + 1e-4 && t < s.endTime - 1e-4);
+      if (!hit) return {};
+      const out = segs.filter((s) => s.id !== hit.id);
+      if (out.length === 0) return {};
+      if (out.length === 1 && out[0].id !== MAIN_VIDEO_TIMELINE_CLIP_ID) {
+        out[0] = { ...out[0], id: MAIN_VIDEO_TIMELINE_CLIP_ID };
+      }
+      const fullCover =
+        out.length > 0 &&
+        out[0].startTime <= 1e-4 &&
+        out[out.length - 1].endTime >= d - 1e-4;
+      const trimStart = fullCover ? 0 : out[0].startTime;
+      const trimEnd = fullCover ? d : out[out.length - 1].endTime;
+      const currentTime = clampTimeToVideoSegments(state.currentTime, out, d);
+      return {
+        videoTimelineSegments: out,
+        trimStart,
+        trimEnd,
+        currentTime,
+        trimApplyNonce: state.trimApplyNonce + 1,
       };
     }),
 }));
