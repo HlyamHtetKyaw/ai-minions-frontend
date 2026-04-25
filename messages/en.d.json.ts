@@ -570,7 +570,13 @@ declare const messages: {
           "splitAtPlayhead": "Split here",
           "splitAtPlayheadAria": "Divide the video clip at the playhead into two segments; nothing is removed",
           "deleteSegment": "Delete clip",
-          "deleteSegmentAria": "Remove the selected video segment from the timeline (requires at least two segments)"
+          "deleteSegmentAria": "Remove the selected video segment from the timeline (requires at least two segments)",
+          "trimHead": "Left trim",
+          "trimHeadAria": "Remove everything before the playhead from the kept video",
+          "trimTail": "Right trim",
+          "trimTailAria": "Remove everything after the playhead from the kept video",
+          "trimMiddle": "Remove segment",
+          "trimMiddleAria": "Remove the video segment under the playhead (split first if you need a middle cut)"
         }
       },
       "playback": {
