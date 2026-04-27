@@ -1,4 +1,9 @@
 import type { EditorState } from '@/store/editorStore';
+import {
+  buildShiftedSrtFromImportedTextLayers,
+  subtitlesPositionFromTextLayer,
+  workspaceExportTrimWindow,
+} from '@/lib/buildWorkspaceSrtBurnFromLayers';
 
 /**
  * URL the export backend can fetch: not a browser-only `blob:` URL, and without the
@@ -38,6 +43,34 @@ export function buildExportPayload(state: EditorState) {
     frameW > 0 && state.videoNaturalWidth > 0 ? state.videoNaturalWidth / frameW : 1;
   const scaleY =
     frameH > 0 && state.videoNaturalHeight > 0 ? state.videoNaturalHeight / frameH : 1;
+
+  const speed = state.playbackSpeed;
+  const trimParams = {
+    trimStart: state.trimStart,
+    trimEnd: state.trimEnd,
+    duration: state.duration,
+    speed,
+    videoTimelineSegments: state.videoTimelineSegments.map((s) => ({
+      startTime: s.startTime,
+      endTime: s.endTime,
+    })),
+  };
+  const burnSrtText = buildShiftedSrtFromImportedTextLayers(state.textLayers, trimParams);
+  const burnImportedSrt = burnSrtText != null && burnSrtText.trim().length > 0;
+  const { t0, t1 } = workspaceExportTrimWindow(trimParams);
+  const importedSorted = [...state.textLayers]
+    .filter((l) => l.srtImportBatchId)
+    .sort((a, b) => a.startTime - b.startTime || a.id.localeCompare(b.id));
+  const srtStyleLayer = burnImportedSrt
+    ? (importedSorted.find((l) => l.endTime > t0 && l.startTime < t1) ?? importedSorted[0])
+    : undefined;
+
+  const canMapPreviewFont =
+    frameW > 0 &&
+    frameH > 0 &&
+    srtStyleLayer != null &&
+    Number.isFinite(srtStyleLayer.fontSize) &&
+    srtStyleLayer.fontSize > 0;
 
   /*
    * FFmpeg translation (illustrative; input indices depend on your filter graph):
@@ -80,22 +113,24 @@ export function buildExportPayload(state: EditorState) {
       endTime: s.endTime,
     })),
     trimApplyNonce: state.trimApplyNonce,
-    speed: state.playbackSpeed,
+    speed,
     crop: state.cropSettings,
-    textLayers: state.textLayers.map((l) => ({
-      id: l.id,
-      content: l.content,
-      x: l.x,
-      y: l.y,
-      width: l.width,
-      height: l.height,
-      fontSize: l.fontSize,
-      fontFamily: l.fontFamily,
-      color: l.color,
-      opacity: l.opacity,
-      startTime: l.startTime,
-      endTime: l.endTime,
-    })),
+    textLayers: state.textLayers
+      .filter((l) => !(burnImportedSrt && l.srtImportBatchId))
+      .map((l) => ({
+        id: l.id,
+        content: l.content,
+        x: l.x,
+        y: l.y,
+        width: l.width,
+        height: l.height,
+        fontSize: l.fontSize,
+        fontFamily: l.fontFamily,
+        color: l.color,
+        opacity: l.opacity,
+        startTime: l.startTime,
+        endTime: l.endTime,
+      })),
     blurLayers: state.blurLayers.map((l) => ({
       id: l.id,
       x: l.x,
@@ -161,5 +196,35 @@ export function buildExportPayload(state: EditorState) {
       width: state.videoNaturalWidth,
       height: state.videoNaturalHeight,
     },
+    // Viral-style SRT burn (ffmpeg subtitles → ASS + bundled font + FONTCONFIG); matches CreationStudio export.
+    ...(burnImportedSrt && burnSrtText != null
+      ? {
+          burnSubtitles: true as const,
+          subtitlesSrtText: burnSrtText,
+          subtitlesPosition:
+            srtStyleLayer != null
+              ? subtitlesPositionFromTextLayer(srtStyleLayer, frameW, frameH)
+              : { x: 0.5, y: 0.88 },
+          subtitlesFontSize: Math.max(
+            14,
+            Math.min(60, Math.round(srtStyleLayer?.fontSize ?? 22)),
+          ),
+          ...(canMapPreviewFont && srtStyleLayer != null
+            ? {
+                subtitlesPreviewFontPx: srtStyleLayer.fontSize,
+                subtitlesPreviewCanvasW: Math.round(frameW),
+                subtitlesPreviewCanvasH: Math.round(frameH),
+              }
+            : {}),
+          subtitlesBackgroundBlur: 0,
+          // Preview text has no caption box (viral default 65% would burn a dark rectangle).
+          subtitlesBackgroundOpacity: 0,
+          /** Web hex (e.g. #22c55e); processing maps to ASS PrimaryColour. */
+          subtitlesPrimaryColor:
+            typeof srtStyleLayer?.color === 'string' && srtStyleLayer.color.trim() !== ''
+              ? srtStyleLayer.color.trim()
+              : '#ffffff',
+        }
+      : {}),
   };
 }
