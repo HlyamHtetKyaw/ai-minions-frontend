@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { KeyRound, Lock, Sparkles } from 'lucide-react';
-import { login, loginWithCode } from '@/lib/auth';
+import { beginGoogleLogin, login, loginWithCode } from '@/lib/auth';
 
 type Mode = 'password' | 'code';
 
@@ -193,6 +193,14 @@ export default function LoginPage() {
                         Forgot password?
                       </Link>
                     </div>
+                    <div className="flex justify-end">
+                      <Link
+                        href="/password-setup"
+                        className="text-xs font-medium text-accent-gold underline-offset-4 hover:underline"
+                      >
+                        Signed up with Google? Enable password via OTP
+                      </Link>
+                    </div>
                   </div>
                 </>
               )}
@@ -217,6 +225,18 @@ export default function LoginPage() {
                 />
               </button>
             </form>
+            <div className="my-4 flex items-center gap-3">
+              <div className="h-px flex-1 bg-card-border" />
+              <span className="text-xs text-muted">or</span>
+              <div className="h-px flex-1 bg-card-border" />
+            </div>
+            <button
+              type="button"
+              onClick={() => beginGoogleLogin('/tools')}
+              className="w-full rounded-xl border border-card-border bg-surface/60 px-4 py-3 text-sm font-medium text-foreground transition hover:bg-surface"
+            >
+              Continue with Google
+            </button>
           </div>
         </div>
 

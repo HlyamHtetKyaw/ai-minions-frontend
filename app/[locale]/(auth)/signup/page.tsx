@@ -90,7 +90,13 @@ export default function SignupPage() {
       router.push('/verify');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Signup failed');
+      const message = err instanceof Error ? err.message : 'Signup failed';
+      if (message.toLowerCase().includes('already exists via google login')) {
+        router.push(`/password-setup?email=${encodeURIComponent(email.trim())}`);
+        router.refresh();
+        return;
+      }
+      setError(message);
     } finally {
       setLoading(false);
     }

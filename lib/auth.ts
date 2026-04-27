@@ -1,4 +1,5 @@
 import { apiFetch } from "./api";
+import { getPublicApiBaseUrl } from "./api-base";
 import {
   setSessionHintCookie,
   setStoredAccessToken,
@@ -115,6 +116,30 @@ export async function resendOtp(
   }) as Promise<ApiEnvelope<void>>;
 }
 
+export async function requestPasswordSetupOtp(
+  email: string,
+): Promise<ApiEnvelope<void>> {
+  return apiFetch("/api/v1/auth/password-setup/request-otp", {
+    method: "POST",
+    body: JSON.stringify({ email: email.trim() }),
+  }) as Promise<ApiEnvelope<void>>;
+}
+
+export async function verifyPasswordSetupOtp(
+  email: string,
+  otp: string,
+  newPassword: string,
+): Promise<ApiEnvelope<void>> {
+  return apiFetch("/api/v1/auth/password-setup/verify-otp", {
+    method: "POST",
+    body: JSON.stringify({
+      email: email.trim(),
+      otp: otp.trim(),
+      newPassword,
+    }),
+  }) as Promise<ApiEnvelope<void>>;
+}
+
 type PasswordResetRequestPayload = {
   token?: string;
   accessToken?: string;
@@ -194,4 +219,17 @@ export async function fetchMe(): Promise<MeUser | null> {
   } catch {
     return null;
   }
+}
+
+export function beginGoogleLogin(returnTo = "/tools"): void {
+  const base = getPublicApiBaseUrl();
+  if (!base) {
+    throw new Error(
+      "API base URL is not set (set NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)",
+    );
+  }
+  const safeReturnTo =
+    returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : "/tools";
+  const url = `${base}/api/v1/auth/google/start?returnTo=${encodeURIComponent(safeReturnTo)}`;
+  window.location.assign(url);
 }
