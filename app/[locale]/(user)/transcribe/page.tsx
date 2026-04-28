@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Mic } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
+import ProgressBar from '@/components/shared/components/progress-bar';
 import TranscribeButton from '@/features/transcribe/components/transcribe-button';
 import TranscriptResult from '@/features/transcribe/components/transcript-result';
 import { AUTH_CHANGED_EVENT, clearClientAuth, getStoredAccessToken } from '@/lib/auth-token';
@@ -393,14 +394,12 @@ export default function TranscribePage() {
                         {progress.percent}%
                       </p>
                     </div>
-                    <div className="mt-2 h-2 w-full rounded-full bg-subtle">
-                      <div
-                        className={`h-2 rounded-full transition-[width] ${
-                          progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'
-                        }`}
-                        style={{ width: `${progress.percent}%` }}
-                      />
-                    </div>
+                    <ProgressBar
+                      value={progress.percent}
+                      max={100}
+                      ariaLabel={progress.label}
+                      isComplete={progress.percent >= 100}
+                    />
                   </div>
                 ) : null}
 

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { Check, CircleHelp, Copy, Sparkles } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import PageHeader from '@/components/layout/page-header';
+import ProgressBar from '@/components/shared/components/progress-bar';
 import ContentTypePicker, { type ContentTypeKey } from '@/features/content-generation/components/content-type-picker';
 import OutputModePicker, { type OutputModeKey } from '@/features/content-generation/components/output-mode-picker';
 import TopicInput from '@/features/content-generation/components/topic-input';
@@ -482,12 +483,12 @@ export default function ContentGenerationPage() {
                               {progress.percent}%
                             </p>
                           </div>
-                          <div className="mt-2 h-2 w-full rounded-full bg-subtle">
-                            <div
-                              className={`h-2 rounded-full transition-[width] ${progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'}`}
-                              style={{ width: `${progress.percent}%` }}
-                            />
-                          </div>
+                          <ProgressBar
+                            value={progress.percent}
+                            max={100}
+                            ariaLabel={progress.label}
+                            isComplete={progress.percent >= 100}
+                          />
                         </div>
                       ) : null}
                       {!progress && status ? (

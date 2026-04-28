@@ -697,7 +697,7 @@ declare const messages: {
   "viralShorts": {
     "page": {
       "title": "Viral video",
-      "subtitle": "Upload an MP4 or WebM video. Transcribe speech, translate your script, generate an AI voice-over, style subtitles, align audio with video, and export—your session is saved automatically as you work.",
+      "subtitle": "Upload an MP4 or WebM video to transcribe speech, translate subtitles, generate AI voice-overs, style captions, sync audio, and export your video-all with auto-save support.",
       "helpAria": "Help with viral video editor",
       "loadingWorkspace": "Loading your workspace…",
       "loadingWorkspaceHint": "Checking for a saved editor session.",
@@ -736,6 +736,42 @@ declare const messages: {
       "voiceStyleModalTitle": "Voice & style",
       "voiceStyleModalSubtitle": "Pick a delivery tone and narrator voice for your script.",
       "voiceStyleModalDone": "Done"
+    },
+    "editor": {
+      "buttons": {
+        "discardWorkspace": "Discard workspace",
+        "finalExport": "Final Export",
+        "exporting": "Exporting...",
+        "transcribing": "Transcribing...",
+        "transcribeVideo": "1. Transcribe Video",
+        "scriptTab": "Script",
+        "srtEditorTab": "SRT Editor",
+        "addAfter": "+ After",
+        "remove": "Remove",
+        "saveAllCuesToSrt": "Save all cues to SRT",
+        "previewAndAccept": "Preview & Accept",
+        "downloadAgain": "Download again",
+        "translate": "Translate",
+        "translating": "Translating...",
+        "generate": "Generate",
+        "generating": "Generating...",
+        "syncVoiceLengthToAudio": "Sync voice length to audio",
+        "syncingVoiceLength": "Syncing voice length...",
+        "balancedSyncRenderCombine": "Balanced sync (render & combine)",
+        "renderingBalancedSync": "Rendering balanced sync...",
+        "protectionFlipHue": "Protection (flip + hue)",
+        "generateSubtitles": "Generate subtitles",
+        "generatingSubtitles": "Generating subtitles...",
+        "downloadSrt": "Download (.srt)",
+        "openSrtEditor": "Open SRT editor",
+        "cancel": "Cancel",
+        "continue": "Continue",
+        "confirm": "Confirm",
+        "close": "Close",
+        "reject": "Reject",
+        "accept": "Accept",
+        "loading": "Loading..."
+      }
     }
   },
   "transcribe": {

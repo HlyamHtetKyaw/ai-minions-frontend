@@ -463,12 +463,8 @@ export default function ViralShortsPage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-8 sm:px-6 sm:py-10">
-          <div
-            className={`mx-auto w-full space-y-8 ${
-              step === 'studio' || step === 'preparing_workspace' ? 'max-w-7xl' : 'max-w-2xl'
-            }`}
-          >
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6 sm:py-10 md:min-h-[calc(100vh-6.5rem)]">
+          <div className="mx-auto w-full max-w-7xl space-y-6 sm:space-y-8">
             {!workspaceHydrated ? (
               <div
                 className="flex min-h-[min(420px,55vh)] flex-col items-center justify-center gap-4 rounded-2xl border border-card-border bg-card/40 px-6 py-16 text-center shadow-[0_18px_40px_rgba(0,0,0,0.12)]"
@@ -492,7 +488,11 @@ export default function ViralShortsPage() {
                   </PageHeader.Icon>
                 }
                 title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
-                subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
+                subtitle={
+                  <p className="mt-1 text-xs leading-relaxed text-muted sm:text-sm">
+                    {t('page.subtitle')}
+                  </p>
+                }
               />
             ) : null}
 
@@ -532,7 +532,7 @@ export default function ViralShortsPage() {
                 hideDropzoneIcon
                 instructionPrimary={t('uploadZone.instruction')}
                 instructionSecondary=""
-                dropzoneClassName="viral-shorts-dropzone min-h-[min(220px,40vh)] sm:min-h-[260px]"
+                dropzoneClassName="viral-shorts-dropzone min-h-[min(220px,36vh)] sm:min-h-[300px] md:min-h-[360px]"
                 dropzoneActiveClassName="viral-shorts-dropzone-active"
                 className="space-y-4"
                 onFileChange={(f) => {
