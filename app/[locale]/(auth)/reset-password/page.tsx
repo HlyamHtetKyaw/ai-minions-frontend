@@ -4,10 +4,12 @@ import { useEffect, useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { Eye, EyeOff } from 'lucide-react';
 import { getPublicApiBaseUrl } from '@/lib/api-base';
-
-type ResetPasswordResponse = {
-  message?: string;
-};
+import {
+  detectCurrentLocale,
+  getDefaultErrorMessage,
+  getNetworkErrorMessage,
+  getStatusErrorMessage,
+} from '@/lib/api-error-message';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -74,28 +76,9 @@ export default function ResetPasswordPage() {
         }),
       });
 
-      const body = (await res.json().catch(() => ({}))) as ResetPasswordResponse;
-
       if (!res.ok) {
-        const apiMessage =
-          typeof body.message === 'string' ? body.message.toLowerCase() : '';
-
-        if (apiMessage.includes('expired')) {
-          setIsExpiredError(true);
-          setError('Reset link has expired. Please request a new one.');
-        } else if (
-          apiMessage.includes('invalid token') ||
-          apiMessage.includes('token invalid') ||
-          apiMessage.includes('token')
-        ) {
-          setError('Invalid token.');
-        } else {
-          setError(
-            typeof body.message === 'string' && body.message.length > 0
-              ? body.message
-              : `Request failed (${res.status})`,
-          );
-        }
+        setIsExpiredError(res.status === 408);
+        setError(getStatusErrorMessage(res.status, detectCurrentLocale()));
         return;
       }
 
@@ -107,7 +90,13 @@ export default function ResetPasswordPage() {
         router.push('/login');
       }, 2000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to reset password. Please try again.');
+      if (err instanceof TypeError) {
+        setError(getNetworkErrorMessage(detectCurrentLocale()));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(getDefaultErrorMessage(detectCurrentLocale()));
+      }
     } finally {
       setLoading(false);
     }

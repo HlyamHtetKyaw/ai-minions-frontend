@@ -1,7 +1,7 @@
 'use client';
 const error = () => {
   return (
-    <div>error</div>
+    <div className="text-red-400">error</div>
   )
 }
 

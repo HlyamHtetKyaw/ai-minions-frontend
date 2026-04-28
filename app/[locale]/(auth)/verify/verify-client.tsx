@@ -177,11 +177,11 @@ export default function VerifyClient() {
           <form onSubmit={handleSubmit} className="space-y-5">
             {error ? (
               <div
-                className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-sm leading-relaxed"
+                className="rounded-xl border border-red-500/25 bg-red-500/[0.07] px-4 py-3 text-sm leading-relaxed"
                 role="alert"
               >
-                <p className="font-medium text-foreground">{t('errorTitle')}</p>
-                <p className="mt-1.5 text-muted">{error}</p>
+                <p className="font-medium text-red-400">{t('errorTitle')}</p>
+                <p className="mt-1.5 text-red-400">{error}</p>
               </div>
             ) : null}
 
@@ -233,7 +233,7 @@ export default function VerifyClient() {
             ) : null}
             {resendErr ? (
               <p
-                className="rounded-xl border border-amber-500/25 bg-amber-500/[0.07] px-4 py-3 text-sm text-muted"
+                className="rounded-xl border border-red-500/25 bg-red-500/[0.07] px-4 py-3 text-sm text-red-400"
                 role="alert"
               >
                 {resendErr}

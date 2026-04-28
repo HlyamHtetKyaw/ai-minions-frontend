@@ -6,7 +6,9 @@ import { Mic } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import ScriptInput from '@/components/shared/components/script-input';
 import AudioPlayer from '@/components/shared/components/audio-player';
+import ProgressBar from '@/components/shared/components/progress-bar';
 import PageHeader from '@/components/layout/page-header';
+import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import GenerateButton from '@/features/voice-over/components/generate-button';
 import VoiceToneVoicePicker from '@/features/voice-over/components/voice-tone-voice-picker';
 import {
@@ -165,6 +167,9 @@ export default function VoiceOverPage() {
                   </PageHeader.Icon>
                 }
                 title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
+                action={
+                  <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
+                }
                 subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
               />
 
@@ -200,9 +205,9 @@ export default function VoiceOverPage() {
                       </>
                     ) : estimateUnavailable ? (
                       <div className="mt-2 space-y-1">
-                        <p className="text-sm leading-relaxed text-muted-foreground">{t('estimate.unavailable')}</p>
+                        <p className="text-sm leading-relaxed text-red-400">{t('estimate.unavailable')}</p>
                         {estimateError ? (
-                          <p className="text-xs leading-relaxed text-muted-foreground/80">{estimateError}</p>
+                          <p className="text-xs leading-relaxed text-red-400">{estimateError}</p>
                         ) : null}
                       </div>
                     ) : (
@@ -247,21 +252,13 @@ export default function VoiceOverPage() {
                         </p>
                         <p className="text-xs font-semibold text-muted-foreground tabular-nums">{progress.percent}%</p>
                       </div>
-                      <div
-                        className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
-                        role="progressbar"
-                        aria-valuemin={0}
-                        aria-valuemax={100}
-                        aria-valuenow={progress.percent}
-                        aria-label={progress.label}
-                      >
-                        <div
-                          className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${
-                            progress.percent >= 100 ? 'bg-emerald-600' : 'bg-violet-500'
-                          }`}
-                          style={{ width: `${Math.min(100, Math.max(0, progress.percent))}%` }}
-                        />
-                      </div>
+                      <ProgressBar
+                        value={progress.percent}
+                        max={100}
+                        ariaLabel={progress.label}
+                        isComplete={progress.percent >= 100}
+                        fillClassName="bg-violet-500"
+                      />
                     </div>
                   ) : null}
 
