@@ -18,6 +18,26 @@ export function resolveExportVideoUrl(videoSrc: string | null | undefined): stri
   return null;
 }
 
+function resolveExportMediaUrl(src: string | null | undefined): string | null {
+  if (src == null || typeof src !== 'string' || src.trim() === '') return null;
+  if (src.startsWith('blob:')) return null;
+  const base = src.split('#')[0]?.trim() ?? '';
+  if (base === '') return null;
+  if (/^https?:\/\//i.test(base)) return base;
+  return null;
+}
+
+function resolveExportMediaUrlPreserveFragment(src: string | null | undefined): string | null {
+  if (src == null || typeof src !== 'string') return null;
+  const trimmed = src.trim();
+  if (trimmed === '' || trimmed.startsWith('blob:')) return null;
+  const base = trimmed.split('#')[0]?.trim() ?? '';
+  if (base === '') return null;
+  if (!/^https?:\/\//i.test(base)) return null;
+  // Keep #wk=... for backend media refresh to recover exact object key (including spaces/special chars).
+  return trimmed;
+}
+
 /**
  * Pure snapshot of editor data for FFmpeg / API export.
  *
@@ -164,16 +184,24 @@ export function buildExportPayload(state: EditorState) {
         endTime: l.endTime,
       };
     }),
-    audioTracks: state.audioTracks.map((t) => ({
-      id: t.id,
-      type: t.type,
-      src: t.src,
-      startTime: t.startTime,
-      endTime: t.endTime,
-      volume: t.isMuted ? 0 : t.volume,
-      fadeIn: t.fadeIn,
-      fadeOut: t.fadeOut,
-    })),
+    audioTracks: state.audioTracks
+      .map((t) => ({
+        track: t,
+        exportSrc: resolveExportMediaUrlPreserveFragment(
+          typeof t.exportSrc === 'string' && t.exportSrc.trim() !== '' ? t.exportSrc : t.src,
+        ),
+      }))
+      .filter((x) => x.exportSrc != null)
+      .map(({ track, exportSrc }) => ({
+        id: track.id,
+        type: track.type,
+        src: exportSrc as string,
+        startTime: track.startTime,
+        endTime: track.endTime,
+        volume: track.isMuted ? 0 : track.volume,
+        fadeIn: track.fadeIn,
+        fadeOut: track.fadeOut,
+      })),
     videoSegments: state.videoSegments.map((s) => ({
       id: s.id,
       startTime: s.startTime,

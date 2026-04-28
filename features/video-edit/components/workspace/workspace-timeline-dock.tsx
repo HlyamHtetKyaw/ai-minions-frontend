@@ -745,10 +745,8 @@ type WorkspaceTimelineDockProps = {
   selectedAudioTrackId?: string | null;
   onTimelineAudioClipSelect?: (clipId: string) => void;
   audioUploadVisible?: boolean;
-  addMusicLabel?: string;
-  addVoiceoverLabel?: string;
-  onAddMusic?: () => void;
-  onAddVoiceover?: () => void;
+  addAudioLabel?: string;
+  onAddAudio?: () => void;
 };
 
 export function WorkspaceTimelineDock({
@@ -808,10 +806,8 @@ export function WorkspaceTimelineDock({
   selectedAudioTrackId = null,
   onTimelineAudioClipSelect,
   audioUploadVisible = false,
-  addMusicLabel = 'Add music',
-  addVoiceoverLabel = 'Add voiceover',
-  onAddMusic,
-  onAddVoiceover,
+  addAudioLabel = 'Add audio',
+  onAddAudio,
 }: WorkspaceTimelineDockProps) {
   const timelineRef = useRef<HTMLDivElement>(null);
   const videoTrackLaneRef = useRef<HTMLDivElement>(null);
@@ -1002,17 +998,10 @@ export function WorkspaceTimelineDock({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={onAddMusic}
+              onClick={onAddAudio}
               className="rounded-md bg-[#0a1612] px-2.5 py-1.5 text-[11px] font-medium text-[#1D9E75] ring-1 ring-[#1D9E75]/60 transition-colors hover:bg-[#0f2218]"
             >
-              {addMusicLabel}
-            </button>
-            <button
-              type="button"
-              onClick={onAddVoiceover}
-              className="rounded-md bg-[#0a1a2a] px-2.5 py-1.5 text-[11px] font-medium text-[#378ADD] ring-1 ring-[#185FA5]/70 transition-colors hover:bg-[#0f1f33]"
-            >
-              {addVoiceoverLabel}
+              {addAudioLabel}
             </button>
           </div>
         ) : null}
