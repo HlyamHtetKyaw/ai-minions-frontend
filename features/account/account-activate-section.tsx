@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { activateMemberLevelCode } from '@/lib/account';
+import { activateAnyCode } from '@/lib/account';
 import { fetchMe } from '@/lib/auth';
 import { AUTH_CHANGED_EVENT } from '@/lib/auth-token';
 
@@ -25,11 +25,15 @@ export function AccountActivateSection({ onActivated }: Props) {
     setError('');
     setSuccess('');
     try {
-      await activateMemberLevelCode(trimmed);
+      const activated = await activateAnyCode(trimmed);
       setCode('');
-      const me = await fetchMe();
-      if (me && typeof me.creditBalance === 'number') {
-        onActivated(me.creditBalance);
+      if (activated.type === 'topup' && typeof activated.creditBalance === 'number') {
+        onActivated(activated.creditBalance);
+      } else {
+        const me = await fetchMe();
+        if (me && typeof me.creditBalance === 'number') {
+          onActivated(me.creditBalance);
+        }
       }
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new Event(AUTH_CHANGED_EVENT));

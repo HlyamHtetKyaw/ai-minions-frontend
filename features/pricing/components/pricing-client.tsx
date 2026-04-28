@@ -149,27 +149,23 @@ export function PricingClient({ data }: { data: PublicPricingData | null }) {
             )}
           </section>
 
-          <section className="relative">
-            <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold text-foreground sm:text-2xl">
-                  {t('sectionTopup')}
-                </h2>
-                <p className="mt-1 max-w-xl text-sm text-muted">{t('sectionTopupDesc')}</p>
+          {data.topupPackages.length > 0 && (
+            <section className="relative">
+              <div className="mb-8 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold text-foreground sm:text-2xl">
+                    {t('sectionTopup')}
+                  </h2>
+                  <p className="mt-1 max-w-xl text-sm text-muted">{t('sectionTopupDesc')}</p>
+                </div>
               </div>
-            </div>
-            {data.topupPackages.length === 0 ? (
-              <p className="rounded-2xl border border-dashed border-card-border py-12 text-center text-sm text-muted">
-                {t('emptyTopup')}
-              </p>
-            ) : (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                 {data.topupPackages.map((pkg) => (
                   <PackageCard key={pkg.id} pkg={pkg} variant="topup" />
                 ))}
               </div>
-            )}
-          </section>
+            </section>
+          )}
 
           <p className="relative mt-16 text-center text-xs text-muted">{t('footnote')}</p>
         </>

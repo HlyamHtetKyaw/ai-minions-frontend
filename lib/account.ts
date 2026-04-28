@@ -66,6 +66,52 @@ export async function activateMemberLevelCode(
   return unwrap<MemberLevelActivationResult>(raw);
 }
 
+export async function activateTopupCode(
+  code: string,
+): Promise<{
+  topupCode: { id?: number; points?: number; expiredAt?: string | null };
+  addedPoints: number;
+  creditBalance: number;
+}> {
+  const raw = await apiFetch("/api/v1/topup-codes/activate", {
+    method: "POST",
+    body: JSON.stringify({ code: code.trim() }),
+  });
+  return unwrap<{
+    topupCode: { id?: number; points?: number; expiredAt?: string | null };
+    addedPoints: number;
+    creditBalance: number;
+  }>(raw);
+}
+
+function isLikelyInvalidCodeError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+  const m = err.message.toLowerCase();
+  return (
+    m.includes("invalid member level code") ||
+    m.includes("invalid topup code") ||
+    m.includes("invalid access code")
+  );
+}
+
+export async function activateAnyCode(code: string): Promise<
+  | { type: "member"; creditBalance?: number }
+  | { type: "topup"; creditBalance: number }
+> {
+  try {
+    await activateMemberLevelCode(code);
+    return { type: "member", creditBalance: undefined };
+  } catch (memberErr) {
+    // Only fallback when first endpoint says code is invalid.
+    if (!isLikelyInvalidCodeError(memberErr)) {
+      throw memberErr;
+    }
+  }
+
+  const topup = await activateTopupCode(code);
+  return { type: "topup", creditBalance: topup.creditBalance };
+}
+
 export async function changePassword(body: {
   currentPassword: string;
   newPassword: string;
