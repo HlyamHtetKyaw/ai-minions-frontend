@@ -92,7 +92,7 @@ export default function SignupPage() {
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Signup failed';
       if (message.toLowerCase().includes('already exists via google login')) {
-        router.push(`/password-setup?email=${encodeURIComponent(email.trim())}`);
+        router.push({ pathname: '/password-setup', query: { email: email.trim() } });
         router.refresh();
         return;
       }

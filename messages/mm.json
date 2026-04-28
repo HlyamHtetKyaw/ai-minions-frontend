@@ -393,7 +393,11 @@
       "step1": "အသံသဘောထား",
       "step2": "အသံ",
       "loadingVoices": "အသံများ ဖွင့်နေသည်…",
-      "emptyCatalog": "အသံမရနိုင်ပါ။ နောက်မှ ထပ်စမ်းပါ။"
+      "emptyCatalog": "အသံမရနိုင်ပါ။ နောက်မှ ထပ်စမ်းပါ။",
+      "previewHint": "Generate မလုပ်ခင် အသံကို play လုပ်ပြီး နားထောင်နိုင်ပါတယ်။",
+      "playPreview": "Preview ဖွင့်ရန်",
+      "pausePreview": "Preview ရပ်ရန်",
+      "previewUnavailable": "ဒီအသံအတွက် preview မရနိုင်ပါ။"
     },
     "toneGroups": {
       "energetic": {

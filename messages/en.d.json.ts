@@ -396,7 +396,11 @@ declare const messages: {
       "step1": "Voice style",
       "step2": "Voice",
       "loadingVoices": "Loading voices…",
-      "emptyCatalog": "No voices available. Try again later."
+      "emptyCatalog": "No voices available. Try again later.",
+      "previewHint": "Tap play to preview a voice before generating.",
+      "playPreview": "Play preview",
+      "pausePreview": "Pause preview",
+      "previewUnavailable": "Preview unavailable for this voice."
     },
     "toneGroups": {
       "energetic": {
