@@ -22,6 +22,8 @@ import {
   uploadVideoEditorFile,
 } from '@/lib/video-editor-workspace-api';
 import { triggerWorkspaceExportDownload } from '@/lib/video-editor-api';
+import { videoEditorExportEstimateExisting } from '@/lib/video-editor-api';
+import { fetchMe } from '@/lib/auth';
 import {
   MAIN_VIDEO_TIMELINE_CLIP_ID,
   useEditorStore,
@@ -46,6 +48,8 @@ const TIMELINE_DOCK_HEIGHT_STORAGE_KEY = 'ai-minions.video-workspace.timelineDoc
 const TIMELINE_DOCK_HEIGHT_DEFAULT = 268;
 const TIMELINE_DOCK_MIN_PX = 140;
 const PREVIEW_PANEL_MIN_HEIGHT_PX = 260;
+const EXPORT_AUDIO_ESTIMATE_BITRATE_BPS = 160_000;
+const EXPORT_VIDEO_LENGTH_POINT_PER_MIN = 1;
 
 function readStoredTimelineDockHeightPx(): number {
   if (typeof window === 'undefined') return TIMELINE_DOCK_HEIGHT_DEFAULT;
@@ -392,11 +396,25 @@ export function VideoWorkspaceShell() {
   const [canRedo, setCanRedo] = useState(false);
   const [workspaceSyncStatus, setWorkspaceSyncStatus] = useState('Connecting workspace stream...');
   const [workspaceUiPhase, setWorkspaceUiPhase] = useState<'loading' | 'canvas-only' | 'editor'>('loading');
+  const [workspaceHydratedWithVideo, setWorkspaceHydratedWithVideo] = useState(false);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [exportOverlayPhase, setExportOverlayPhase] = useState<'idle' | 'exporting' | 'downloading'>('idle');
   const [exportProgressPercent, setExportProgressPercent] = useState(0);
   const [exportProgressMessage, setExportProgressMessage] = useState('');
+  const [exportConfirmOpen, setExportConfirmOpen] = useState(false);
+  const [exportEstimateLoading, setExportEstimateLoading] = useState(false);
+  const [exportEstimateError, setExportEstimateError] = useState<string | null>(null);
+  const [exportEstimatedPoints, setExportEstimatedPoints] = useState<number>(0);
+  const [creditBalance, setCreditBalance] = useState<number | null>(null);
+  const [exportEstimateBreakdown, setExportEstimateBreakdown] = useState<{
+    mbVideo: number;
+    mbAudio: number;
+    videoLengthSec: number;
+    fromServerReservePoints: number;
+    addedAudioPoints: number;
+    addedLengthPoints: number;
+  } | null>(null);
   const previewFrameRef = useRef<HTMLDivElement>(null);
   const exportOverlayPhaseRef = useRef<'idle' | 'exporting' | 'downloading'>('idle');
   const volumeBeforeMuteRef = useRef(72);
@@ -589,9 +607,9 @@ export function VideoWorkspaceShell() {
         }
         if (cancelled) return;
         setWorkspaceSyncStatus('Workspace loaded');
-        setWorkspaceUiPhase(
-          workspaceJsonHasPersistedVideo(rawWorkspaceJson) ? 'editor' : 'canvas-only',
-        );
+        const hasPersistedVideo = workspaceJsonHasPersistedVideo(rawWorkspaceJson);
+        setWorkspaceHydratedWithVideo(hasPersistedVideo);
+        setWorkspaceUiPhase(hasPersistedVideo ? 'editor' : 'canvas-only');
       } catch (error) {
         if (cancelled) return;
         setWorkspaceSyncStatus(
@@ -1141,7 +1159,29 @@ export function VideoWorkspaceShell() {
                           ? 'text'
                           : null;
 
-  const onExportClick = useCallback(async () => {
+  const estimateAudioMbForExport = useCallback(() => {
+    const state = useEditorStore.getState();
+    const totalAudioSec = state.audioTracks
+      .filter((track) => track.type === 'music' || track.type === 'voiceover')
+      .reduce((sum, track) => sum + Math.max(0, track.endTime - track.startTime), 0);
+    const bytes = (totalAudioSec * EXPORT_AUDIO_ESTIMATE_BITRATE_BPS) / 8;
+    return Math.max(0, bytes / (1024 * 1024));
+  }, []);
+
+  const estimateEffectiveVideoLengthSec = useCallback(() => {
+    const state = useEditorStore.getState();
+    if (state.videoTimelineSegments.length > 0) {
+      const sum = state.videoTimelineSegments.reduce(
+        (acc, seg) => acc + Math.max(0, seg.endTime - seg.startTime),
+        0,
+      );
+      if (sum > 0) return sum;
+    }
+    if (state.trimEnd > state.trimStart) return state.trimEnd - state.trimStart;
+    return Math.max(0, state.duration);
+  }, []);
+
+  const executeExport = useCallback(async () => {
     let state = useEditorStore.getState();
     const pendingAudioTrack = state.audioTracks.find(
       (track) =>
@@ -1199,6 +1239,58 @@ export function VideoWorkspaceShell() {
       setExportProgressMessage('');
     }
   }, [aspect]);
+
+  const onExportClick = useCallback(async () => {
+    setExportEstimateError(null);
+    setExportConfirmOpen(true);
+    setExportEstimateLoading(true);
+    try {
+      const state = useEditorStore.getState();
+      // Match viral editor behavior: read the workspace object key from `videoSrc#wk=...`.
+      // Do NOT use `resolveExportVideoUrl` here because it strips hash fragments.
+      const videoSrcKey = extractWorkspaceKeyFromVideoSrc(state.videoSrc);
+      if (videoSrcKey == null) {
+        throw new Error('Video must be uploaded before export estimate.');
+      }
+      const me = await fetchMe();
+      setCreditBalance(typeof me?.creditBalance === 'number' ? me.creditBalance : null);
+      const serverEstimate = await videoEditorExportEstimateExisting(videoSrcKey);
+      const reserveFromServer = Number(serverEstimate.reserveCostPoints);
+      const mbVideoRaw = Number(serverEstimate.mbVideo ?? 0);
+      const mbVideo = Number.isFinite(mbVideoRaw) ? Math.max(0, mbVideoRaw) : 0;
+      const mbAudio = estimateAudioMbForExport();
+      const videoLengthSec = estimateEffectiveVideoLengthSec();
+      const addedAudioPoints = Math.max(0, Math.ceil(mbAudio * 2));
+      const addedLengthPoints = Math.max(
+        0,
+        Math.ceil((videoLengthSec / 60) * EXPORT_VIDEO_LENGTH_POINT_PER_MIN),
+      );
+      const estimated = Math.max(0, reserveFromServer) + addedAudioPoints + addedLengthPoints;
+      setExportEstimateBreakdown({
+        mbVideo,
+        mbAudio,
+        videoLengthSec,
+        fromServerReservePoints: Math.max(0, reserveFromServer),
+        addedAudioPoints,
+        addedLengthPoints,
+      });
+      setExportEstimatedPoints(estimated);
+    } catch (error) {
+      setExportEstimateError(
+        error instanceof Error ? error.message : 'Failed to estimate export points',
+      );
+      setExportEstimateBreakdown(null);
+      setExportEstimatedPoints(0);
+    } finally {
+      setExportEstimateLoading(false);
+    }
+  }, [estimateAudioMbForExport, estimateEffectiveVideoLengthSec]);
+
+  const controlsDisabledWhileCacheVideoLoading =
+    workspaceHydratedWithVideo &&
+    workspaceUiPhase === 'editor' &&
+    videoSrc != null &&
+    duration <= 0;
 
   const performResetWorkspace = useCallback(async () => {
     setResetBusy(true);
@@ -1289,10 +1381,16 @@ export function VideoWorkspaceShell() {
         canUndo={canUndo}
         canRedo={canRedo}
         syncStatusLabel={workspaceSyncStatus}
+        controlsDisabled={controlsDisabledWhileCacheVideoLoading}
       />
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <WorkspaceToolRail tools={tools} activeTool={activeTool} onToolChange={handleToolChange} />
+        <WorkspaceToolRail
+          tools={tools}
+          activeTool={activeTool}
+          onToolChange={handleToolChange}
+          disabled={controlsDisabledWhileCacheVideoLoading}
+        />
         <div ref={centerColumnRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <input
             ref={audioInputRef}
@@ -1579,6 +1677,63 @@ export function VideoWorkspaceShell() {
               ? t('exportOverlay.exporting')
               : t('exportOverlay.downloading')}
           </p>
+        </div>
+      ) : null}
+
+      {exportConfirmOpen ? (
+        <div
+          className="fixed inset-0 z-[180] flex items-end justify-center bg-black/70 p-4 sm:items-center"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm export"
+          onMouseDown={() => setExportConfirmOpen(false)}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black/60"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold text-white">Export video?</p>
+            <p className="mt-2 text-sm text-zinc-300">
+              Estimated export cost:{' '}
+              <span className="font-semibold text-white">
+                {exportEstimateLoading ? '…' : exportEstimatedPoints}
+              </span>{' '}
+              points
+            </p>
+            <p className="mt-1 text-xs text-zinc-500">Balance: {creditBalance ?? 0} points</p>
+            {exportEstimateError ? (
+              <p className="mt-2 text-sm text-rose-300">{exportEstimateError}</p>
+            ) : null}
+            {creditBalance != null && creditBalance < exportEstimatedPoints && !exportEstimateLoading ? (
+              <p className="mt-2 text-sm text-amber-300">
+                Not enough points to export this video.
+              </p>
+            ) : null}
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="rounded-lg border border-white/15 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/5"
+                onClick={() => setExportConfirmOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-lg bg-violet-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-violet-500 disabled:opacity-40"
+                disabled={
+                  exportEstimateLoading ||
+                  exportEstimateError != null ||
+                  (creditBalance != null && creditBalance < exportEstimatedPoints)
+                }
+                onClick={() => {
+                  setExportConfirmOpen(false);
+                  void executeExport();
+                }}
+              >
+                Confirm export
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
