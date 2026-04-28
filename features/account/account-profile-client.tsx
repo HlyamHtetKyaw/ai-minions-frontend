@@ -7,7 +7,7 @@ import { fetchMe } from '@/lib/auth';
 import {
   fetchMyProfile,
   fetchUsageHistory,
-  type UsageHistoryFeatureType,
+  type UsageHistoryFeatureKey,
   type UsageHistoryItem,
   type UsageHistoryStatus,
   updateMyProfile,
@@ -164,17 +164,29 @@ export default function AccountProfileClient() {
     }
   }
 
-  function featureLabel(featureType: UsageHistoryFeatureType): string {
-    const key = String(featureType ?? '').toUpperCase();
+  function featureLabel(featureKey: UsageHistoryFeatureKey): string {
+    const key = String(featureKey ?? '').toUpperCase();
     switch (key) {
-      case 'TEXT':
-        return t('usageHistory.featureText');
-      case 'IMAGE':
-        return t('usageHistory.featureImage');
-      case 'AUDIO':
-        return t('usageHistory.featureAudio');
-      case 'VIDEO':
-        return t('usageHistory.featureVideo');
+      case 'TRANSLATE':
+        return t('usageHistory.featureTranslate');
+      case 'VOICE_OVER':
+        return t('usageHistory.featureVoiceOver');
+      case 'TRANSCRIBE':
+        return t('usageHistory.featureTranscribe');
+      case 'SUBTITLES':
+        return t('usageHistory.featureSubtitles');
+      case 'CONTENT_V2':
+        return t('usageHistory.featureContentV2');
+      case 'BALANCED_SYNC':
+        return t('usageHistory.featureBalancedSync');
+      case 'TEXT_GENERATION':
+        return t('usageHistory.featureTextGeneration');
+      case 'IMAGE_GENERATION':
+        return t('usageHistory.featureImageGeneration');
+      case 'AUDIO_GENERATION':
+        return t('usageHistory.featureAudioGeneration');
+      case 'VIDEO_GENERATION':
+        return t('usageHistory.featureVideoGeneration');
       default:
         return key || t('usageHistory.featureUnknown');
     }
@@ -329,12 +341,18 @@ export default function AccountProfileClient() {
                   className="flex flex-col gap-2 rounded-xl border border-card-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-medium text-foreground">{featureLabel(row.featureType)}</p>
+                    <p className="truncate text-sm font-medium text-foreground">{featureLabel(row.featureKey)}</p>
                     <p className="text-xs text-muted">{formatWhen(row.createdAt)}</p>
                   </div>
                   <div className="flex items-center gap-2 sm:justify-end">
-                    <span className="text-sm font-semibold tabular-nums text-foreground">-{row.spentPoints}</span>
-                    <span className="text-xs text-muted">{t('usageHistory.pointsUnit')}</span>
+                    {String(row.status ?? '').toUpperCase() === 'FAILED' ? (
+                      <span className="text-xs font-medium text-muted">{t('usageHistory.notCharged')}</span>
+                    ) : (
+                      <>
+                        <span className="text-sm font-semibold tabular-nums text-foreground">-{row.chargedPoints}</span>
+                        <span className="text-xs text-muted">{t('usageHistory.pointsUnit')}</span>
+                      </>
+                    )}
                     <span
                       className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusClassName(
                         row.status,

@@ -17,12 +17,14 @@ export type MyProfile = {
 };
 
 export type UsageHistoryStatus = "PENDING" | "SUCCESS" | "FAILED";
+export type UsageHistoryFeatureKey = string;
 export type UsageHistoryFeatureType = "TEXT" | "IMAGE" | "AUDIO" | "VIDEO" | string;
 
 export type UsageHistoryItem = {
   id: number;
+  featureKey: UsageHistoryFeatureKey;
   featureType: UsageHistoryFeatureType;
-  spentPoints: number;
+  chargedPoints: number;
   status: UsageHistoryStatus;
   createdAt: string;
 };
