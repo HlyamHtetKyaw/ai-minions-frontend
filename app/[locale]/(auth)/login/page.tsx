@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
-import { KeyRound, Lock, Sparkles } from 'lucide-react';
+import { Eye, EyeOff, KeyRound, Lock, Sparkles } from 'lucide-react';
 import { beginGoogleLogin, login, loginWithCode } from '@/lib/auth';
 
 type Mode = 'password' | 'code';
@@ -12,6 +12,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<Mode>('password');
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [accessCode, setAccessCode] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -175,16 +176,30 @@ export default function LoginPage() {
                     >
                       Password
                     </label>
-                    <input
-                      id="password"
-                      type="password"
-                      required
-                      autoComplete="current-password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      placeholder="••••••••"
-                      className="w-full rounded-xl border border-card-border bg-surface/80 px-4 py-3 text-sm text-foreground placeholder:text-muted focus:border-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/25 dark:bg-surface/50"
-                    />
+                    <div className="relative">
+                      <input
+                        id="password"
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        autoComplete="current-password"
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full rounded-xl border border-card-border bg-surface/80 px-4 py-3 pr-11 text-sm text-foreground placeholder:text-muted focus:border-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/25 dark:bg-surface/50"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
+                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="mx-auto h-4 w-4" />
+                        ) : (
+                          <Eye className="mx-auto h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                     <div className="flex justify-end">
                       <Link
                         href="/forgot-password"
