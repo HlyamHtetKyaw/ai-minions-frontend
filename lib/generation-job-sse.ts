@@ -157,12 +157,9 @@ export function parseGenerationSseProgressPayload(
       return { percent: 52, label: `Processing: ${pretty}` };
     }
 
-    const message =
-      typeof o.message === 'string' && o.message.trim()
-        ? o.message.trim()
-        : stepOrStage
-          ? stepOrStage.replace(/_/g, ' ')
-          : statusRaw || 'Working…';
+    const message = stepOrStage
+      ? stepOrStage.replace(/_/g, ' ')
+      : statusRaw || 'Working…';
 
     const candidates = [
       o.progressPercent,
@@ -246,7 +243,7 @@ export function openGenerationJobSseStream(
         handlers.onTerminal?.({
           status: s as GenerationJobTerminalPayload['status'],
           outputData: o.outputData,
-          message: typeof o.message === 'string' ? o.message : undefined,
+          message: undefined,
           jobId: Number.isFinite(jobId) ? jobId : undefined,
           generationId: Number.isFinite(generationIdNum) ? generationIdNum : undefined,
         });

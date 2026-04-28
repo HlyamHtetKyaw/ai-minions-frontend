@@ -5,6 +5,7 @@ import {
   fetchInit,
   fetchWithAuthRetry,
 } from '@/lib/api-auth-fetch';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 
 export type SubtitlesPrepareData = {
   uploadSessionId: string;
@@ -136,6 +137,7 @@ export async function subtitlesFromExisting(params: {
   if (!res.ok || !json.success || !json.data) {
     throw new Error(errorMessageFromBody(json, `subtitles from-existing failed (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
   return json.data;
 }
 
@@ -152,6 +154,7 @@ export async function subtitlesCompleteUpload(uploadSessionId: string): Promise<
   if (!res.ok || !json.success || !json.data) {
     throw new Error(errorMessageFromBody(json, `subtitles complete-upload failed (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
   return json.data;
 }
 

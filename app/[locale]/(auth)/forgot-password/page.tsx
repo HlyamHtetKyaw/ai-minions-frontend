@@ -3,6 +3,12 @@
 import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
 import { getPublicApiBaseUrl } from '@/lib/api-base';
+import {
+  detectCurrentLocale,
+  getDefaultErrorMessage,
+  getNetworkErrorMessage,
+  getStatusErrorMessage,
+} from '@/lib/api-error-message';
 
 type ForgotPasswordResponse = {
   token?: string;
@@ -11,7 +17,6 @@ type ForgotPasswordResponse = {
     token?: string;
     accessToken?: string;
   };
-  message?: string;
 };
 
 export default function ForgotPasswordPage() {
@@ -48,15 +53,7 @@ export default function ForgotPasswordPage() {
         .catch(() => ({}))) as ForgotPasswordResponse;
 
       if (!res.ok) {
-        if (res.status === 404) {
-          setError('Email not found.');
-        } else {
-          setError(
-            typeof body.message === 'string' && body.message.length > 0
-              ? body.message
-              : `Request failed (${res.status})`,
-          );
-        }
+        setError(getStatusErrorMessage(res.status, detectCurrentLocale()));
         return;
       }
 
@@ -78,7 +75,13 @@ export default function ForgotPasswordPage() {
       }
       router.push('/reset-password');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Unable to continue. Please try again.');
+      if (err instanceof TypeError) {
+        setError(getNetworkErrorMessage(detectCurrentLocale()));
+      } else if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError(getDefaultErrorMessage(detectCurrentLocale()));
+      }
     } finally {
       setLoading(false);
     }

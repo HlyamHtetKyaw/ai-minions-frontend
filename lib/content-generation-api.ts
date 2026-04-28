@@ -175,7 +175,7 @@ export function openContentGenerationSse(jobId: string, handlers: ContentGenerat
         handlers.onTerminal?.({
           status: status as 'completed' | 'failed' | 'error' | 'timeout',
           data: (payload.data ?? undefined) as ContentGenerateV2Result | undefined,
-          message: typeof payload.message === 'string' ? payload.message : undefined,
+          message: undefined,
         });
         if (status === 'completed') {
           notifyUserCreditBalanceRefresh();

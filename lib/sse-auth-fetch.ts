@@ -1,4 +1,10 @@
 import { fetchInit, authHeaders, fetchWithAuthRetry } from '@/lib/api-auth-fetch';
+import {
+  detectCurrentLocale,
+  getDefaultErrorMessage,
+  getNetworkErrorMessage,
+  getStatusErrorMessage,
+} from '@/lib/api-error-message';
 
 type SseHandlers = {
   onOpen?: () => void;
@@ -34,15 +40,7 @@ export function consumeSseWithAuth(url: string, handlers: SseHandlers): () => vo
       });
 
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        let msg = `SSE open failed (${res.status})`;
-        try {
-          const j = JSON.parse(text) as { message?: string };
-          if (j.message) msg = j.message;
-        } catch {
-          if (text.trim()) msg = `${msg}: ${text.slice(0, 240)}`;
-        }
-        handlers.onError(msg);
+        handlers.onError(getStatusErrorMessage(res.status, detectCurrentLocale()));
         return;
       }
 
@@ -50,7 +48,7 @@ export function consumeSseWithAuth(url: string, handlers: SseHandlers): () => vo
 
       const body = res.body;
       if (!body) {
-        handlers.onError('SSE: empty response body');
+        handlers.onError(getDefaultErrorMessage(detectCurrentLocale()));
         return;
       }
 
@@ -92,7 +90,11 @@ export function consumeSseWithAuth(url: string, handlers: SseHandlers): () => vo
       if (e instanceof DOMException && e.name === 'AbortError') {
         return;
       }
-      handlers.onError(e instanceof Error ? e.message : String(e));
+      if (e instanceof TypeError) {
+        handlers.onError(getNetworkErrorMessage(detectCurrentLocale()));
+        return;
+      }
+      handlers.onError(getDefaultErrorMessage(detectCurrentLocale()));
     } finally {
       closeOnce();
     }

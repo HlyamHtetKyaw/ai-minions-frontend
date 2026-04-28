@@ -60,6 +60,13 @@
     "fieldCredits": "ကရက်ဒစ်",
     "labelFullname": "ပြသမည့်အမည်",
     "labelPhone": "ဖုန်း",
+    "edit": "ပြင်ရန်",
+    "cancel": "မလုပ်တော့ပါ",
+    "closeEditor": "တည်းဖြတ်မှု ပိတ်ရန်",
+    "editDisplayName": "ပြသမည့်အမည် ပြင်ရန်",
+    "editPhone": "ဖုန်းနံပါတ် ပြင်ရန်",
+    "editDisplayNameHint": "ပရိုဖိုင်တွင် ပြသမည့်အမည်ကို ပြင်ဆင်ပါ။",
+    "editPhoneHint": "ဆက်သွယ်ရန် ဖုန်းနံပါတ်ကို ပြင်ဆင်ပါ။",
     "save": "သိမ်းရန်",
     "saving": "သိမ်းနေသည်…",
     "saved": "သိမ်းပြီးပါပြီ။",
@@ -373,7 +380,9 @@
   "voice-over": {
     "page": {
       "title": "AI အသံ",
-      "subtitle": "စာသားကို သဘာဝကျသော အသံသို့ ပြောင်းပါ"
+      "subtitle": "စာသားကို သဘာဝကျသော အသံသို့ ပြောင်းပါ",
+      "helpAria": "AI အသံ အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Enter your script.\n2) Choose a voice style and voice.\n3) Check the estimated points.\n4) Click Generate Voice.\n5) Preview and download the result.\n\nအသုံးပြုပုံ (Myanmar)\n၁) Script ကိုရေးထည့်ပါ။\n၂) အသံပုံစံနဲ့ အသံကိုရွေးပါ။\n၃) ခန့်မှန်း points ကိုစစ်ပါ။\n၄) Generate Voice ကိုနှိပ်ပါ။\n၅) ရလဒ်အသံကို preview လုပ်ပြီး download လုပ်ပါ။"
     },
     "scriptInput": {
       "kicker": "စာတမ်း",
@@ -609,7 +618,9 @@
   },
   "master-editor": {
     "page": {
-      "title": "မာစတာ တည်းဖြတ်သူ"
+      "title": "မာစတာ တည်းဖြတ်သူ",
+      "helpAria": "မာစတာတည်းဖြတ်ကိရိယာ အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Upload your video.\n2) Adjust tools like trim, filters, and text.\n3) Preview changes in the player.\n4) Choose export format and quality.\n5) Click Export.\n\nအသုံးပြုပုံ (Myanmar)\n၁) ဗီဒီယိုကို upload တင်ပါ။\n၂) trim, filter, text စတဲ့ tools တွေနဲ့ ပြင်ပါ။\n၃) player ထဲမှာ preview စစ်ပါ။\n၄) export format နဲ့ quality ရွေးပါ။\n၅) Export ကိုနှိပ်ပါ။"
     },
     "uploadZone": {
       "label": "တည်းဖြတ်ရန် ဗီဒီယိုတင်ပါ"
@@ -664,7 +675,9 @@
   },
   "voice-gen-live": {
     "page": {
-      "title": "အသံ Gen Live"
+      "title": "အသံ Gen Live",
+      "helpAria": "အသံ Gen Live အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Enter your script.\n2) Select a voice.\n3) Click Start.\n4) Sentences play one by one in the live player.\n\nအသုံးပြုပုံ (Myanmar)\n၁) script ကိုရေးထည့်ပါ။\n၂) အသံတစ်ခုရွေးပါ။\n၃) Start ကိုနှိပ်ပါ။\n၄) ဝါကျတွေကို live player မှာ တစ်ကြောင်းချင်း ဖတ်ပြပါမယ်။"
     },
     "scriptInput": {
       "placeholder": "ဤနေရာတွင် script ရိုက်ပါ။ ဝါကျတစ်ကြောင်းချင်း ဖွင့်ပေးမည်…"
@@ -681,7 +694,9 @@
   },
   "ai-voice": {
     "page": {
-      "title": "AI အသံ ထုတ်ပေးသူ"
+      "title": "AI အသံ ထုတ်ပေးသူ",
+      "helpAria": "AI အသံ ထုတ်ပေးသူ အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Enter or paste your script.\n2) Choose voice style.\n3) Click Generate Voice.\n4) Play and download the generated audio.\n\nအသုံးပြုပုံ (Myanmar)\n၁) script ကိုရိုက်ထည့် (သို့) ကူးထည့်ပါ။\n၂) အသံပုံစံရွေးပါ။\n၃) Generate Voice ကိုနှိပ်ပါ။\n၄) ထုတ်ပြီးသားအသံကို နားထောင်ပြီး download လုပ်ပါ။"
     },
     "scriptInput": {
       "placeholder": "အသံပြောင်းလဲလိုသော script ကို ရိုက်ထည့် သို့မဟုတ် ကူးထည့်ပါ…"
@@ -694,8 +709,9 @@
   "viralShorts": {
     "page": {
       "title": "Viral ဗီဒီယို",
-      "subtitle": "MP4 သို့မဟုတ် WebM ဗီဒီယို တင်ပါ။ စကားပြောမှတ်တမ်း ထုတ်ရန်၊ စာတမ်း ဘာသာပြန်ရန်၊ AI အသံဖတ်ကြားမှု ထုတ်ပေးရန်၊ စာတန်းများ ပြင်ဆင်ရန်၊ အသံနှင့် ဗီဒီယို ချိန်ညှိရန်၊ ထုတ်ယူရန်—လုပ်ဆောင်နေစဉ် အလိုအလျောက် သိမ်းပါသည်။",
+      "subtitle": "စကားပြောအသံသွင်းရန်၊ စာတန်းထိုးများဘာသာပြန်ရန်၊ AI အသံထွက်များ၊ စတိုင်စာတန်းများ၊ စင့်ခ်အသံများ၊ နှင့် သင့်ဗီဒီယိုကို ထုတ်ယူရန်—အားလုံးသည် အလိုအလျောက်သိမ်းဆည်းသည့်ပံ့ပိုးမှုဖြင့် သင့်ဗီဒီယိုကို ထုတ်ယူရန် MP4 သို့မဟုတ် WebM ဗီဒီယိုကို အပ်လုဒ်လုပ်ပါ။",
       "helpAria": "Viral ဗီဒီယို တည်းဖြတ်မှု အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Upload an MP4/WebM video.\n2) Transcribe speech to text.\n3) Translate and edit the script/subtitles.\n4) Generate voice-over and sync audio.\n5) Export the final video.\n\nအသုံးပြုပုံ (Myanmar)\n၁) MP4/WebM ဗီဒီယိုကို upload တင်ပါ။\n၂) စကားပြောကို text အဖြစ် transcribe လုပ်ပါ။\n၃) script/subtitle ကို ဘာသာပြန်ပြီး ပြင်ပါ။\n၄) voice-over ထုတ်ပြီး audio ကို sync ချိန်ပါ။\n၅) နောက်ဆုံး video ကို export ထုတ်ပါ။",
       "loadingWorkspace": "အလုပ်ခွင်ကို ဖွင့်နေသည်…",
       "loadingWorkspaceHint": "သိမ်းဆည်းထားသော တည်းဖြတ်မှု စက်ရှင်ကို စစ်ဆေးနေသည်။",
       "preparingWorkspace": "အလုပ်ခွင်ကို ဖွင့်နေသည်…",
@@ -733,6 +749,42 @@
       "voiceStyleModalTitle": "အသံနှင့် ပုံစံ",
       "voiceStyleModalSubtitle": "သင်၏ စာတမ်းအတွက် ပို့ဆောင်မှု အသံပုံစံနှင့် ဖတ်ကြားသူ အသံကို ရွေးချယ်ပါ။",
       "voiceStyleModalDone": "ပြီးပါပြီ"
+    },
+    "editor": {
+      "buttons": {
+        "discardWorkspace": "အလွင်ခွင်ကို ဖျက်ပစ်ရန်",
+        "finalExport": "ထုတ်ယူရန်",
+        "exporting": "ထုတ်ယူနေသည်...",
+        "transcribing": "မှတ်တမ်းတင်နေသည်...",
+        "transcribeVideo": "၁. ဗီဒီယို မှတ်တမ်းတင်ရန်",
+        "scriptTab": "ဇာတ်ညွှန်း",
+        "srtEditorTab": "SRT တည်းဖြတ်ကိရိယာ",
+        "addAfter": "+ နောက်တွင်ထည့်ရန်",
+        "remove": "ဖယ်ရှားရန်",
+        "saveAllCuesToSrt": "Cue အားလုံးကို SRT သို့ သိမ်းရန်",
+        "previewAndAccept": "အစမ်းကြည့်ပြီး အတည်ပြုရန်",
+        "downloadAgain": "ထပ်မံ ဒေါင်းလုဒ်လုပ်ရန်",
+        "translate": "ဘာသာပြန်ရန်",
+        "translating": "ဘာသာပြန်နေသည်...",
+        "generate": "ထုတ်ပေးရန်",
+        "generating": "ထုတ်ပေးနေသည်...",
+        "syncVoiceLengthToAudio": "အသံအလျားကို ဗီဒီယိုနှင့် ချိန်ညှိရန်",
+        "syncingVoiceLength": "အသံအလျားကို ချိန်ညှိနေသည်...",
+        "balancedSyncRenderCombine": "ညီမျှသော စင့်ခ် (ထုတ်ဆောင်ပြီး ပေါင်းစည်းရန်)",
+        "renderingBalancedSync": "ညီမျှသော စင့်ခ်ကို ထုတ်ဆောင်နေသည်...",
+        "protectionFlipHue": "ကာကွယ်မှု (ပြောင်းပြန် + hue)",
+        "generateSubtitles": "စာတန်းများ ထုတ်ပေးရန်",
+        "generatingSubtitles": "စာတန်းများ ထုတ်ပေးနေသည်...",
+        "downloadSrt": "(.srt) ဒေါင်းလုဒ်လုပ်ရန်",
+        "openSrtEditor": "SRT တည်းဖြတ်ကိရိယာ ဖွင့်ရန်",
+        "cancel": "မလုပ်တော့ပါ",
+        "continue": "ဆက်လုပ်ရန်",
+        "confirm": "အတည်ပြုရန်",
+        "close": "ပိတ်ရန်",
+        "reject": "ပယ်ချရန်",
+        "accept": "လက်ခံရန်",
+        "loading": "ဖတ်နေသည်..."
+      }
     }
   },
   "transcribe": {
@@ -742,7 +794,8 @@
     "page": {
       "title": "မှတ်တမ်းတင်ခြင်း",
       "subtitle": "အသံ သို့မဟုတ် ဗီဒီယိုကို စာသားသို့ ပြောင်းပါ",
-      "helpAria": "မှတ်တမ်းတင်ခြင်း အကူအညီ"
+      "helpAria": "မှတ်တမ်းတင်ခြင်း အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Upload an audio/video file.\n2) Click Transcribe to Text.\n3) Wait for progress to finish.\n4) Copy or download the transcript.\n\nအသုံးပြုပုံ (Myanmar)\n၁) အသံ (သို့) ဗီဒီယိုဖိုင်ကို တင်ပါ။\n၂) Transcribe to Text ကိုနှိပ်ပါ။\n၃) Progress ပြီးသွားအောင် စောင့်ပါ။\n၄) transcript ကို copy (သို့) download လုပ်ပါ။"
     },
     "uploadZone": {
       "label": "အသံ သို့မဟုတ် ဗီဒီယိုဖိုင် တင်ပါ",
@@ -784,7 +837,9 @@
   "subtitlesPage": {
     "hero": {
       "kicker": "စာတန်းများ",
-      "description": "အသံ သို့မဟုတ် ဗီဒီယိုဖိုင်တင်ပြီး အချိန်မှန်ပါဝင်သော မြန်မာ .srt စာတန်းကို ထုတ်ယူပါ။"
+      "description": "အသံ သို့မဟုတ် ဗီဒီယိုဖိုင်တင်ပြီး အချိန်မှန်ပါဝင်သော မြန်မာ .srt စာတန်းကို ထုတ်ယူပါ။",
+      "helpAria": "စာတန်းများ အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Upload audio/video.\n2) Click Generate subtitles.\n3) Wait for generation to complete.\n4) Download the .srt file and review the preview.\n\nအသုံးပြုပုံ (Myanmar)\n၁) အသံ (သို့) ဗီဒီယိုဖိုင်ကို တင်ပါ။\n၂) Generate subtitles ကိုနှိပ်ပါ။\n၃) ထုတ်လုပ်မှု ပြီးသည်အထိ စောင့်ပါ။\n၄) .srt ဖိုင်ကို download လုပ်ပြီး preview စစ်ပါ။"
     },
     "uploadZone": {
       "kicker": "တင်ရန်",
@@ -853,7 +908,8 @@
     "page": {
       "title": "အကြောင်းအရာ ဖန်တီးသူ",
       "subtitle": "Hook များ၊ စာတန်းထိုးများနှင့် လူမှုမီဒီယာအဆင်သင့် စာတမ်းများ ရေးပါ",
-      "helpAria": "အကြောင်းအရာ ဖန်တီးသူ အကူအညီ"
+      "helpAria": "အကြောင်းအရာ ဖန်တီးသူ အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Choose content type and output mode.\n2) Enter topic and tone.\n3) (Optional) upload logo and set style.\n4) Click Generate Content.\n5) Copy text or download the generated image.\n\nအသုံးပြုပုံ (Myanmar)\n၁) Content type နဲ့ output mode ကိုရွေးပါ။\n၂) topic နဲ့ tone ကိုဖြည့်ပါ။\n၃) (လိုလျှင်) logo တင်ပြီး style သတ်မှတ်ပါ။\n၄) Generate Content ကိုနှိပ်ပါ။\n၅) ထုတ်ပြီးသား စာသားကို copy လုပ်ပါ၊ ပုံကို download လုပ်ပါ။"
     },
     "layout": {
       "styleAndActionsHeading": "စတိုင် နှင့် ထုတ်ပေးရန်",
@@ -961,7 +1017,8 @@
     "page": {
       "title": "ဘာသြန်ခြင်း",
       "subtitle": "စာတန်းနှင့် စာသားများအတွက် ဘာသာစကားများစွာဖြင့် ပြန်ဆိုခြင်း",
-      "helpAria": "ဘာသြန်ခြင်း အကူအညီ"
+      "helpAria": "ဘာသြန်ခြင်း အကူအညီ",
+      "helpMessage": "How to use (English)\n1) Select source and target language.\n2) Enter source text.\n3) Choose translate style.\n4) Click Translate.\n5) Copy the translated result.\n\nအသုံးပြုပုံ (Myanmar)\n၁) Source နဲ့ target language ကိုရွေးပါ။\n၂) ဘာသာပြန်မယ့် စာသားကိုထည့်ပါ။\n၃) translate style ကိုရွေးပါ။\n၄) Translate ကိုနှိပ်ပါ။\n၅) ပြန်ဆိုပြီး ရလဒ်စာသားကို copy လုပ်ပါ။"
     },
     "sourceLanguage": "ရင်းမြစ် ဘာသာစကား",
     "targetLanguage": "ပန်းတိုင် ဘာသာစကား",
