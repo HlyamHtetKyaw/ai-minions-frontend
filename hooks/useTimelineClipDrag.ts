@@ -27,12 +27,16 @@ export type UseTimelineClipDragParams = {
   onDragGuideLines?: (ratios: number[] | null) => void;
   currentRowId?: string;
   onMoveToRow?: (targetRowId: string) => void;
+  onLiveUpdate?: (timeSec: number | null) => void;
+  snapPointsSec?: number[];
+  snapThresholdPx?: number;
 };
 
 export type UseTimelineClipDragResult = {
   clipStyle: { left: string; width: string };
   isDragging: boolean;
   dragType: TimelineClipDragType | null;
+  previewRange: { start: number; end: number } | null;
   tooltipText: string | null;
   tooltipPosition: { x: number; y: number } | null;
   handlers: {
@@ -56,12 +60,19 @@ export function useTimelineClipDrag({
   onDragGuideLines,
   currentRowId,
   onMoveToRow,
+  onLiveUpdate,
+  snapPointsSec,
+  snapThresholdPx = 8,
 }: UseTimelineClipDragParams): UseTimelineClipDragResult {
   void _layerId;
   const onUpdateRef = useRef(onUpdate);
   onUpdateRef.current = onUpdate;
   const onDragGuideLinesRef = useRef(onDragGuideLines);
   onDragGuideLinesRef.current = onDragGuideLines;
+  const onLiveUpdateRef = useRef(onLiveUpdate);
+  onLiveUpdateRef.current = onLiveUpdate;
+  const snapPointsRef = useRef(snapPointsSec ?? []);
+  snapPointsRef.current = snapPointsSec ?? [];
 
   const [preview, setPreview] = useState<{ start: number; end: number } | null>(null);
   const [dragType, setDragType] = useState<TimelineClipDragType | null>(null);
@@ -88,6 +99,7 @@ export function useTimelineClipDrag({
     sessionRef.current = null;
     liveRef.current = null;
     onDragGuideLinesRef.current?.(null);
+    onLiveUpdateRef.current?.(null);
     setPreview(null);
     setDragType(null);
     setTooltipText(null);
@@ -173,15 +185,40 @@ export function useTimelineClipDrag({
 
         const pps = pixelsPerSecond(s.trackWidth, s.duration);
         const deltaSec = (ev.clientX - s.startClientX) / pps;
+        const snapThresholdSec = Math.max(0, snapThresholdPx / pps);
+        const snapToNearest = (raw: number) => {
+          const points = snapPointsRef.current;
+          if (points.length === 0) return raw;
+          let snapped = raw;
+          let nearestDiff = Number.POSITIVE_INFINITY;
+          for (const point of points) {
+            const diff = Math.abs(point - raw);
+            if (diff < nearestDiff) {
+              nearestDiff = diff;
+              snapped = point;
+            }
+          }
+          return nearestDiff <= snapThresholdSec ? snapped : raw;
+        };
 
         if (s.type === 'body') {
           const clipDur = s.origEnd - s.origStart;
           let newStart = s.origStart + deltaSec;
           newStart = clamp(newStart, 0, Math.max(0, s.duration - clipDur));
-          const newEnd = newStart + clipDur;
+          let newEnd = newStart + clipDur;
+          const snappedStart = snapToNearest(newStart);
+          const snappedEnd = snapToNearest(newEnd);
+          const shiftByStart = snappedStart - newStart;
+          const shiftByEnd = snappedEnd - newEnd;
+          const shift = Math.abs(shiftByStart) <= Math.abs(shiftByEnd) ? shiftByStart : shiftByEnd;
+          if (Math.abs(shift) > 0) {
+            newStart = clamp(newStart + shift, 0, Math.max(0, s.duration - clipDur));
+            newEnd = newStart + clipDur;
+          }
           liveRef.current = { start: newStart, end: newEnd };
           setPreview({ start: newStart, end: newEnd });
           reportGuideLines({ start: newStart, end: newEnd });
+          onLiveUpdateRef.current?.(newStart);
           updateTooltip(
             ev.clientX,
             `start: ${newStart.toFixed(1)}s — end: ${newEnd.toFixed(1)}s`,
@@ -195,17 +232,21 @@ export function useTimelineClipDrag({
           }
         } else if (s.type === 'left') {
           const maxStart = s.origEnd - MIN_CLIP_SEC;
-          const newStart = clamp(s.origStart + deltaSec, 0, maxStart);
+          const rawStart = clamp(s.origStart + deltaSec, 0, maxStart);
+          const newStart = clamp(snapToNearest(rawStart), 0, maxStart);
           liveRef.current = { start: newStart, end: s.origEnd };
           setPreview({ start: newStart, end: s.origEnd });
           reportGuideLines({ start: newStart, end: s.origEnd });
+          onLiveUpdateRef.current?.(newStart);
           updateTooltip(ev.clientX, `start: ${newStart.toFixed(1)}s`);
         } else {
           const minEnd = s.origStart + MIN_CLIP_SEC;
-          const newEnd = clamp(s.origEnd + deltaSec, minEnd, s.duration);
+          const rawEnd = clamp(s.origEnd + deltaSec, minEnd, s.duration);
+          const newEnd = clamp(snapToNearest(rawEnd), minEnd, s.duration);
           liveRef.current = { start: s.origStart, end: newEnd };
           setPreview({ start: s.origStart, end: newEnd });
           reportGuideLines({ start: s.origStart, end: newEnd });
+          onLiveUpdateRef.current?.(newEnd);
           updateTooltip(ev.clientX, `end: ${newEnd.toFixed(1)}s`);
         }
       };
@@ -241,6 +282,7 @@ export function useTimelineClipDrag({
         }
 
         onDragGuideLinesRef.current?.(null);
+        onLiveUpdateRef.current?.(null);
         setPreview(null);
         setDragType(null);
         setTooltipText(null);
@@ -300,6 +342,7 @@ export function useTimelineClipDrag({
     },
     isDragging: dragType != null,
     dragType,
+    previewRange: preview,
     tooltipText,
     tooltipPosition,
     handlers: {

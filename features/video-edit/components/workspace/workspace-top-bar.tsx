@@ -4,7 +4,6 @@ import { Link } from '@/i18n/navigation';
 export type WorkspaceAspectId = '16:9' | '9:16' | '1:1' | '4:3';
 
 type WorkspaceTopBarProps = {
-  historyLabel: string;
   exportLabel: string;
   /** When true, export is blocked (e.g. video is still a local blob: URL). */
   exportDisabled?: boolean;
@@ -17,10 +16,10 @@ type WorkspaceTopBarProps = {
   canUndo?: boolean;
   canRedo?: boolean;
   syncStatusLabel?: string;
+  controlsDisabled?: boolean;
 };
 
 export function WorkspaceTopBar({
-  historyLabel,
   exportLabel,
   exportDisabled = false,
   exportDisabledTitle,
@@ -32,23 +31,24 @@ export function WorkspaceTopBar({
   canUndo = false,
   canRedo = false,
   syncStatusLabel,
+  controlsDisabled = false,
 }: WorkspaceTopBarProps) {
   return (
     <header className="flex shrink-0 flex-col gap-2 border-b border-white/10 bg-black/80 px-3 py-2 backdrop-blur-sm sm:px-4 lg:min-h-14 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
       <div className="flex min-w-0 w-full items-center lg:flex-1">
-        <Link
-          href="/video-edit/history"
-          className="inline-flex min-w-0 items-center rounded-lg py-1.5 pr-2 text-sm font-medium text-muted underline underline-offset-4 decoration-muted/60 transition-colors hover:text-foreground hover:decoration-foreground"
-        >
-          <span className="truncate">{historyLabel}</span>
-        </Link>
-        <div className="ml-2 flex items-center gap-1">
+        <div className="flex items-center gap-2">
+          <Link
+            href="/"
+            className="inline-flex items-center rounded-md border border-white/15 px-2.5 py-1.5 text-xs font-medium text-zinc-200 transition hover:border-white/30 hover:bg-white/5 hover:text-white"
+          >
+            ← Back to Home
+          </Link>
           <button
             type="button"
             title="Undo (Ctrl+Z)"
             aria-label="Undo"
             onClick={onUndoClick}
-            disabled={!canUndo}
+            disabled={controlsDisabled || !canUndo}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 text-muted transition-colors hover:border-white/20 hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
           >
             <Undo2 className="h-4 w-4" />
@@ -58,7 +58,7 @@ export function WorkspaceTopBar({
             title="Redo (Ctrl+Y)"
             aria-label="Redo"
             onClick={onRedoClick}
-            disabled={!canRedo}
+            disabled={controlsDisabled || !canRedo}
             className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-white/10 text-muted transition-colors hover:border-white/20 hover:text-foreground disabled:pointer-events-none disabled:opacity-35"
           >
             <Redo2 className="h-4 w-4" />
@@ -77,6 +77,7 @@ export function WorkspaceTopBar({
           <button
             type="button"
             onClick={onResetClick}
+            disabled={controlsDisabled}
             className="rounded-lg border border-rose-500/30 bg-transparent px-3 py-2 text-sm font-medium text-rose-200 transition-colors hover:border-rose-400/50 hover:bg-rose-500/10"
           >
             {resetLabel}
@@ -84,7 +85,7 @@ export function WorkspaceTopBar({
           <button
             type="button"
             onClick={onExportClick}
-            disabled={exportDisabled}
+            disabled={controlsDisabled || exportDisabled}
             title={exportDisabled ? exportDisabledTitle : undefined}
             className="rounded-lg border border-white/20 bg-transparent px-4 py-2 text-sm font-medium text-foreground transition-colors hover:border-violet-400/40 hover:bg-violet-500/10 disabled:pointer-events-none disabled:opacity-40"
           >

@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Rnd } from 'react-rnd';
 import { useEditorStore } from '@/store/editorStore';
 import type { BlurLayer as BlurLayerType } from '@/store/editorStore';
@@ -29,6 +29,13 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
   const setSelectedLayerId = useEditorStore((s) => s.setSelectedLayerId);
 
   const selected = layer.id === selectedLayerId;
+  const supportsBackdropBlur = useMemo(() => {
+    if (typeof window === 'undefined' || typeof CSS === 'undefined') return true;
+    return (
+      CSS.supports('backdrop-filter: blur(2px)') ||
+      CSS.supports('-webkit-backdrop-filter: blur(2px)')
+    );
+  }, []);
   /** Only capture pointer events while the blur tool is active so native video controls stay usable. */
   const interactiveOnCanvas = selected && activeTool === 'blur';
 
@@ -119,10 +126,16 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
             : '1px dashed rgba(93,202,165,0.2)',
           boxSizing: 'border-box',
           opacity: layer.opacity / 100,
-          backdropFilter: `blur(${intensity}px)`,
-          WebkitBackdropFilter: `blur(${intensity}px)`,
-          background: 'rgba(255,255,255,0.05)',
+          backdropFilter: supportsBackdropBlur ? `blur(${intensity}px)` : undefined,
+          WebkitBackdropFilter: supportsBackdropBlur ? `blur(${intensity}px)` : undefined,
+          // Fallback for browsers without backdrop-filter (notably some Firefox setups):
+          // keep a visible "obscured" region so preview remains usable.
+          background: supportsBackdropBlur
+            ? 'rgba(255,255,255,0.05)'
+            : `linear-gradient(135deg, rgba(12,12,14,${Math.min(0.56, 0.24 + intensity * 0.012)}), rgba(28,28,34,${Math.min(0.46, 0.18 + intensity * 0.01)}))`,
+          boxShadow: supportsBackdropBlur ? undefined : 'inset 0 0 0 9999px rgba(0,0,0,0.06)',
           isolation: 'isolate',
+          willChange: supportsBackdropBlur ? 'backdrop-filter' : undefined,
         }}
       />
     </Rnd>

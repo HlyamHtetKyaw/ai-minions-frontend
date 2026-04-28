@@ -71,6 +71,8 @@ type WorkspaceTextClipProps = {
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onMoveToRow?: (clipId: string, rowId: string) => void;
+  snapPointsSec?: number[];
+  onTrimHoverTimeChange?: (timeSec: number | null) => void;
 };
 
 function WorkspaceTextTimelineClip({
@@ -81,6 +83,8 @@ function WorkspaceTextTimelineClip({
   trackLaneRef,
   onSelect,
   onMoveToRow,
+  snapPointsSec,
+  onTrimHoverTimeChange,
 }: WorkspaceTextClipProps) {
   const updateTextLayer = useEditorStore((s) => s.updateTextLayer);
   const startTime = clip.start * durationSec;
@@ -98,6 +102,8 @@ function WorkspaceTextTimelineClip({
   const {
     clipStyle,
     isDragging,
+    dragType,
+    previewRange,
     tooltipText,
     tooltipPosition,
     handlers,
@@ -110,7 +116,17 @@ function WorkspaceTextTimelineClip({
     onUpdate: onClipUpdate,
     currentRowId: rowId,
     onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
+    onLiveUpdate: onTrimHoverTimeChange,
+    snapPointsSec,
   });
+  const ghostLeftPct =
+    durationSec > 0 && previewRange != null && dragType === 'left'
+      ? Math.max(0, ((previewRange.start - startTime) / durationSec) * 100)
+      : 0;
+  const ghostRightPct =
+    durationSec > 0 && previewRange != null && dragType === 'right'
+      ? Math.max(0, ((endTime - previewRange.end) / durationSec) * 100)
+      : 0;
 
   return (
     <>
@@ -126,6 +142,20 @@ function WorkspaceTextTimelineClip({
         }}
         title={clip.label}
       >
+        {ghostLeftPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostLeftPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
+        {ghostRightPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostRightPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
         {selected && (
           <>
             <div
@@ -194,6 +224,8 @@ type WorkspaceBlurClipProps = {
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onMoveToRow?: (clipId: string, rowId: string) => void;
+  snapPointsSec?: number[];
+  onTrimHoverTimeChange?: (timeSec: number | null) => void;
 };
 
 function WorkspaceBlurTimelineClip({
@@ -204,6 +236,8 @@ function WorkspaceBlurTimelineClip({
   trackLaneRef,
   onSelect,
   onMoveToRow,
+  snapPointsSec,
+  onTrimHoverTimeChange,
 }: WorkspaceBlurClipProps) {
   const updateBlurLayer = useEditorStore((s) => s.updateBlurLayer);
   const startTime = clip.start * durationSec;
@@ -219,6 +253,8 @@ function WorkspaceBlurTimelineClip({
   const {
     clipStyle,
     isDragging,
+    dragType,
+    previewRange,
     tooltipText,
     tooltipPosition,
     handlers,
@@ -231,7 +267,17 @@ function WorkspaceBlurTimelineClip({
     onUpdate: onClipUpdate,
     currentRowId: rowId,
     onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
+    onLiveUpdate: onTrimHoverTimeChange,
+    snapPointsSec,
   });
+  const ghostLeftPct =
+    durationSec > 0 && previewRange != null && dragType === 'left'
+      ? Math.max(0, ((previewRange.start - startTime) / durationSec) * 100)
+      : 0;
+  const ghostRightPct =
+    durationSec > 0 && previewRange != null && dragType === 'right'
+      ? Math.max(0, ((endTime - previewRange.end) / durationSec) * 100)
+      : 0;
 
   return (
     <>
@@ -246,6 +292,20 @@ function WorkspaceBlurTimelineClip({
           border: selected ? '2px solid #F0997B' : '0.5px solid #993C1D',
         }}
       >
+        {ghostLeftPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostLeftPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
+        {ghostRightPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostRightPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
         {selected && (
           <>
             <div
@@ -314,6 +374,8 @@ type WorkspaceImageClipProps = {
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onMoveToRow?: (clipId: string, rowId: string) => void;
+  snapPointsSec?: number[];
+  onTrimHoverTimeChange?: (timeSec: number | null) => void;
 };
 
 function WorkspaceImageTimelineClip({
@@ -324,6 +386,8 @@ function WorkspaceImageTimelineClip({
   trackLaneRef,
   onSelect,
   onMoveToRow,
+  snapPointsSec,
+  onTrimHoverTimeChange,
 }: WorkspaceImageClipProps) {
   const updateImageLayer = useEditorStore((s) => s.updateImageLayer);
   const startTime = clip.start * durationSec;
@@ -341,6 +405,8 @@ function WorkspaceImageTimelineClip({
   const {
     clipStyle,
     isDragging,
+    dragType,
+    previewRange,
     tooltipText,
     tooltipPosition,
     handlers,
@@ -353,7 +419,17 @@ function WorkspaceImageTimelineClip({
     onUpdate: onClipUpdate,
     currentRowId: rowId,
     onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
+    onLiveUpdate: onTrimHoverTimeChange,
+    snapPointsSec,
   });
+  const ghostLeftPct =
+    durationSec > 0 && previewRange != null && dragType === 'left'
+      ? Math.max(0, ((previewRange.start - startTime) / durationSec) * 100)
+      : 0;
+  const ghostRightPct =
+    durationSec > 0 && previewRange != null && dragType === 'right'
+      ? Math.max(0, ((endTime - previewRange.end) / durationSec) * 100)
+      : 0;
 
   return (
     <>
@@ -370,6 +446,20 @@ function WorkspaceImageTimelineClip({
           border: selected ? '2px solid #EF9F27' : '0.5px solid #854F0B',
         }}
       >
+        {ghostLeftPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostLeftPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
+        {ghostRightPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostRightPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
         {selected && (
           <>
             <div
@@ -448,6 +538,8 @@ type WorkspaceVideoClipProps = {
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onMoveToRow?: (clipId: string, rowId: string) => void;
+  snapPointsSec?: number[];
+  onTrimHoverTimeChange?: (timeSec: number | null) => void;
 };
 
 type WorkspaceAudioClipProps = {
@@ -458,6 +550,8 @@ type WorkspaceAudioClipProps = {
   trackLaneRef: React.RefObject<HTMLDivElement | null>;
   onSelect: (id: string) => void;
   onMoveToRow?: (clipId: string, rowId: string) => void;
+  snapPointsSec?: number[];
+  onTrimHoverTimeChange?: (timeSec: number | null) => void;
 };
 
 function WorkspaceVideoTimelineClip({
@@ -468,6 +562,8 @@ function WorkspaceVideoTimelineClip({
   trackLaneRef,
   onSelect,
   onMoveToRow,
+  snapPointsSec,
+  onTrimHoverTimeChange,
 }: WorkspaceVideoClipProps) {
   const playbackSpeed = useEditorStore((s) => s.playbackSpeed);
   const updateVideoTimelineSegment = useEditorStore((s) => s.updateVideoTimelineSegment);
@@ -484,6 +580,8 @@ function WorkspaceVideoTimelineClip({
   const {
     clipStyle,
     isDragging,
+    dragType,
+    previewRange,
     tooltipText,
     tooltipPosition,
     handlers,
@@ -496,7 +594,17 @@ function WorkspaceVideoTimelineClip({
     onUpdate: onClipUpdate,
     currentRowId: rowId,
     onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
+    onLiveUpdate: onTrimHoverTimeChange,
+    snapPointsSec,
   });
+  const ghostLeftPct =
+    durationSec > 0 && previewRange != null && dragType === 'left'
+      ? Math.max(0, ((previewRange.start - startTime) / durationSec) * 100)
+      : 0;
+  const ghostRightPct =
+    durationSec > 0 && previewRange != null && dragType === 'right'
+      ? Math.max(0, ((endTime - previewRange.end) / durationSec) * 100)
+      : 0;
 
   return (
     <>
@@ -509,6 +617,20 @@ function WorkspaceVideoTimelineClip({
           border: selected ? '2px solid #5DCAA5' : undefined,
         }}
       >
+        {ghostLeftPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 z-10 bg-black/40"
+            style={{ width: `${Math.min(100, ghostLeftPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
+        {ghostRightPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 z-10 bg-black/40"
+            style={{ width: `${Math.min(100, ghostRightPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
         {selected && (
           <>
             <div
@@ -592,6 +714,8 @@ function WorkspaceAudioTimelineClip({
   trackLaneRef,
   onSelect,
   onMoveToRow,
+  snapPointsSec,
+  onTrimHoverTimeChange,
 }: WorkspaceAudioClipProps) {
   const updateAudioTrack = useEditorStore((s) => s.updateAudioTrack);
   const startTime = clip.start * durationSec;
@@ -604,7 +728,15 @@ function WorkspaceAudioTimelineClip({
     [clip.id, updateAudioTrack],
   );
 
-  const { clipStyle, isDragging, tooltipText, tooltipPosition, handlers } = useWorkspaceTimelineClipDrag({
+  const {
+    clipStyle,
+    isDragging,
+    dragType,
+    previewRange,
+    tooltipText,
+    tooltipPosition,
+    handlers,
+  } = useWorkspaceTimelineClipDrag({
     layerId: clip.id,
     startTime,
     endTime,
@@ -613,7 +745,17 @@ function WorkspaceAudioTimelineClip({
     onUpdate: onClipUpdate,
     currentRowId: rowId,
     onMoveToRow: onMoveToRow ? (targetRowId) => onMoveToRow(clip.id, targetRowId) : undefined,
+    onLiveUpdate: onTrimHoverTimeChange,
+    snapPointsSec,
   });
+  const ghostLeftPct =
+    durationSec > 0 && previewRange != null && dragType === 'left'
+      ? Math.max(0, ((previewRange.start - startTime) / durationSec) * 100)
+      : 0;
+  const ghostRightPct =
+    durationSec > 0 && previewRange != null && dragType === 'right'
+      ? Math.max(0, ((endTime - previewRange.end) / durationSec) * 100)
+      : 0;
 
   const isMusic = clip.audioType === 'music';
   const bg = isMusic ? '#0a1612' : '#0a1a2a';
@@ -632,6 +774,20 @@ function WorkspaceAudioTimelineClip({
         className="absolute top-1 flex h-[calc(100%-0.5rem)] min-w-8 touch-none items-center overflow-hidden rounded px-2 text-[10px] font-medium ring-1 ring-inset"
         style={{ ...clipStyle, boxSizing: 'border-box', background: bg, color: '#D4D4D8', border }}
       >
+        {ghostLeftPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 left-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostLeftPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
+        {ghostRightPct > 0 ? (
+          <div
+            className="pointer-events-none absolute inset-y-0 right-0 bg-black/35"
+            style={{ width: `${Math.min(100, ghostRightPct)}%` }}
+            aria-hidden
+          />
+        ) : null}
         {selected && (
           <>
             <div
@@ -716,6 +872,8 @@ type WorkspaceTimelineDockProps = {
   onPrev?: () => void;
   onNext?: () => void;
   onSeekRatio?: (ratio: number) => void;
+  playheadTimeSec?: number;
+  onTrimHoverTimeChange?: (timeSec: number | null) => void;
   /** Selected timeline clip id (`main-video` or a text layer id). */
   selectedTimelineClipId?: string | null;
   /** Clear timeline clip selection (empty video / text lane click). */
@@ -781,6 +939,8 @@ export function WorkspaceTimelineDock({
   onPrev,
   onNext,
   onSeekRatio,
+  playheadTimeSec = 0,
+  onTrimHoverTimeChange,
   selectedTimelineClipId = null,
   onTimelineDeselect,
   onTimelineClipSelect,
@@ -905,19 +1065,8 @@ export function WorkspaceTimelineDock({
         >
           {timeDisplay}
         </span>
-        {trimToolActive && !transportDisabled && onSplitAtPlayhead != null ? (
+        {trimToolActive && !transportDisabled ? (
           <div className="flex max-w-[min(100%,28rem)] flex-wrap items-center gap-1">
-            <button
-              type="button"
-              aria-label={splitAtPlayheadAriaLabel ?? splitAtPlayheadLabel}
-              onClick={(e) => {
-                e.stopPropagation();
-                onSplitAtPlayhead();
-              }}
-              className="rounded-md border border-amber-500/45 bg-amber-500/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-amber-100 transition-colors hover:bg-amber-500/25"
-            >
-              {splitAtPlayheadLabel}
-            </button>
             {onTrimHeadAtPlayhead != null ? (
               <button
                 type="button"
@@ -1080,7 +1229,12 @@ export function WorkspaceTimelineDock({
               </div>
 
               <div className="relative flex min-h-0 flex-col">
-                {tracks.map((row) => (
+                {tracks.map((row) => {
+                  const rowClipEdgesSec = row.clips.flatMap((item) => [
+                    item.start * durationSec,
+                    (item.start + item.width) * durationSec,
+                  ]);
+                  return (
                 <div
                   key={row.id}
                   data-timeline-track-row
@@ -1120,6 +1274,16 @@ export function WorkspaceTimelineDock({
                   }
                 >
                   {row.clips.map((clip) => {
+                    const clipStartSec = clip.start * durationSec;
+                    const clipEndSec = (clip.start + clip.width) * durationSec;
+                    const snapPointsSec = [
+                      ...rowClipEdgesSec.filter(
+                        (value) =>
+                          Math.abs(value - clipStartSec) > 1e-4 &&
+                          Math.abs(value - clipEndSec) > 1e-4,
+                      ),
+                      playheadTimeSec,
+                    ].filter((value) => Number.isFinite(value));
                     if (clip.kind === 'video' && onTimelineClipSelect != null) {
                       return (
                         <WorkspaceVideoTimelineClip
@@ -1131,6 +1295,8 @@ export function WorkspaceTimelineDock({
                           trackLaneRef={videoTrackLaneRef}
                           onSelect={onTimelineClipSelect}
                           onMoveToRow={onTimelineClipMoveRow}
+                          snapPointsSec={snapPointsSec}
+                          onTrimHoverTimeChange={onTrimHoverTimeChange}
                         />
                       );
                     }
@@ -1145,6 +1311,8 @@ export function WorkspaceTimelineDock({
                           trackLaneRef={textTrackLaneRef}
                           onSelect={onTimelineClipSelect}
                           onMoveToRow={onTimelineClipMoveRow}
+                          snapPointsSec={snapPointsSec}
+                          onTrimHoverTimeChange={onTrimHoverTimeChange}
                         />
                       );
                     }
@@ -1159,6 +1327,8 @@ export function WorkspaceTimelineDock({
                           trackLaneRef={blurTrackLaneRef}
                           onSelect={onTimelineClipSelect}
                           onMoveToRow={onTimelineClipMoveRow}
+                          snapPointsSec={snapPointsSec}
+                          onTrimHoverTimeChange={onTrimHoverTimeChange}
                         />
                       );
                     }
@@ -1173,6 +1343,8 @@ export function WorkspaceTimelineDock({
                           trackLaneRef={imageTrackLaneRef}
                           onSelect={onTimelineClipSelect}
                           onMoveToRow={onTimelineClipMoveRow}
+                          snapPointsSec={snapPointsSec}
+                          onTrimHoverTimeChange={onTrimHoverTimeChange}
                         />
                       );
                     }
@@ -1187,6 +1359,8 @@ export function WorkspaceTimelineDock({
                           trackLaneRef={audioTrackLaneRef}
                           onSelect={onTimelineAudioClipSelect}
                           onMoveToRow={onTimelineClipMoveRow}
+                          snapPointsSec={snapPointsSec}
+                          onTrimHoverTimeChange={onTrimHoverTimeChange}
                         />
                       );
                     }
@@ -1204,7 +1378,7 @@ export function WorkspaceTimelineDock({
                     );
                   })}
                 </div>
-              ))}
+              );})}
               </div>
 
               <div className="pointer-events-none absolute inset-0 z-10" aria-hidden>

@@ -27,6 +27,7 @@ type WorkspaceToolRailProps = {
   tools: ToolDef[];
   activeTool: WorkspaceToolId;
   onToolChange: (id: WorkspaceToolId) => void;
+  disabled?: boolean;
 };
 
 const ICONS: Record<WorkspaceToolId, ReactNode> = {
@@ -40,7 +41,7 @@ const ICONS: Record<WorkspaceToolId, ReactNode> = {
   trim: <Scissors strokeWidth={1.75} />,
 };
 
-export function WorkspaceToolRail({ tools, activeTool, onToolChange }: WorkspaceToolRailProps) {
+export function WorkspaceToolRail({ tools, activeTool, onToolChange, disabled = false }: WorkspaceToolRailProps) {
   return (
     <aside
       className="flex w-full shrink-0 flex-row gap-1.5 overflow-x-auto overflow-y-hidden border-b border-white/10 bg-black/60 px-2 py-2 [scrollbar-width:none] [-ms-overflow-style:none] lg:h-full lg:max-h-none lg:w-[4.5rem] lg:flex-col lg:overflow-y-auto lg:overflow-x-hidden lg:border-r lg:border-b-0 lg:px-2 lg:py-3 [&::-webkit-scrollbar]:h-0 [&::-webkit-scrollbar]:w-0"
@@ -51,7 +52,8 @@ export function WorkspaceToolRail({ tools, activeTool, onToolChange }: Workspace
           key={tool.id}
           label={tool.label}
           icon={ICONS[tool.id]}
-          active={activeTool === tool.id}
+          active={!disabled && activeTool === tool.id}
+          disabled={disabled}
           onClick={() => onToolChange(tool.id)}
         />
       ))}
