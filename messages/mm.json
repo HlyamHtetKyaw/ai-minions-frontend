@@ -91,7 +91,31 @@
     "activateSubmit": "အသုံးပြုရန်",
     "activateSubmitting": "လုပ်ဆောင်နေသည်…",
     "activateSuccess": "ကုဒ် အသုံးပြုပြီးပါပြီ။ ကရက်ဒစ်နှင့် အစီအစဉ် ပြင်ဆင်ပြီးပါပြီ။",
-    "activateError": "ဤကုဒ်ကို အသုံးမပြုနိုင်ပါ။"
+    "activateError": "ဤကုဒ်ကို အသုံးမပြုနိုင်ပါ။",
+    "usageHistory": {
+      "title": "အသုံးပြုထားသော ပွိုင့် မှတ်တမ်း",
+      "subtitle": "ဘယ် AI feature မှာ ပွိုင့်ဘယ်လောက် အသုံးပြုခဲ့သလဲနဲ့ အချိန်ကို ကြည့်နိုင်သည်။",
+      "loadError": "အသုံးပြုမှု မှတ်တမ်း မဖတ်နိုင်ပါ။",
+      "empty": "အသုံးပြုမှုမရှိသေးပါ။ Feature တစ်ခု run လုပ်ပြီး မှတ်တမ်းကြည့်ပါ။",
+      "loadMore": "ပိုမိုကြည့်ရန်",
+      "loadingMore": "ဖွင့်နေသည်…",
+      "notCharged": "မကောက်ခံထားပါ",
+      "pointsUnit": "pts",
+      "statusPending": "စောင့်ဆိုင်းနေ",
+      "statusSuccess": "အောင်မြင်",
+      "statusFailed": "မအောင်မြင်",
+      "featureTranslate": "ဘာသာပြန်",
+      "featureVoiceOver": "အသံသွင်း",
+      "featureTranscribe": "စကားပြောမှတ်တမ်း",
+      "featureSubtitles": "စာတန်းထိုး",
+      "featureContentV2": "အကြောင်းအရာထုတ်လုပ်မှု",
+      "featureBalancedSync": "Balanced sync",
+      "featureTextGeneration": "စာသားထုတ်လုပ်မှု",
+      "featureImageGeneration": "ပုံထုတ်လုပ်မှု",
+      "featureAudioGeneration": "အသံထုတ်လုပ်မှု",
+      "featureVideoGeneration": "ဗီဒီယိုထုတ်လုပ်မှု",
+      "featureUnknown": "မသိ feature"
+    }
   },
   "pricing": {
     "metaTitle": "စျေးနှုန်း — AI Minions",
