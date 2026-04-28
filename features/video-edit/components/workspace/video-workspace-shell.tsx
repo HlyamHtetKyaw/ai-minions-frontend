@@ -24,6 +24,7 @@ import {
 import { triggerWorkspaceExportDownload } from '@/lib/video-editor-api';
 import { videoEditorExportEstimateExisting } from '@/lib/video-editor-api';
 import { fetchMe } from '@/lib/auth';
+import { openGenerationJobSseStream, parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 import {
   MAIN_VIDEO_TIMELINE_CLIP_ID,
   useEditorStore,
@@ -541,24 +542,10 @@ export function VideoWorkspaceShell() {
           if (status.message) {
             const percent = typeof status.progressPercent === 'number' ? ` (${Math.round(status.progressPercent)}%)` : '';
             setWorkspaceSyncStatus(`${status.message}${percent}`);
-            if (exportOverlayPhaseRef.current === 'exporting') {
-              const nextPercent =
-                typeof status.progressPercent === 'number'
-                  ? Math.max(0, Math.min(100, Math.round(status.progressPercent)))
-                  : null;
-              if (nextPercent != null) {
-                setExportProgressPercent(nextPercent);
-              }
-              setExportProgressMessage(status.message);
-            }
             return;
           }
           if (status.status) {
             setWorkspaceSyncStatus(`Workspace ${status.status}`);
-            if (exportOverlayPhaseRef.current === 'exporting' && status.status === 'saved') {
-              setExportProgressPercent(100);
-              setExportProgressMessage('Export ready');
-            }
             return;
           }
         } catch {
@@ -1218,16 +1205,84 @@ export function VideoWorkspaceShell() {
       },
     });
     setExportProgressPercent(8);
-    setExportProgressMessage('Export started');
+    setExportProgressMessage('Preparing export job');
     setExportOverlayPhase('exporting');
     setWorkspaceSyncStatus('Exporting video...');
     try {
       const result = await exportVideoEditorWorkspace(payload);
-      setExportProgressPercent(100);
-      setExportProgressMessage('Export ready');
-      setExportOverlayPhase('downloading');
-      setWorkspaceSyncStatus('Downloading export...');
-      await triggerWorkspaceExportDownload(result.downloadUrl, result.s3Key);
+      if (result.generationId != null) {
+        setExportProgressPercent(14);
+        setExportProgressMessage('Export job queued');
+        const exportSseOverrides = {
+          subscribedLabel: 'Export queued',
+          subscribedPercent: 18,
+          stages: {
+            workspace_export_started: { percent: 28, label: 'Rendering timeline' },
+            workspace_export_encoding: { percent: 62, label: 'Encoding video' },
+            workspace_export_uploading: { percent: 88, label: 'Uploading result' },
+          },
+        } as const;
+        const sseResult = await new Promise<{ downloadUrl: string; s3Key: string }>((resolve, reject) => {
+          openGenerationJobSseStream(result.generationId!, {
+            onStatus: (raw) => {
+              const p = parseGenerationSseProgressPayload(raw, exportSseOverrides);
+              if (p) {
+                setExportProgressPercent((prev) => Math.max(prev, Math.min(99, p.percent)));
+                setExportProgressMessage(p.label);
+              }
+            },
+            onDone: () => {},
+            onError: (message) => {
+              reject(new Error(message || 'Export stream failed'));
+            },
+            onTerminal: (payload) => {
+              if (payload.status !== 'completed') {
+                reject(new Error(payload.message || 'Export failed'));
+                return;
+              }
+              const output =
+                typeof payload.outputData === 'string'
+                  ? (() => {
+                      try {
+                        return JSON.parse(payload.outputData) as Record<string, unknown>;
+                      } catch {
+                        return undefined;
+                      }
+                    })()
+                  : payload.outputData != null && typeof payload.outputData === 'object'
+                    ? (payload.outputData as Record<string, unknown>)
+                    : undefined;
+              const resultNode =
+                output && typeof output.result === 'object' && output.result != null
+                  ? (output.result as Record<string, unknown>)
+                  : undefined;
+              const downloadUrl =
+                (typeof resultNode?.readUrl === 'string' && resultNode.readUrl) ||
+                (typeof resultNode?.downloadUrl === 'string' && resultNode.downloadUrl) ||
+                result.downloadUrl ||
+                '';
+              const s3Key =
+                (typeof resultNode?.s3Key === 'string' && resultNode.s3Key) || result.s3Key || '';
+              if (!downloadUrl) {
+                reject(new Error('Export completed but missing download URL'));
+                return;
+              }
+              resolve({ downloadUrl, s3Key });
+            },
+          });
+        });
+        setExportProgressPercent(100);
+        setExportProgressMessage('Export ready');
+        setExportOverlayPhase('downloading');
+        setWorkspaceSyncStatus('Downloading export...');
+        await triggerWorkspaceExportDownload(sseResult.downloadUrl, sseResult.s3Key);
+      } else {
+        setExportProgressPercent(100);
+        setExportProgressMessage('Export ready');
+        setExportOverlayPhase('downloading');
+        setWorkspaceSyncStatus('Downloading export...');
+        await triggerWorkspaceExportDownload(result.downloadUrl, result.s3Key);
+      }
       setWorkspaceSyncStatus('Export downloaded');
     } catch (error) {
       setWorkspaceSyncStatus(

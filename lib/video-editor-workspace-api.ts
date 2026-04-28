@@ -29,6 +29,8 @@ export type VideoEditorExportResult = {
   storageUrl: string;
   downloadUrl: string;
   s3Key: string;
+  generationId?: number;
+  status?: string;
 };
 
 export async function getVideoEditorWorkspace(): Promise<VideoEditorWorkspaceSnapshotResult> {
@@ -135,12 +137,30 @@ export async function exportVideoEditorWorkspace(payload: unknown): Promise<Vide
     },
     body: JSON.stringify({ payload }),
   });
-  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<VideoEditorExportResult>;
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<Record<string, unknown>>;
   if (!res.ok || !json.success || json.data == null) {
     throw new Error(errorMessageFromBody(json, `Failed to export video (${res.status})`));
   }
-  notifyUserCreditBalanceRefresh();
-  return json.data;
+  const raw = json.data;
+  const storageUrl = typeof raw.storageUrl === 'string' ? raw.storageUrl : '';
+  const downloadUrl =
+    typeof raw.downloadUrl === 'string'
+      ? raw.downloadUrl
+      : typeof raw.readUrl === 'string'
+        ? raw.readUrl
+        : '';
+  const s3Key = typeof raw.s3Key === 'string' ? raw.s3Key : typeof raw.key === 'string' ? raw.key : '';
+  const generationIdRaw =
+    typeof raw.generationId === 'number' ? raw.generationId : Number.parseInt(String(raw.generationId ?? ''), 10);
+  const generationId = Number.isFinite(generationIdRaw) ? generationIdRaw : undefined;
+  const status = typeof raw.status === 'string' ? raw.status : undefined;
+  if (generationId == null && !downloadUrl) {
+    throw new Error('Failed to export video: missing generationId');
+  }
+  if (generationId == null) {
+    notifyUserCreditBalanceRefresh();
+  }
+  return { storageUrl, downloadUrl, s3Key, generationId, status };
 }
 
 export type VideoEditorWorkspaceSseHandlers = {
