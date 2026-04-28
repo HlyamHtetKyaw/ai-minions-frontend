@@ -1,5 +1,6 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
 import { getStoredAccessToken, setSessionHintCookie, setStoredAccessToken } from '@/lib/auth-token';
+import { detectCurrentLocale, getDefaultErrorMessage, getStatusErrorMessage } from '@/lib/api-error-message';
 
 export const fetchInit: RequestInit = { credentials: 'include' };
 
@@ -14,14 +15,16 @@ type ApiEnvelopeLoose<T> = {
   message?: string;
 };
 
-/** ApiResponse from GlobalExceptionHandler, or Spring ProblemDetail / error JSON. */
-export function errorMessageFromBody(json: unknown, fallback: string): string {
-  if (json && typeof json === 'object') {
-    const o = json as Record<string, unknown>;
-    if (typeof o.message === 'string' && o.message.trim()) return o.message;
-    if (typeof o.detail === 'string' && o.detail.trim()) return o.detail;
+/** Always returns locale-aware fixed messages by response status. */
+export function errorMessageFromBody(_: unknown, fallback: string): string {
+  const statusMatch = fallback.match(/\((\d{3})\)/);
+  if (statusMatch) {
+    const status = Number(statusMatch[1]);
+    if (Number.isFinite(status)) {
+      return getStatusErrorMessage(status, detectCurrentLocale());
+    }
   }
-  return fallback;
+  return getDefaultErrorMessage(detectCurrentLocale());
 }
 
 /**

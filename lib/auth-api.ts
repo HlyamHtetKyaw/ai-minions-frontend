@@ -1,4 +1,5 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
+import { detectCurrentLocale, getStatusErrorMessage } from '@/lib/api-error-message';
 
 type ApiEnvelope<T> = {
   success: boolean;
@@ -33,7 +34,7 @@ export async function authLogin(usernameOrEmail: string, password: string): Prom
 
   const json = (await res.json()) as ApiEnvelope<unknown>;
   if (!res.ok || !json.success) {
-    throw new Error(json.message ?? `Login failed (${res.status})`);
+    throw new Error(getStatusErrorMessage(res.status, detectCurrentLocale()));
   }
 
   if (isBodyTokenLogin(json.data)) {

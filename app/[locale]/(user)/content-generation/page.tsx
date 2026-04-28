@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { Check, CircleHelp, Copy, Sparkles } from 'lucide-react';
+import { Check, Copy, Sparkles } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import PageHeader from '@/components/layout/page-header';
 import ProgressBar from '@/components/shared/components/progress-bar';
@@ -14,6 +14,7 @@ import GenerateButton from '@/features/content-generation/components/generate-bu
 import FacebookPreview from '@/features/content-generation/components/FacebookPreview';
 import { DEFAULT_TOON_STYLE, TOON_STYLE_OPTIONS } from '@/features/content-generation/content-toon-styles';
 import UploadZone from '@/components/shared/components/upload-zone';
+import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import {
   contentGenerationEstimatePoints,
   fileToDataUrl,
@@ -23,6 +24,12 @@ import {
   type ContentGenerateV2Params,
   type PointsEstimate,
 } from '@/lib/content-generation-api';
+import {
+  detectCurrentLocale,
+  getDefaultErrorMessage,
+  getNetworkErrorMessage,
+  getStatusErrorMessage,
+} from '@/lib/api-error-message';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 
 function isEstimateNotFoundError(message: string): boolean {
@@ -50,8 +57,16 @@ export default function ContentGenerationPage() {
 
   const toUserSafeError = useCallback((raw: string): string => {
     const msg = (raw ?? '').trim();
-    if (!msg) return 'Content generation failed. Please try again.';
-    return msg.length > 180 ? `${msg.slice(0, 180)}...` : msg;
+    if (!msg) return getDefaultErrorMessage(detectCurrentLocale());
+    const lower = msg.toLowerCase();
+    const statusMatch = msg.match(/\b(\d{3})\b/);
+    if (statusMatch) {
+      return getStatusErrorMessage(Number(statusMatch[1]), detectCurrentLocale());
+    }
+    if (lower.includes('network') || lower.includes('failed to fetch')) {
+      return getNetworkErrorMessage(detectCurrentLocale());
+    }
+    return getDefaultErrorMessage(detectCurrentLocale());
   }, []);
 
   const [contentType, setContentType] = useState<ContentTypeKey>('hook');
@@ -300,9 +315,7 @@ export default function ContentGenerationPage() {
                 }
                 title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
                 action={
-                  <PageHeader.IconButton aria-label={t('page.helpAria')}>
-                    <CircleHelp className="h-5 w-5" />
-                  </PageHeader.IconButton>
+                  <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
                 }
                 subtitle={<PageHeader.Subtitle>{t('page.subtitle')}</PageHeader.Subtitle>}
               />
@@ -456,7 +469,7 @@ export default function ContentGenerationPage() {
                       ) : null}
                       <TonePicker value={tone} onChange={setTone} />
                       <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-                        <p className="text-sm text-muted-foreground">
+                        <p className={`text-sm ${estimateError ? 'text-red-400' : 'text-muted-foreground'}`}>
                           {estimateLoading
                             ? t('estimate.loading')
                             : estimate
@@ -492,8 +505,8 @@ export default function ContentGenerationPage() {
                         </div>
                       ) : null}
                       {!progress && status ? (
-                        <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-                          <p className="text-sm text-muted-foreground">{status}</p>
+                        <div className="rounded-xl border border-red-500/25 bg-red-500/[0.07] px-4 py-3">
+                          <p className="text-sm text-red-400">{status}</p>
                         </div>
                       ) : null}
                     </div>

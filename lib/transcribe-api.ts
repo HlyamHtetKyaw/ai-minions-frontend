@@ -6,6 +6,7 @@ import {
   fetchWithAuthRetry,
 } from '@/lib/api-auth-fetch';
 import { openGenerationJobSseStream, type GenerationJobSseHandlers } from '@/lib/generation-job-sse';
+import { notifyUserCreditBalanceRefresh } from '@/lib/user-credit-balance';
 
 /** Phase 1 — no job id until {@link transcribeCompleteUpload}. */
 export type TranscribePrepareData = {
@@ -203,6 +204,7 @@ export async function transcribeCompleteUpload(uploadSessionId: string): Promise
   if (!res.ok || !json.success || !json.data) {
     throw new Error(errorMessageFromBody(json, `complete-upload failed (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
   return json.data;
 }
 
@@ -220,6 +222,7 @@ export async function transcribeFromExisting(req: TranscribeFromExistingRequest)
   if (!res.ok || !json.success || !json.data) {
     throw new Error(errorMessageFromBody(json, `from-existing failed (${res.status})`));
   }
+  notifyUserCreditBalanceRefresh();
   return json.data;
 }
 

@@ -1,4 +1,5 @@
 import { apiFetch } from "./api";
+import { detectCurrentLocale, getDefaultErrorMessage } from "./api-error-message";
 type ApiEnvelope<T> = {
   success?: boolean;
   data?: T;
@@ -21,9 +22,7 @@ function unwrap<T>(raw: unknown): T {
   }
   const env = raw as ApiEnvelope<T>;
   if (!env.success || env.data === undefined) {
-    throw new Error(
-      typeof env.message === "string" ? env.message : "Request failed",
-    );
+    throw new Error(getDefaultErrorMessage(detectCurrentLocale()));
   }
   return env.data;
 }
@@ -76,8 +75,6 @@ export async function changePassword(body: {
   });
   const env = raw as ApiEnvelope<unknown>;
   if (!env.success) {
-    throw new Error(
-      typeof env.message === "string" ? env.message : "Request failed",
-    );
+    throw new Error(getDefaultErrorMessage(detectCurrentLocale()));
   }
 }

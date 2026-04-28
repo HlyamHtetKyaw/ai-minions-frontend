@@ -63,6 +63,13 @@ declare const messages: {
     "fieldCredits": "Credits",
     "labelFullname": "Display name",
     "labelPhone": "Phone",
+    "edit": "Edit",
+    "cancel": "Cancel",
+    "closeEditor": "Close editor",
+    "editDisplayName": "Edit display name",
+    "editPhone": "Edit phone number",
+    "editDisplayNameHint": "Update the name shown on your account profile.",
+    "editPhoneHint": "Update your contact phone number.",
     "save": "Save changes",
     "saving": "Saving…",
     "saved": "Changes saved.",
@@ -376,7 +383,9 @@ declare const messages: {
   "voice-over": {
     "page": {
       "title": "AI Voice",
-      "subtitle": "Convert text into natural-sounding voice"
+      "subtitle": "Convert text into natural-sounding voice",
+      "helpAria": "Help with AI Voice",
+      "helpMessage": "How to use (English)\n1) Enter your script.\n2) Choose a voice style and voice.\n3) Check the estimated points.\n4) Click Generate Voice.\n5) Preview and download the result.\n\nအသုံးပြုပုံ (Myanmar)\n၁) Script ကိုရေးထည့်ပါ။\n၂) အသံပုံစံနဲ့ အသံကိုရွေးပါ။\n၃) ခန့်မှန်း points ကိုစစ်ပါ။\n၄) Generate Voice ကိုနှိပ်ပါ။\n၅) ရလဒ်အသံကို preview လုပ်ပြီး download လုပ်ပါ။"
     },
     "scriptInput": {
       "kicker": "Script",
@@ -612,7 +621,9 @@ declare const messages: {
   },
   "master-editor": {
     "page": {
-      "title": "Master Editor"
+      "title": "Master Editor",
+      "helpAria": "Help with master editor",
+      "helpMessage": "How to use (English)\n1) Upload your video.\n2) Adjust tools like trim, filters, and text.\n3) Preview changes in the player.\n4) Choose export format and quality.\n5) Click Export.\n\nအသုံးပြုပုံ (Myanmar)\n၁) ဗီဒီယိုကို upload တင်ပါ။\n၂) trim, filter, text စတဲ့ tools တွေနဲ့ ပြင်ပါ။\n၃) player ထဲမှာ preview စစ်ပါ။\n၄) export format နဲ့ quality ရွေးပါ။\n၅) Export ကိုနှိပ်ပါ။"
     },
     "uploadZone": {
       "label": "Upload your video to start editing"
@@ -667,7 +678,9 @@ declare const messages: {
   },
   "voice-gen-live": {
     "page": {
-      "title": "Voice Gen Live"
+      "title": "Voice Gen Live",
+      "helpAria": "Help with voice gen live",
+      "helpMessage": "How to use (English)\n1) Enter your script.\n2) Select a voice.\n3) Click Start.\n4) Sentences play one by one in the live player.\n\nအသုံးပြုပုံ (Myanmar)\n၁) script ကိုရေးထည့်ပါ။\n၂) အသံတစ်ခုရွေးပါ။\n၃) Start ကိုနှိပ်ပါ။\n၄) ဝါကျတွေကို live player မှာ တစ်ကြောင်းချင်း ဖတ်ပြပါမယ်။"
     },
     "scriptInput": {
       "placeholder": "Type your script here. Each sentence will be played one by one…"
@@ -684,7 +697,9 @@ declare const messages: {
   },
   "ai-voice": {
     "page": {
-      "title": "AI Voice Generator"
+      "title": "AI Voice Generator",
+      "helpAria": "Help with AI voice generator",
+      "helpMessage": "How to use (English)\n1) Enter or paste your script.\n2) Choose voice style.\n3) Click Generate Voice.\n4) Play and download the generated audio.\n\nအသုံးပြုပုံ (Myanmar)\n၁) script ကိုရိုက်ထည့် (သို့) ကူးထည့်ပါ။\n၂) အသံပုံစံရွေးပါ။\n၃) Generate Voice ကိုနှိပ်ပါ။\n၄) ထုတ်ပြီးသားအသံကို နားထောင်ပြီး download လုပ်ပါ။"
     },
     "scriptInput": {
       "placeholder": "Type or paste the script you want to convert to voice…"
@@ -699,6 +714,7 @@ declare const messages: {
       "title": "Viral video",
       "subtitle": "Upload an MP4 or WebM video to transcribe speech, translate subtitles, generate AI voice-overs, style captions, sync audio, and export your video-all with auto-save support.",
       "helpAria": "Help with viral video editor",
+      "helpMessage": "How to use (English)\n1) Upload an MP4/WebM video.\n2) Transcribe speech to text.\n3) Translate and edit the script/subtitles.\n4) Generate voice-over and sync audio.\n5) Export the final video.\n\nအသုံးပြုပုံ (Myanmar)\n၁) MP4/WebM ဗီဒီယိုကို upload တင်ပါ။\n၂) စကားပြောကို text အဖြစ် transcribe လုပ်ပါ။\n၃) script/subtitle ကို ဘာသာပြန်ပြီး ပြင်ပါ။\n၄) voice-over ထုတ်ပြီး audio ကို sync ချိန်ပါ။\n၅) နောက်ဆုံး video ကို export ထုတ်ပါ။",
       "loadingWorkspace": "Loading your workspace…",
       "loadingWorkspaceHint": "Checking for a saved editor session.",
       "preparingWorkspace": "Opening your workspace…",
@@ -781,7 +797,8 @@ declare const messages: {
     "page": {
       "title": "Transcribe",
       "subtitle": "Convert audio or video to text",
-      "helpAria": "Help with transcribe"
+      "helpAria": "Help with transcribe",
+      "helpMessage": "How to use (English)\n1) Upload an audio/video file.\n2) Click Transcribe to Text.\n3) Wait for progress to finish.\n4) Copy or download the transcript.\n\nအသုံးပြုပုံ (Myanmar)\n၁) အသံ (သို့) ဗီဒီယိုဖိုင်ကို တင်ပါ။\n၂) Transcribe to Text ကိုနှိပ်ပါ။\n၃) Progress ပြီးသွားအောင် စောင့်ပါ။\n၄) transcript ကို copy (သို့) download လုပ်ပါ။"
     },
     "uploadZone": {
       "label": "Upload your audio or video file",
@@ -823,7 +840,9 @@ declare const messages: {
   "subtitlesPage": {
     "hero": {
       "kicker": "Subtitles",
-      "description": "Upload an audio or video file to generate a Myanmar .srt with timestamps."
+      "description": "Upload an audio or video file to generate a Myanmar .srt with timestamps.",
+      "helpAria": "Help with subtitles",
+      "helpMessage": "How to use (English)\n1) Upload audio/video.\n2) Click Generate subtitles.\n3) Wait for generation to complete.\n4) Download the .srt file and review the preview.\n\nအသုံးပြုပုံ (Myanmar)\n၁) အသံ (သို့) ဗီဒီယိုဖိုင်ကို တင်ပါ။\n၂) Generate subtitles ကိုနှိပ်ပါ။\n၃) ထုတ်လုပ်မှု ပြီးသည်အထိ စောင့်ပါ။\n၄) .srt ဖိုင်ကို download လုပ်ပြီး preview စစ်ပါ။"
     },
     "uploadZone": {
       "kicker": "Upload",
@@ -892,7 +911,8 @@ declare const messages: {
     "page": {
       "title": "Content Creator",
       "subtitle": "Write hooks, captions, and social-ready scripts",
-      "helpAria": "Help with content creator"
+      "helpAria": "Help with content creator",
+      "helpMessage": "How to use (English)\n1) Choose content type and output mode.\n2) Enter topic and tone.\n3) (Optional) upload logo and set style.\n4) Click Generate Content.\n5) Copy text or download the generated image.\n\nအသုံးပြုပုံ (Myanmar)\n၁) Content type နဲ့ output mode ကိုရွေးပါ။\n၂) topic နဲ့ tone ကိုဖြည့်ပါ။\n၃) (လိုလျှင်) logo တင်ပြီး style သတ်မှတ်ပါ။\n၄) Generate Content ကိုနှိပ်ပါ။\n၅) ထုတ်ပြီးသား စာသားကို copy လုပ်ပါ၊ ပုံကို download လုပ်ပါ။"
     },
     "layout": {
       "styleAndActionsHeading": "Style & generate",
@@ -1000,7 +1020,8 @@ declare const messages: {
     "page": {
       "title": "Translate",
       "subtitle": "Multi-language translation for scripts and captions",
-      "helpAria": "Help with translation"
+      "helpAria": "Help with translation",
+      "helpMessage": "How to use (English)\n1) Select source and target language.\n2) Enter source text.\n3) Choose translate style.\n4) Click Translate.\n5) Copy the translated result.\n\nအသုံးပြုပုံ (Myanmar)\n၁) Source နဲ့ target language ကိုရွေးပါ။\n၂) ဘာသာပြန်မယ့် စာသားကိုထည့်ပါ။\n၃) translate style ကိုရွေးပါ။\n၄) Translate ကိုနှိပ်ပါ။\n၅) ပြန်ဆိုပြီး ရလဒ်စာသားကို copy လုပ်ပါ။"
     },
     "sourceLanguage": "Source language",
     "targetLanguage": "Target language",

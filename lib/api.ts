@@ -1,5 +1,18 @@
-import { getStoredAccessToken } from "./auth-token";
+import { clearClientAuth, getStoredAccessToken } from "./auth-token";
 import { getPublicApiBaseUrl } from "./api-base";
+import {
+  detectCurrentLocale,
+  getNetworkErrorMessage,
+  getStatusErrorMessage,
+} from "./api-error-message";
+
+function redirectToLoginOnUnauthorized() {
+  if (typeof window === "undefined") return;
+  clearClientAuth();
+  if (window.location.pathname !== "/login") {
+    window.location.assign("/login");
+  }
+}
 
 export async function apiFetch(path: string, options: RequestInit = {}) {
   const base = getPublicApiBaseUrl();
@@ -9,23 +22,26 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     );
   }
   const token = getStoredAccessToken();
-  const res = await fetch(`${base}${path}`, {
-    ...options,
-    credentials: "include",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...options.headers,
-    },
-  });
+  let res: Response;
+  try {
+    res = await fetch(`${base}${path}`, {
+      ...options,
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch {
+    throw new Error(getNetworkErrorMessage(detectCurrentLocale()));
+  }
 
   if (!res.ok) {
-    const error = await res.json().catch(() => ({} as { message?: string }));
-    const msg =
-      typeof error?.message === "string" && error.message.length > 0
-        ? error.message
-        : `Request failed (${res.status})`;
-    throw new Error(msg);
+    if (res.status === 401) {
+      redirectToLoginOnUnauthorized();
+    }
+    throw new Error(getStatusErrorMessage(res.status, detectCurrentLocale()));
   }
 
   return res.json();

@@ -150,7 +150,7 @@ export function openVoiceOverSse(jobId: string, handlers: {
       if (s === 'completed' || s === 'failed' || s === 'error' || s === 'timeout') {
         handlers.onTerminal?.({
           status: s,
-          message: typeof o.message === 'string' ? o.message : undefined,
+          message: undefined,
           data: o.data,
         });
         if (s === 'completed') {

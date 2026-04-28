@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeftRight } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
+import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import LanguageSelector from '@/features/translate/components/language-selector';
 import TextPanels from '@/features/translate/components/text-panels';
 import TranslateButton from '@/features/translate/components/translate-button';
@@ -114,6 +115,11 @@ export default function TranslatePage() {
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-4 sm:px-6 sm:py-6">
           <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 md:space-y-8">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground">{t('page.title')}</h1>
+              <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
+            </div>
+
             <div className="flex w-full min-w-0 flex-nowrap items-center gap-2">
               <div className="min-w-0 flex-[1_1_0%]">
                 <LanguageSelector
@@ -169,13 +175,17 @@ export default function TranslatePage() {
             </div>
 
             {error ? (
-              <p className="text-sm text-destructive" role="alert">
+              <p className="text-sm text-red-400" role="alert">
                 {error}
               </p>
             ) : null}
 
             {estimateLoading || estimate || estimateError ? (
-              <div className="rounded-xl border border-glass-border bg-glass/60 px-4 py-3 text-sm text-muted backdrop-blur-sm">
+              <div
+                className={`rounded-xl border border-glass-border bg-glass/60 px-4 py-3 text-sm backdrop-blur-sm ${
+                  estimateError ? 'text-red-400' : 'text-muted'
+                }`}
+              >
                 {estimateLoading
                   ? 'Estimating points…'
                   : estimate

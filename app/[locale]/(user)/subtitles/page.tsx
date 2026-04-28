@@ -7,6 +7,7 @@ import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
 import ActionButton from '@/components/shared/components/action-button';
 import ProgressBar from '@/components/shared/components/progress-bar';
+import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import { AUTH_CHANGED_EVENT, clearClientAuth, getStoredAccessToken } from '@/lib/auth-token';
 import { openGenerationJobSseStream } from '@/lib/generation-job-sse';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
@@ -208,13 +209,20 @@ export default function SubtitlesPage() {
     }
   };
 
+  const isGenerateDisabled = !uploadedFile || Boolean(progress && progress.percent < 100);
+
   return (
     <>
       {!isSignedIn ? (
         <LoginGate />
       ) : (
         <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          <div className="mx-auto w-full min-w-0 max-w-5xl space-y-6">
+          <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold text-foreground">{t('hero.kicker')}</h1>
+              <FeatureHelpButton ariaLabel={t('hero.helpAria')} message={t('hero.helpMessage')} />
+            </div>
+
             <div className="rounded-2xl border border-card-border bg-card px-5 py-4">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{t('hero.kicker')}</p>
               <p className="mt-1 text-sm text-muted-foreground">{t('hero.description')}</p>
@@ -241,7 +249,7 @@ export default function SubtitlesPage() {
             />
 
             <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-              <p className="text-sm text-muted-foreground">
+              <p className={`text-sm ${estimateError ? 'text-red-400' : 'text-muted-foreground'}`}>
                 {estimateLoading
                   ? t('estimate.loading')
                   : estimate
@@ -255,7 +263,7 @@ export default function SubtitlesPage() {
             <ActionButton
               onClick={handleGenerate}
               isLoading={isLoading}
-              disabled={!uploadedFile}
+              disabled={isGenerateDisabled}
               label={t('generateButton.label')}
               loadingLabel={t('generateButton.loading')}
               icon={<Captions className="h-4 w-4 shrink-0" strokeWidth={2.25} />}
@@ -291,8 +299,8 @@ export default function SubtitlesPage() {
               ) : null}
 
               {!progress && status ? (
-                <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-                  <p className="text-sm text-muted-foreground">{status}</p>
+                <div className="rounded-xl border border-red-500/25 bg-red-500/[0.07] px-4 py-3">
+                  <p className="text-sm text-red-400">{status}</p>
                 </div>
               ) : null}
 
@@ -319,7 +327,7 @@ export default function SubtitlesPage() {
                     ) : null}
 
                     {previewError ? (
-                      <p className="mt-3 text-sm text-muted-foreground">{previewError}</p>
+                      <p className="mt-3 text-sm text-red-400">{previewError}</p>
                     ) : null}
 
                     {!previewLoading && previewCues.length > 0 ? (

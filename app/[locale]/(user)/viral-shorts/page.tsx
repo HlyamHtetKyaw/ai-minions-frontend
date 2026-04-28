@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Film, Loader2, Upload } from 'lucide-react';
 import PageHeader from '@/components/layout/page-header';
+import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
 import ActionButton from '@/components/shared/components/action-button';
@@ -488,6 +489,9 @@ export default function ViralShortsPage() {
                   </PageHeader.Icon>
                 }
                 title={<PageHeader.Title>{t('page.title')}</PageHeader.Title>}
+                action={
+                  <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
+                }
                 subtitle={
                   <p className="mt-1 text-xs leading-relaxed text-muted sm:text-sm">
                     {t('page.subtitle')}

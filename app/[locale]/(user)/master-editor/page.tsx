@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useTranslations } from 'next-intl';
 import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
+import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import VideoPreview from '@/features/master-editor/components/video-preview';
 import Toolbar from '@/features/master-editor/components/toolbar';
 import ExportPanel from '@/features/master-editor/components/export-panel';
@@ -60,7 +61,10 @@ export default function MasterEditorPage() {
         <LoginGate />
       ) : (
         <div className="space-y-6">
-          <h1 className="text-2xl font-bold text-foreground">{t('page.title')}</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-foreground">{t('page.title')}</h1>
+            <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
+          </div>
 
           {!videoSrc ? (
             <UploadZone
