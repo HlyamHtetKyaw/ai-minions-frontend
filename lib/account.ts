@@ -15,6 +15,25 @@ export type MyProfile = {
   openAiApiKey: string | null;
 };
 
+export type UsageHistoryStatus = "PENDING" | "SUCCESS" | "FAILED";
+export type UsageHistoryFeatureType = "TEXT" | "IMAGE" | "AUDIO" | "VIDEO" | string;
+
+export type UsageHistoryItem = {
+  id: number;
+  featureType: UsageHistoryFeatureType;
+  spentPoints: number;
+  status: UsageHistoryStatus;
+  createdAt: string;
+};
+
+export type UsageHistoryPage = {
+  content: UsageHistoryItem[];
+  totalItems: number;
+  totalPages: number;
+  currentPage: number;
+  pageSize: number;
+};
+
 function unwrap<T>(raw: unknown): T {
   if (!raw || typeof raw !== "object") {
     throw new Error("Invalid response");
@@ -126,4 +145,14 @@ export async function changePassword(body: {
       typeof env.message === "string" ? env.message : "Request failed",
     );
   }
+}
+
+export async function fetchUsageHistory(params?: {
+  page?: number;
+  size?: number;
+}): Promise<UsageHistoryPage> {
+  const page = typeof params?.page === "number" ? Math.max(0, params.page) : 0;
+  const size = typeof params?.size === "number" ? Math.max(1, Math.min(100, params.size)) : 10;
+  const raw = await apiFetch(`/api/v1/auth/usage-history?page=${page}&size=${size}`);
+  return unwrap<UsageHistoryPage>(raw);
 }

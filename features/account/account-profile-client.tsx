@@ -3,7 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { fetchMe } from '@/lib/auth';
-import { fetchMyProfile, updateMyProfile } from '@/lib/account';
+import {
+  fetchMyProfile,
+  fetchUsageHistory,
+  type UsageHistoryFeatureType,
+  type UsageHistoryItem,
+  type UsageHistoryStatus,
+  updateMyProfile,
+} from '@/lib/account';
 import { AccountActivateSection } from './account-activate-section';
 import { AccountShell } from './account-shell';
 
@@ -18,6 +25,12 @@ export default function AccountProfileClient() {
   const [credits, setCredits] = useState<number | null>(null);
   const [fullname, setFullname] = useState('');
   const [phone, setPhone] = useState('');
+  const [usageRows, setUsageRows] = useState<UsageHistoryItem[]>([]);
+  const [usageLoading, setUsageLoading] = useState(true);
+  const [usageError, setUsageError] = useState('');
+  const [usagePage, setUsagePage] = useState(0);
+  const [usageTotalPages, setUsageTotalPages] = useState(1);
+  const [usageLoadingMore, setUsageLoadingMore] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +63,30 @@ export default function AccountProfileClient() {
     };
   }, [t]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setUsageLoading(true);
+      setUsageError('');
+      try {
+        const page = await fetchUsageHistory({ page: 0, size: 10 });
+        if (cancelled) return;
+        setUsageRows(Array.isArray(page.content) ? page.content : []);
+        setUsagePage(page.currentPage ?? 0);
+        setUsageTotalPages(page.totalPages ?? 1);
+      } catch (e) {
+        if (!cancelled) {
+          setUsageError(e instanceof Error ? e.message : t('usageHistory.loadError'));
+        }
+      } finally {
+        if (!cancelled) setUsageLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [t]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
@@ -63,6 +100,75 @@ export default function AccountProfileClient() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function loadMoreUsage() {
+    if (usageLoadingMore) return;
+    const nextPage = usagePage + 1;
+    if (nextPage >= usageTotalPages) return;
+    setUsageLoadingMore(true);
+    try {
+      const page = await fetchUsageHistory({ page: nextPage, size: 10 });
+      setUsageRows((prev) => [...prev, ...(Array.isArray(page.content) ? page.content : [])]);
+      setUsagePage(page.currentPage ?? nextPage);
+      setUsageTotalPages(page.totalPages ?? usageTotalPages);
+    } catch (e) {
+      setUsageError(e instanceof Error ? e.message : t('usageHistory.loadError'));
+    } finally {
+      setUsageLoadingMore(false);
+    }
+  }
+
+  function featureLabel(featureType: UsageHistoryFeatureType): string {
+    const key = String(featureType ?? '').toUpperCase();
+    switch (key) {
+      case 'TEXT':
+        return t('usageHistory.featureText');
+      case 'IMAGE':
+        return t('usageHistory.featureImage');
+      case 'AUDIO':
+        return t('usageHistory.featureAudio');
+      case 'VIDEO':
+        return t('usageHistory.featureVideo');
+      default:
+        return key || t('usageHistory.featureUnknown');
+    }
+  }
+
+  function statusLabel(status: UsageHistoryStatus): string {
+    switch ((status ?? '').toUpperCase()) {
+      case 'PENDING':
+        return t('usageHistory.statusPending');
+      case 'SUCCESS':
+        return t('usageHistory.statusSuccess');
+      case 'FAILED':
+        return t('usageHistory.statusFailed');
+      default:
+        return String(status);
+    }
+  }
+
+  function statusClassName(status: UsageHistoryStatus): string {
+    switch ((status ?? '').toUpperCase()) {
+      case 'SUCCESS':
+        return 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300';
+      case 'FAILED':
+        return 'border-red-500/30 bg-red-500/10 text-red-700 dark:text-red-300';
+      default:
+        return 'border-card-border bg-surface/50 text-muted';
+    }
+  }
+
+  function formatWhen(raw: string): string {
+    const d = new Date(raw);
+    if (Number.isNaN(d.getTime())) return '—';
+    return new Intl.DateTimeFormat(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+    }).format(d);
   }
 
   if (loading) {
@@ -168,6 +274,67 @@ export default function AccountProfileClient() {
             </button>
           </div>
         </form>
+      </div>
+
+      <div className="rounded-2xl border border-card-border bg-card/50 p-6 sm:p-8">
+        <div className="mb-4">
+          <h2 className="text-base font-semibold text-foreground">{t('usageHistory.title')}</h2>
+          <p className="mt-1 text-sm text-muted">{t('usageHistory.subtitle')}</p>
+        </div>
+
+        {usageError ? (
+          <p className="mb-3 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-600 dark:text-red-400">
+            {usageError}
+          </p>
+        ) : null}
+
+        {usageLoading ? (
+          <div className="space-y-2">
+            <div className="h-10 animate-pulse rounded-lg bg-surface" />
+            <div className="h-10 animate-pulse rounded-lg bg-surface" />
+            <div className="h-10 animate-pulse rounded-lg bg-surface" />
+          </div>
+        ) : usageRows.length === 0 ? (
+          <p className="rounded-xl border border-card-border bg-background px-4 py-3 text-sm text-muted">
+            {t('usageHistory.empty')}
+          </p>
+        ) : (
+          <div className="space-y-2">
+            {usageRows.map((row) => (
+              <div
+                key={row.id}
+                className="flex flex-col gap-2 rounded-xl border border-card-border bg-background px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium text-foreground">{featureLabel(row.featureType)}</p>
+                  <p className="text-xs text-muted">{formatWhen(row.createdAt)}</p>
+                </div>
+                <div className="flex items-center gap-2 sm:justify-end">
+                  <span className="text-sm font-semibold tabular-nums text-foreground">-{row.spentPoints}</span>
+                  <span className="text-xs text-muted">{t('usageHistory.pointsUnit')}</span>
+                  <span
+                    className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-medium ${statusClassName(row.status)}`}
+                  >
+                    {statusLabel(row.status)}
+                  </span>
+                </div>
+              </div>
+            ))}
+
+            {usagePage + 1 < usageTotalPages ? (
+              <div className="pt-2">
+                <button
+                  type="button"
+                  onClick={() => void loadMoreUsage()}
+                  disabled={usageLoadingMore}
+                  className="rounded-full border border-card-border bg-background px-4 py-2 text-sm text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                >
+                  {usageLoadingMore ? t('usageHistory.loadingMore') : t('usageHistory.loadMore')}
+                </button>
+              </div>
+            ) : null}
+          </div>
+        )}
       </div>
       </div>
     </AccountShell>

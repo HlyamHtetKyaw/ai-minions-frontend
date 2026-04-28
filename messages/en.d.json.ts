@@ -87,7 +87,24 @@ declare const messages: {
     "activateSubmit": "Apply code",
     "activateSubmitting": "Applying…",
     "activateSuccess": "Your code was applied. Credits and plan access are updated.",
-    "activateError": "Could not apply this code."
+    "activateError": "Could not apply this code.",
+    "usageHistory": {
+      "title": "Usage points history",
+      "subtitle": "Track which AI features used your points and when.",
+      "loadError": "Could not load usage history.",
+      "empty": "No usage yet. Run a feature to see history.",
+      "loadMore": "Load more",
+      "loadingMore": "Loading…",
+      "pointsUnit": "pts",
+      "statusPending": "Pending",
+      "statusSuccess": "Success",
+      "statusFailed": "Failed",
+      "featureText": "Text generation",
+      "featureImage": "Image generation",
+      "featureAudio": "Audio generation",
+      "featureVideo": "Video generation",
+      "featureUnknown": "Unknown feature"
+    }
   },
   "pricing": {
     "metaTitle": "Pricing — AI Minions",
