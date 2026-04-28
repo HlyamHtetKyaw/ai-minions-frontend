@@ -48,6 +48,33 @@ export async function tryRefreshAccessToken(): Promise<boolean> {
   return true;
 }
 
+/**
+ * One-time OAuth handoff: exchanges an opaque id from the Google redirect URL for JWTs in JSON.
+ * Use when the API and frontend are on different origins (refresh cookies are not sent cross-site).
+ */
+export async function tryExchangeGoogleSession(exchange: string): Promise<boolean> {
+  const id = exchange.trim();
+  if (!id) return false;
+  const base = getPublicApiBaseUrl();
+  if (!base) return false;
+  const res = await fetch(`${base}/api/v1/auth/google/session`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+    body: JSON.stringify({ exchange: id }),
+  });
+  if (!res.ok) return false;
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelopeLoose<{ accessToken?: string }>;
+  const token =
+    json.data != null && typeof json.data === 'object' && typeof json.data.accessToken === 'string'
+      ? json.data.accessToken
+      : undefined;
+  if (!token) return false;
+  setStoredAccessToken(token);
+  setSessionHintCookie();
+  return true;
+}
+
 export async function fetchWithAuthRetry(url: string, init: RequestInit): Promise<Response> {
   const res = await fetch(url, init);
   if (res.status !== 401) return res;

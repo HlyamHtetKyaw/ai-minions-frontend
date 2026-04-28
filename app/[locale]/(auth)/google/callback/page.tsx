@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { tryRefreshAccessToken } from '@/lib/api-auth-fetch';
+import { tryExchangeGoogleSession, tryRefreshAccessToken } from '@/lib/api-auth-fetch';
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
   const params = useSearchParams();
   const [refreshError, setRefreshError] = useState<string | null>(null);
   const status = params.get('status');
+  const exchange = params.get('exchange');
   const immediateError = status === 'success' ? null : (params.get('message') ?? 'Google login failed.');
 
   const next = useMemo(() => {
@@ -25,8 +26,11 @@ export default function GoogleCallbackPage() {
     }
     let cancelled = false;
     (async () => {
-      const refreshed = await tryRefreshAccessToken();
-      if (!refreshed) {
+      const handoffOk =
+        exchange != null && exchange.trim() !== ''
+          ? await tryExchangeGoogleSession(exchange)
+          : await tryRefreshAccessToken();
+      if (!handoffOk) {
         setRefreshError('Google login completed but session could not be established.');
         return;
       }
@@ -38,7 +42,7 @@ export default function GoogleCallbackPage() {
     return () => {
       cancelled = true;
     };
-  }, [next, router, status]);
+  }, [exchange, next, router, status]);
 
   const error = immediateError ?? refreshError;
 
