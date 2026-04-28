@@ -92,6 +92,8 @@ export type AudioTrack = {
   type: 'music' | 'voiceover' | 'original';
   name: string;
   src: string;
+  /** Remote storage URL (with optional #wk fragment) used for server-side export. */
+  exportSrc?: string;
   startTime: number;
   endTime: number;
   volume: number;
@@ -294,7 +296,7 @@ export type EditorState = {
   setPlaybackSpeed: (speed: number) => void;
   setSelectedLayerId: (id: string | null) => void;
   setActiveTool: (tool: EditorTool) => void;
-  addAudioTrack: (type: 'music' | 'voiceover', file: File) => void;
+  addAudioTrack: (type: 'music' | 'voiceover', file: File) => string;
   updateAudioTrack: (id: string, patch: Partial<AudioTrack>) => void;
   deleteAudioTrack: (id: string) => void;
   setOriginalAudioMuted: (v: boolean) => void;
@@ -587,7 +589,7 @@ export const useEditorStore = create<EditorState>((set) => ({
       }
       const sx = nextW / prevW;
       const sy = nextH / prevH;
-      /** Isotropic scale when sx≠sy: keeps text font and image/blur boxes from stretching (e.g. fullscreen). */
+      /** Isotropic scale for font size only when sx≠sy. */
       const sIso = Math.sqrt(sx * sy);
       const scaleRect = <T extends { x: number; y: number; width: number; height: number }>(layer: T): T => ({
         ...layer,
@@ -595,13 +597,6 @@ export const useEditorStore = create<EditorState>((set) => ({
         y: layer.y * sy,
         width: layer.width * sx,
         height: layer.height * sy,
-      });
-      const scaleRectIso = <T extends { x: number; y: number; width: number; height: number }>(layer: T): T => ({
-        ...layer,
-        x: layer.x * sIso,
-        y: layer.y * sIso,
-        width: layer.width * sIso,
-        height: layer.height * sIso,
       });
       const clampFont = (n: number) => Math.min(200, Math.max(8, Math.round(n)));
       return {
@@ -615,8 +610,10 @@ export const useEditorStore = create<EditorState>((set) => ({
             fontSize: clampFont(scaled.fontSize * sIso),
           };
         }),
-        blurLayers: state.blurLayers.map((l) => scaleRectIso(l)),
-        imageLayers: state.imageLayers.map((l) => scaleRectIso(l)),
+        // Use axis-specific scaling to keep stored coordinates consistent with
+        // export mapping (`displayToNaturalScale.x/y`) and avoid drift.
+        blurLayers: state.blurLayers.map((l) => scaleRect(l)),
+        imageLayers: state.imageLayers.map((l) => scaleRect(l)),
       };
     }),
   setVideoNaturalSize: (w, h) =>
@@ -1039,11 +1036,11 @@ export const useEditorStore = create<EditorState>((set) => ({
       }
       return { activeTool: tool, isCropActive };
     }),
-  addAudioTrack: (type, file) =>
+  addAudioTrack: (type, file) => {
+    const id = nanoid();
+    const src = URL.createObjectURL(file);
     set((state) => {
       const d = state.duration;
-      const id = nanoid();
-      const src = URL.createObjectURL(file);
       const startTime = 0;
       let endTime = d > 0 ? d : 0;
       if (d > 0 && endTime - startTime < MIN_VIDEO_CLIP_SEC) {
@@ -1054,6 +1051,7 @@ export const useEditorStore = create<EditorState>((set) => ({
         type,
         name: file.name,
         src,
+        exportSrc: undefined,
         startTime,
         endTime,
         volume: 80,
@@ -1066,7 +1064,9 @@ export const useEditorStore = create<EditorState>((set) => ({
         audioTracks: [...state.audioTracks, track],
         selectedAudioTrackId: id,
       };
-    }),
+    });
+    return id;
+  },
   updateAudioTrack: (id, patch) =>
     set((state) => {
       const d = state.duration;

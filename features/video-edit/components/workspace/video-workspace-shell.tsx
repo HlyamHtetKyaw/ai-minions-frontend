@@ -139,6 +139,13 @@ function isBlobUrl(value: unknown): value is string {
   return typeof value === 'string' && value.startsWith('blob:');
 }
 
+function withWorkspaceObjectKey(url: string, key: string): string {
+  const safeUrl = typeof url === 'string' ? url.trim() : '';
+  const safeKey = typeof key === 'string' ? key.trim() : '';
+  if (safeUrl === '' || safeKey === '') return safeUrl;
+  return `${safeUrl}#wk=${encodeURIComponent(safeKey)}`;
+}
+
 function extractWorkspaceKeyFromVideoSrc(value: string | null): string | null {
   if (value == null || value.trim() === '') return null;
   try {
@@ -361,6 +368,7 @@ export function VideoWorkspaceShell() {
   const selectedAudioTrackId = useEditorStore((s) => s.selectedAudioTrackId);
   const setSelectedAudioTrackId = useEditorStore((s) => s.setSelectedAudioTrackId);
   const addAudioTrack = useEditorStore((s) => s.addAudioTrack);
+  const updateAudioTrack = useEditorStore((s) => s.updateAudioTrack);
   const originalAudioMuted = useEditorStore((s) => s.originalAudioMuted);
   const originalAudioVolume = useEditorStore((s) => s.originalAudioVolume);
   const setOriginalAudioMuted = useEditorStore((s) => s.setOriginalAudioMuted);
@@ -386,11 +394,13 @@ export function VideoWorkspaceShell() {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [exportOverlayPhase, setExportOverlayPhase] = useState<'idle' | 'exporting' | 'downloading'>('idle');
+  const [exportProgressPercent, setExportProgressPercent] = useState(0);
+  const [exportProgressMessage, setExportProgressMessage] = useState('');
   const previewFrameRef = useRef<HTMLDivElement>(null);
+  const exportOverlayPhaseRef = useRef<'idle' | 'exporting' | 'downloading'>('idle');
   const volumeBeforeMuteRef = useRef(72);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
-  const musicInputRef = useRef<HTMLInputElement>(null);
-  const voiceInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
   const historyPastRef = useRef<WorkspaceHistorySnapshot[]>([]);
   const historyFutureRef = useRef<WorkspaceHistorySnapshot[]>([]);
   const isApplyingHistoryRef = useRef(false);
@@ -403,6 +413,9 @@ export function VideoWorkspaceShell() {
   const [timelineDockHeightPx, setTimelineDockHeightPx] = useState(readStoredTimelineDockHeightPx);
   const timelineDockHeightPxRef = useRef(timelineDockHeightPx);
   timelineDockHeightPxRef.current = timelineDockHeightPx;
+  useEffect(() => {
+    exportOverlayPhaseRef.current = exportOverlayPhase;
+  }, [exportOverlayPhase]);
 
   const onTimelineDockResizeStart = useCallback((e: ReactMouseEvent) => {
     e.preventDefault();
@@ -502,10 +515,24 @@ export function VideoWorkspaceShell() {
           if (status.message) {
             const percent = typeof status.progressPercent === 'number' ? ` (${Math.round(status.progressPercent)}%)` : '';
             setWorkspaceSyncStatus(`${status.message}${percent}`);
+            if (exportOverlayPhaseRef.current === 'exporting') {
+              const nextPercent =
+                typeof status.progressPercent === 'number'
+                  ? Math.max(0, Math.min(100, Math.round(status.progressPercent)))
+                  : null;
+              if (nextPercent != null) {
+                setExportProgressPercent(nextPercent);
+              }
+              setExportProgressMessage(status.message);
+            }
             return;
           }
           if (status.status) {
             setWorkspaceSyncStatus(`Workspace ${status.status}`);
+            if (exportOverlayPhaseRef.current === 'exporting' && status.status === 'saved') {
+              setExportProgressPercent(100);
+              setExportProgressMessage('Export ready');
+            }
             return;
           }
         } catch {
@@ -690,32 +717,25 @@ export function VideoWorkspaceShell() {
     }
   }, []);
 
-  const onMusicFile = useCallback(
+  const onAudioFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
       if (file) {
-        addAudioTrack('music', file);
-        void uploadVideoEditorFile(file).catch((error) => {
-          console.warn('[video-editor] music upload failed', error);
-        });
+        const createdTrackId = addAudioTrack('music', file);
+        void uploadVideoEditorFile(file)
+          .then((uploaded) => {
+            updateAudioTrack(createdTrackId, {
+              exportSrc: withWorkspaceObjectKey(uploaded.storageUrl, uploaded.s3Key),
+            });
+          })
+          .catch((error) => {
+            console.warn('[video-editor] music upload failed', error);
+            setWorkspaceSyncStatus('Music upload failed. Export may miss this track.');
+          });
       }
       e.target.value = '';
     },
-    [addAudioTrack],
-  );
-
-  const onVoiceFile = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) {
-        addAudioTrack('voiceover', file);
-        void uploadVideoEditorFile(file).catch((error) => {
-          console.warn('[video-editor] voiceover upload failed', error);
-        });
-      }
-      e.target.value = '';
-    },
-    [addAudioTrack],
+    [addAudioTrack, updateAudioTrack],
   );
 
   const handleToolChange = useCallback(
@@ -1092,6 +1112,17 @@ export function VideoWorkspaceShell() {
 
   const onExportClick = useCallback(async () => {
     let state = useEditorStore.getState();
+    const pendingAudioTrack = state.audioTracks.find(
+      (track) =>
+        typeof track.src === 'string' &&
+        track.src.startsWith('blob:') &&
+        (typeof track.exportSrc !== 'string' || track.exportSrc.trim() === ''),
+    );
+    if (pendingAudioTrack != null) {
+      setWorkspaceSyncStatus(
+        `Audio "${pendingAudioTrack.name}" is still uploading. Exporting with uploaded tracks only.`,
+      );
+    }
     if (resolveExportVideoUrl(state.videoSrc) == null) {
       setWorkspaceSyncStatus(
         state.videoSrc?.startsWith('blob:')
@@ -1115,10 +1146,14 @@ export function VideoWorkspaceShell() {
         easyAspect: aspectIdToRatio(aspect),
       },
     });
+    setExportProgressPercent(8);
+    setExportProgressMessage('Export started');
     setExportOverlayPhase('exporting');
     setWorkspaceSyncStatus('Exporting video...');
     try {
       const result = await exportVideoEditorWorkspace(payload);
+      setExportProgressPercent(100);
+      setExportProgressMessage('Export ready');
       setExportOverlayPhase('downloading');
       setWorkspaceSyncStatus('Downloading export...');
       await triggerWorkspaceExportDownload(result.downloadUrl, result.s3Key);
@@ -1129,6 +1164,8 @@ export function VideoWorkspaceShell() {
       );
     } finally {
       setExportOverlayPhase('idle');
+      setExportProgressPercent(0);
+      setExportProgressMessage('');
     }
   }, [aspect]);
 
@@ -1228,20 +1265,12 @@ export function VideoWorkspaceShell() {
         <WorkspaceToolRail tools={tools} activeTool={activeTool} onToolChange={handleToolChange} />
         <div ref={centerColumnRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
           <input
-            ref={musicInputRef}
+            ref={audioInputRef}
             type="file"
             accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/x-aac,.mp3,.wav,.aac"
             className="sr-only"
             aria-hidden
-            onChange={onMusicFile}
-          />
-          <input
-            ref={voiceInputRef}
-            type="file"
-            accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/x-aac,.mp3,.wav,.aac"
-            className="sr-only"
-            aria-hidden
-            onChange={onVoiceFile}
+            onChange={onAudioFile}
           />
           <div className="min-h-0 flex-1 overflow-hidden">
             <WorkspacePreviewCanvas
@@ -1337,10 +1366,8 @@ export function VideoWorkspaceShell() {
             deleteSegmentEnabled={canDeleteSelectedVideoSegment}
             onDeleteVideoSegment={onDeleteSelectedVideoSegment}
             audioUploadVisible={activeTool === 'audio'}
-            addMusicLabel="Add music"
-            addVoiceoverLabel="Add voiceover"
-            onAddMusic={() => musicInputRef.current?.click()}
-            onAddVoiceover={() => voiceInputRef.current?.click()}
+            addAudioLabel="Add audio"
+            onAddAudio={() => audioInputRef.current?.click()}
             />
           </div>
         </div>
@@ -1481,10 +1508,38 @@ export function VideoWorkspaceShell() {
           aria-live="polite"
           role="status"
         >
-          <div
-            className="h-8 w-8 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400"
-            aria-hidden
-          />
+          <div className="w-[min(88vw,380px)] rounded-xl border border-white/10 bg-zinc-950/80 p-4">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-violet-400 transition-[width] duration-500 ease-out"
+                style={{
+                  width: `${Math.max(
+                    6,
+                    Math.min(
+                      100,
+                      exportOverlayPhase === 'downloading'
+                        ? 100
+                        : exportProgressPercent,
+                    ),
+                  )}%`,
+                }}
+              />
+            </div>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-400">
+              <span>
+                {exportProgressMessage.trim() !== ''
+                  ? exportProgressMessage
+                  : exportOverlayPhase === 'exporting'
+                    ? t('exportOverlay.exporting')
+                    : t('exportOverlay.downloading')}
+              </span>
+              <span>
+                {exportOverlayPhase === 'downloading'
+                  ? '100%'
+                  : `${Math.max(0, Math.min(100, Math.round(exportProgressPercent)))}%`}
+              </span>
+            </div>
+          </div>
           <p className="mt-4 text-xs text-zinc-500">
             {exportOverlayPhase === 'exporting'
               ? t('exportOverlay.exporting')

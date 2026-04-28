@@ -2,6 +2,7 @@
 
 import { useCallback, useRef } from 'react';
 import { useEditorStore } from '@/store/editorStore';
+import { uploadVideoEditorFile } from '@/lib/video-editor-workspace-api';
 
 const AUDIO_ACCEPT =
   'audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/aac,audio/x-aac,.mp3,.wav,.aac';
@@ -23,30 +24,36 @@ export function AudioProperties() {
   const setOriginalAudioVolume = useEditorStore((s) => s.setOriginalAudioVolume);
   const setSelectedAudioTrackId = useEditorStore((s) => s.setSelectedAudioTrackId);
 
-  const musicInputRef = useRef<HTMLInputElement>(null);
-  const voiceInputRef = useRef<HTMLInputElement>(null);
+  const audioInputRef = useRef<HTMLInputElement>(null);
 
   const selectedTrack =
     selectedAudioTrackId == null
       ? undefined
       : audioTracks.find((t) => t.id === selectedAudioTrackId);
 
-  const onMusicFile = useCallback(
+  const onAudioFile = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) addAudioTrack('music', file);
+      if (file) {
+        const trackId = addAudioTrack('music', file);
+        void uploadVideoEditorFile(file)
+          .then((uploaded) => {
+            const safeUrl = uploaded.storageUrl.trim();
+            const safeKey = uploaded.s3Key.trim();
+            updateAudioTrack(trackId, {
+              exportSrc:
+                safeUrl !== '' && safeKey !== ''
+                  ? `${safeUrl}#wk=${encodeURIComponent(safeKey)}`
+                  : safeUrl,
+            });
+          })
+          .catch((error) => {
+            console.warn('[audio-properties] audio upload failed', error);
+          });
+      }
       e.target.value = '';
     },
-    [addAudioTrack],
-  );
-
-  const onVoiceFile = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (file) addAudioTrack('voiceover', file);
-      e.target.value = '';
-    },
-    [addAudioTrack],
+    [addAudioTrack, updateAudioTrack],
   );
 
   return (
@@ -57,34 +64,19 @@ export function AudioProperties() {
         </h3>
         <div className="flex gap-2">
           <input
-            ref={musicInputRef}
+            ref={audioInputRef}
             type="file"
             accept={AUDIO_ACCEPT}
             className="sr-only"
             aria-hidden
-            onChange={onMusicFile}
-          />
-          <input
-            ref={voiceInputRef}
-            type="file"
-            accept={AUDIO_ACCEPT}
-            className="sr-only"
-            aria-hidden
-            onChange={onVoiceFile}
+            onChange={onAudioFile}
           />
           <button
             type="button"
-            onClick={() => musicInputRef.current?.click()}
+            onClick={() => audioInputRef.current?.click()}
             className="flex-1 rounded-lg bg-[#0a1612] px-2 py-2 text-center text-[11px] font-medium text-[#1D9E75] ring-1 ring-[#1D9E75]/60 transition-colors hover:bg-[#0f2218]"
           >
-            Add music
-          </button>
-          <button
-            type="button"
-            onClick={() => voiceInputRef.current?.click()}
-            className="flex-1 rounded-lg bg-[#0a1a2a] px-2 py-2 text-center text-[11px] font-medium text-[#378ADD] ring-1 ring-[#185FA5]/70 transition-colors hover:bg-[#0f1f33]"
-          >
-            Add voiceover
+            Add audio
           </button>
         </div>
       </section>
