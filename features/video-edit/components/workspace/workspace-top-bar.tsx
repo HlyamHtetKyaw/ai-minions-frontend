@@ -1,10 +1,8 @@
 import { Redo2, Undo2 } from 'lucide-react';
-import { Link } from '@/i18n/navigation';
 
 export type WorkspaceAspectId = '16:9' | '9:16' | '1:1' | '4:3';
 
 type WorkspaceTopBarProps = {
-  historyLabel: string;
   exportLabel: string;
   /** When true, export is blocked (e.g. video is still a local blob: URL). */
   exportDisabled?: boolean;
@@ -20,7 +18,6 @@ type WorkspaceTopBarProps = {
 };
 
 export function WorkspaceTopBar({
-  historyLabel,
   exportLabel,
   exportDisabled = false,
   exportDisabledTitle,
@@ -36,13 +33,7 @@ export function WorkspaceTopBar({
   return (
     <header className="flex shrink-0 flex-col gap-2 border-b border-white/10 bg-black/80 px-3 py-2 backdrop-blur-sm sm:px-4 lg:min-h-14 lg:flex-row lg:items-center lg:justify-between lg:gap-3">
       <div className="flex min-w-0 w-full items-center lg:flex-1">
-        <Link
-          href="/video-edit/history"
-          className="inline-flex min-w-0 items-center rounded-lg py-1.5 pr-2 text-sm font-medium text-muted underline underline-offset-4 decoration-muted/60 transition-colors hover:text-foreground hover:decoration-foreground"
-        >
-          <span className="truncate">{historyLabel}</span>
-        </Link>
-        <div className="ml-2 flex items-center gap-1">
+        <div className="flex items-center gap-1">
           <button
             type="button"
             title="Undo (Ctrl+Z)"

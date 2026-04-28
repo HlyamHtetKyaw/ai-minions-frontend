@@ -51,7 +51,7 @@ export const WorkspacePreviewCanvas = forwardRef<HTMLDivElement, WorkspacePrevie
             <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden">
               <VideoCanvas
                 fileInputId={WORKSPACE_VIDEO_FILE_INPUT_ID}
-                objectFit="cover"
+                objectFit="contain"
                 skipInitialCanvasSizeStep={skipInitialCanvasSizeStep}
               />
             </div>

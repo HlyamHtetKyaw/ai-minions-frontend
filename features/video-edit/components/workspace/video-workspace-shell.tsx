@@ -45,6 +45,7 @@ import { WorkspaceTopBar, type WorkspaceAspectId } from './workspace-top-bar';
 const TIMELINE_DOCK_HEIGHT_STORAGE_KEY = 'ai-minions.video-workspace.timelineDockHeightPx';
 const TIMELINE_DOCK_HEIGHT_DEFAULT = 268;
 const TIMELINE_DOCK_MIN_PX = 140;
+const PREVIEW_PANEL_MIN_HEIGHT_PX = 260;
 
 function readStoredTimelineDockHeightPx(): number {
   if (typeof window === 'undefined') return TIMELINE_DOCK_HEIGHT_DEFAULT;
@@ -427,7 +428,9 @@ export function VideoWorkspaceShell() {
         return { min: TIMELINE_DOCK_MIN_PX, max: 560 };
       }
       const ch = col.clientHeight;
-      const max = Math.max(TIMELINE_DOCK_MIN_PX + 80, Math.floor(ch * 0.82));
+      const byColumnRatio = Math.floor(ch * 0.82);
+      const keepPreviewVisible = Math.floor(ch - PREVIEW_PANEL_MIN_HEIGHT_PX - 8);
+      const max = Math.min(byColumnRatio, keepPreviewVisible);
       const min = TIMELINE_DOCK_MIN_PX;
       return { min, max: Math.max(min + 40, max) };
     };
@@ -455,7 +458,12 @@ export function VideoWorkspaceShell() {
     const clampToColumn = () => {
       const col = centerColumnRef.current;
       if (!col) return;
-      const max = Math.max(TIMELINE_DOCK_MIN_PX + 80, Math.floor(col.clientHeight * 0.82));
+      const byColumnRatio = Math.floor(col.clientHeight * 0.82);
+      const keepPreviewVisible = Math.floor(col.clientHeight - PREVIEW_PANEL_MIN_HEIGHT_PX - 8);
+      const max = Math.max(
+        TIMELINE_DOCK_MIN_PX + 40,
+        Math.min(byColumnRatio, keepPreviewVisible),
+      );
       setTimelineDockHeightPx((h) => {
         const next = Math.min(Math.max(TIMELINE_DOCK_MIN_PX, h), max);
         if (next !== h) {
@@ -755,13 +763,24 @@ export function VideoWorkspaceShell() {
     const v = videoElement;
     if (!v) return;
     if (v.paused) {
+      const { trimStart, trimEnd, videoTimelineSegments: vts } = useEditorStore.getState();
+      const lo = trimEnd > trimStart ? trimStart : 0;
+      const hi = trimEnd > trimStart ? trimEnd : duration;
+      let next = Math.min(Math.max(v.currentTime, lo), hi);
+      if (vts.length > 1) {
+        next = clampTimeToVideoSegments(next, vts, duration);
+      }
+      if (Math.abs(v.currentTime - next) > 0.01) {
+        v.currentTime = next;
+      }
+      setCurrentTime(next);
       void v.play().catch(() => {
         /* Ignore AbortError / "interrupted by pause" races */
       });
     } else {
       v.pause();
     }
-  }, [videoElement]);
+  }, [duration, setCurrentTime, videoElement]);
 
   const onPrev = useCallback(() => {
     const v = videoElement;
@@ -807,6 +826,19 @@ export function VideoWorkspaceShell() {
       setCurrentTime(next);
     },
     [videoElement, duration, setCurrentTime],
+  );
+
+  const onTimelineTrimHoverTimeChange = useCallback(
+    (timeSec: number | null) => {
+      if (timeSec == null || !Number.isFinite(timeSec) || duration <= 0) return;
+      const next = Math.min(duration, Math.max(0, timeSec));
+      const v = videoElement;
+      if (v != null && Math.abs(v.currentTime - next) > 0.01) {
+        v.currentTime = next;
+      }
+      setCurrentTime(next);
+    },
+    [duration, setCurrentTime, videoElement],
   );
 
   const onSplitAtPlayhead = useCallback(() => {
@@ -951,7 +983,6 @@ export function VideoWorkspaceShell() {
   const tools = useMemo(
     () =>
       [
-        { id: 'media' as const, label: t('tools.media') },
         { id: 'text' as const, label: t('tools.text') },
         { id: 'blur' as const, label: t('tools.blur') },
         { id: 'image' as const, label: t('tools.image') },
@@ -1241,7 +1272,6 @@ export function VideoWorkspaceShell() {
   return (
     <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-foreground">
       <WorkspaceTopBar
-        historyLabel={t('history')}
         exportLabel={t('exportVideo')}
         exportDisabled={resolveExportVideoUrl(videoSrc) == null}
         exportDisabledTitle={
@@ -1272,7 +1302,9 @@ export function VideoWorkspaceShell() {
             aria-hidden
             onChange={onAudioFile}
           />
-          <div className="min-h-0 flex-1 overflow-hidden">
+          <div
+            className={`${previewFullscreen ? 'min-h-0 flex-1' : 'h-[min(56dvh,560px)] shrink-0'} overflow-hidden`}
+          >
             <WorkspacePreviewCanvas
               ref={previewFrameRef}
               canvasLabel={t('canvasAria')}
@@ -1337,6 +1369,8 @@ export function VideoWorkspaceShell() {
             onPrev={onPrev}
             onNext={onNext}
             onSeekRatio={onSeekRatio}
+            playheadTimeSec={currentTime}
+            onTrimHoverTimeChange={onTimelineTrimHoverTimeChange}
             selectedTimelineClipId={selectedLayerId}
             selectedAudioTrackId={selectedAudioTrackId}
             onTimelineDeselect={() => {

@@ -268,10 +268,14 @@ export function VideoCanvas({
   useEffect(() => {
     const v = videoRef.current;
     if (!v || duration <= 0) return;
-    const target = clampVideoTime(currentTime);
+    // Paused: mirror `currentTime` as-is so trim-handle scrubbing can preview frames
+    // outside the active trim range. Playing: keep the media clock inside trim bounds
+    // (the `timeupdate` handler also enforces this; pushing on every store update
+    // would cause micro-seeks and pause/play flicker).
+    const target = v.paused
+      ? Math.min(duration, Math.max(0, currentTime))
+      : clampVideoTime(currentTime);
     const drift = Math.abs(v.currentTime - target);
-    // While playing, the media clock should win; pushing `currentTime` here on every store
-    // update (from `timeupdate`) caused micro-seeks and intermittent pause/play flicker.
     const maxDriftBeforeSeek = v.paused ? 0.02 : 0.35;
     if (drift > maxDriftBeforeSeek) {
       v.currentTime = target;

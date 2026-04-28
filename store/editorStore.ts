@@ -553,7 +553,16 @@ export const useEditorStore = create<EditorState>((set) => ({
             : null,
       };
     }),
-  setCurrentTime: (t) => set({ currentTime: t }),
+  setCurrentTime: (t) =>
+    set((state) => {
+      if (!Number.isFinite(t)) return {};
+      const d = state.duration;
+      // Only the [0, duration] guard lives here — the trim-bounds clamp is the caller's
+      // job (ruler seek, prev/next, toggle-play). Trim-handle scrubbing intentionally
+      // sends times outside the current trim so the preview frame can follow the handle.
+      const next = d > 0 ? Math.min(d, Math.max(0, t)) : Math.max(0, t);
+      return { currentTime: next };
+    }),
   setIsPlaying: (p) => set({ isPlaying: p }),
   setVideoElement: (el) => set({ videoElement: el }),
   setAudioBuffer: (buffer) => set({ audioBuffer: buffer }),
