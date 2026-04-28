@@ -37,6 +37,21 @@ export type UsageHistoryPage = {
   pageSize: number;
 };
 
+export type UsageHistoryDetailField = {
+  label: string;
+  value: string;
+  kind: "text" | "audio" | string;
+};
+
+export type UsageHistoryDetail = {
+  id: number;
+  featureKey: UsageHistoryFeatureKey;
+  status: UsageHistoryStatus;
+  available: boolean;
+  input: UsageHistoryDetailField[];
+  output: UsageHistoryDetailField[];
+};
+
 function unwrap<T>(raw: unknown): T {
   if (!raw || typeof raw !== "object") {
     throw new Error("Invalid response");
@@ -154,4 +169,9 @@ export async function fetchUsageHistory(params?: {
   const size = typeof params?.size === "number" ? Math.max(1, Math.min(100, params.size)) : 10;
   const raw = await apiFetch(`/api/v1/auth/usage-history?page=${page}&size=${size}`);
   return unwrap<UsageHistoryPage>(raw);
+}
+
+export async function fetchUsageHistoryDetail(id: number): Promise<UsageHistoryDetail> {
+  const raw = await apiFetch(`/api/v1/auth/usage-history/${id}`);
+  return unwrap<UsageHistoryDetail>(raw);
 }

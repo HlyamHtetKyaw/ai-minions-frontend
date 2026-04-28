@@ -99,6 +99,8 @@
       "empty": "အသုံးပြုမှုမရှိသေးပါ။ Feature တစ်ခု run လုပ်ပြီး မှတ်တမ်းကြည့်ပါ။",
       "loadMore": "ပိုမိုကြည့်ရန်",
       "loadingMore": "ဖွင့်နေသည်…",
+      "viewDetails": "အသေးစိတ်ကြည့်ရန်",
+      "noDetails": "အသေးစိတ်မရှိပါ",
       "notCharged": "မကောက်ခံထားပါ",
       "pointsUnit": "pts",
       "statusPending": "စောင့်ဆိုင်းနေ",
@@ -114,7 +116,21 @@
       "featureImageGeneration": "ပုံထုတ်လုပ်မှု",
       "featureAudioGeneration": "အသံထုတ်လုပ်မှု",
       "featureVideoGeneration": "ဗီဒီယိုထုတ်လုပ်မှု",
-      "featureUnknown": "မသိ feature"
+      "featureUnknown": "မသိ feature",
+      "detail": {
+        "metaTitle": "အသုံးပြုမှုအသေးစိတ် — AI Minions",
+        "metaDescription": "Feature အသုံးပြုမှု မှတ်တမ်းအတွက် input နှင့် output အသေးစိတ်ကို ကြည့်နိုင်သည်။",
+        "title": "အသုံးပြုမှုအသေးစိတ်",
+        "back": "ပရိုဖိုင်သို့ ပြန်ရန်",
+        "loading": "အသေးစိတ်ဖွင့်နေသည်…",
+        "loadError": "အသုံးပြုမှုအသေးစိတ် မဖတ်နိုင်ပါ။",
+        "invalidId": "မမှန်ကန်သော မှတ်တမ်း ID ဖြစ်သည်။",
+        "noDetails": "ဤ status အတွက် အသေးစိတ် မရှိပါ။",
+        "input": "ထည့်သွင်းချက်",
+        "output": "ထွက်ရှိချက်",
+        "downloadImage": "ပုံဒေါင်းလုပ်ယူရန်",
+        "audioUnsupported": "ဤ browser တွင် audio မဖွင့်နိုင်ပါ။"
+      }
     }
   },
   "pricing": {

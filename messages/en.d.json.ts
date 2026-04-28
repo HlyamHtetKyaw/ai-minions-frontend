@@ -102,6 +102,8 @@ declare const messages: {
       "empty": "No usage yet. Run a feature to see history.",
       "loadMore": "Load more",
       "loadingMore": "Loading…",
+      "viewDetails": "View details",
+      "noDetails": "No details",
       "notCharged": "Not charged",
       "pointsUnit": "pts",
       "statusPending": "Pending",
@@ -117,7 +119,21 @@ declare const messages: {
       "featureImageGeneration": "Image generation",
       "featureAudioGeneration": "Audio generation",
       "featureVideoGeneration": "Video generation",
-      "featureUnknown": "Unknown feature"
+      "featureUnknown": "Unknown feature",
+      "detail": {
+        "metaTitle": "Usage details — AI Minions",
+        "metaDescription": "View input and output details for your feature usage history.",
+        "title": "Usage details",
+        "back": "Back to profile",
+        "loading": "Loading details…",
+        "loadError": "Could not load usage details.",
+        "invalidId": "Invalid usage history id.",
+        "noDetails": "No details available for this status.",
+        "input": "Input",
+        "output": "Output",
+        "downloadImage": "Download image",
+        "audioUnsupported": "Your browser does not support audio playback."
+      }
     }
   },
   "pricing": {

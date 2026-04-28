@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
+import { Link } from '@/i18n/navigation';
 import { fetchMe } from '@/lib/auth';
 import {
   fetchMyProfile,
@@ -360,6 +361,18 @@ export default function AccountProfileClient() {
                     >
                       {statusLabel(row.status)}
                     </span>
+                    {String(row.status ?? '').toUpperCase() === 'SUCCESS' ? (
+                      <Link
+                        href={{ pathname: '/account/usage-history/[id]', params: { id: String(row.id) } }}
+                        className="rounded-md border border-card-border px-2.5 py-1 text-xs font-medium text-foreground transition-colors hover:bg-surface"
+                      >
+                        {t('usageHistory.viewDetails')}
+                      </Link>
+                    ) : (
+                      <span className="rounded-md border border-card-border px-2.5 py-1 text-xs text-muted">
+                        {t('usageHistory.noDetails')}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}
