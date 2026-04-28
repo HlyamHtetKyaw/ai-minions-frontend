@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
+import ProgressBar from '@/components/shared/components/progress-bar';
 import {
   transcribeEstimatePointsFromExisting,
   transcribeFromExisting,
@@ -275,6 +276,7 @@ export default function CreationStudio({
 }: Props) {
   const tVo = useTranslations('voice-over');
   const tViral = useTranslations('viralShorts.voiceStudio');
+  const tEditor = useTranslations('viralShorts.editor');
   const [showTranscribeConfirm, setShowTranscribeConfirm] = useState(false);
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
@@ -1548,7 +1550,8 @@ export default function CreationStudio({
   };
 
   const handleTranscribeClick = () => {
-    if (isTranscribing || !workspaceS3Key) return;
+    const transcribeInProgress = isTranscribing || Boolean(transcribeProgress && transcribeProgress.percent < 100);
+    if (transcribeInProgress || !workspaceS3Key || !videoFullyLoaded) return;
     // If we have an estimate, show a confirmation modal before spending points.
     if (estimate && !estimateLoading && !estimateError) {
       setShowTranscribeConfirm(true);
@@ -1841,6 +1844,9 @@ export default function CreationStudio({
     videoBufferPct,
     audioBufferPct,
   ]);
+  const isSyncingVoice = syncUi.kind === 'working';
+  const isBalancedSyncRunning = Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100);
+  const isSubtitlesRunning = Boolean(subtitlesProgress && subtitlesProgress.percent < 100);
 
   return (
     <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
@@ -1856,16 +1862,16 @@ export default function CreationStudio({
               onClick={onDiscardWorkspace}
               className="h-8 rounded-md border border-red-500/30 bg-transparent px-3 text-xs font-semibold text-red-300 transition-colors hover:border-red-400/60 hover:bg-red-500/10"
             >
-              Discard workspace
+              {tEditor('buttons.discardWorkspace')}
             </button>
           ) : null}
           <ActionButton
             onClick={() => void handleFinalExportClick()}
             isLoading={exporting}
             disabled={!workspaceS3Key || exporting}
-            label="Final Export"
-            loadingLabel="Exporting..."
-            className="h-8 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
+            label={tEditor('buttons.finalExport')}
+            loadingLabel={tEditor('buttons.exporting')}
+            className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
           />
         </div>
       </header>
@@ -1890,26 +1896,16 @@ export default function CreationStudio({
             </p>
           </div>
           <p className="mt-0.5 text-xs text-foreground">{viralUnifiedJobBar.label}</p>
-          <div
-            className="mt-2 h-2.5 w-full overflow-hidden rounded-full bg-subtle"
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={viralUnifiedJobBar.percent >= 0 ? viralUnifiedJobBar.percent : undefined}
-          >
-            {viralUnifiedJobBar.percent >= 0 ? (
-              <div
-                className={`h-2.5 rounded-full transition-[width] duration-300 ease-out ${viralUnifiedJobBar.barClass}`}
-                style={{
-                  width: `${Math.min(100, Math.max(0, viralUnifiedJobBar.percent))}%`,
-                }}
-              />
-            ) : (
-              <div
-                className={`h-2.5 w-[40%] max-w-[12rem] animate-pulse rounded-full ${viralUnifiedJobBar.barClass}`}
-              />
-            )}
-          </div>
+          <ProgressBar
+            value={viralUnifiedJobBar.percent >= 0 ? viralUnifiedJobBar.percent : 0}
+            max={100}
+            ariaLabel={`${viralUnifiedJobBar.title}: ${viralUnifiedJobBar.label}`}
+            isComplete={viralUnifiedJobBar.done}
+            fillClassName={viralUnifiedJobBar.barClass}
+            completeFillClassName={viralUnifiedJobBar.barClass}
+            indeterminate={viralUnifiedJobBar.percent < 0}
+            indeterminateFillClassName={`w-[40%] max-w-[12rem] animate-pulse ${viralUnifiedJobBar.barClass}`}
+          />
         </div>
       ) : null}
 
@@ -1919,10 +1915,17 @@ export default function CreationStudio({
             <button
               type="button"
               onClick={handleTranscribeClick}
-              disabled={isTranscribing || !workspaceS3Key}
+              disabled={
+                isTranscribing ||
+                Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
+                !workspaceS3Key ||
+                !videoFullyLoaded
+              }
               className="btn-transcribe"
             >
-              {isTranscribing ? 'Transcribing...' : '1. Transcribe Video'}
+              {isTranscribing || Boolean(transcribeProgress && transcribeProgress.percent < 100)
+                ? tEditor('buttons.transcribing')
+                : tEditor('buttons.transcribeVideo')}
             </button>
             {transcribeError ? (
               <div className="rounded border border-red-500/30 bg-red-500/10 px-2 py-1.5 text-[10px] text-red-200">
@@ -1940,7 +1943,7 @@ export default function CreationStudio({
                   leftTab === 'script' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
                 }`}
               >
-                Script
+                {tEditor('buttons.scriptTab')}
               </button>
               <button
                 type="button"
@@ -1949,7 +1952,7 @@ export default function CreationStudio({
                   leftTab === 'srt' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
                 }`}
               >
-                SRT Editor
+                {tEditor('buttons.srtEditorTab')}
               </button>
             </div>
             <div className="mt-2 space-y-1.5">
@@ -2160,14 +2163,14 @@ export default function CreationStudio({
                                       });
                                     }}
                                   >
-                                    + After
+                                    {tEditor('buttons.addAfter')}
                                   </button>
                                   <button
                                     type="button"
                                     className="h-7 rounded border border-red-500/35 bg-transparent px-2 text-[10px] font-semibold text-red-300 hover:bg-red-500/10"
                                     onClick={() => setEditableCues((prev) => prev.filter((x) => x.id !== c.id))}
                                   >
-                                    Remove
+                                    {tEditor('buttons.remove')}
                                   </button>
                                 </div>
                               </div>
@@ -2208,7 +2211,7 @@ export default function CreationStudio({
                             setSubtitlesSrtText(cuesToSrt(editableCues));
                           }}
                         >
-                          Save all cues to SRT
+                          {tEditor('buttons.saveAllCuesToSrt')}
                         </button>
                         <p className="mt-1 text-center text-[9px] leading-tight text-muted-foreground">
                           Applies every cue above to the workspace subtitle file.
@@ -2344,7 +2347,7 @@ export default function CreationStudio({
                     onClick={() => setShowBalancedPreview(true)}
                     className="h-7 rounded-md bg-[#7c5cff] px-2 font-semibold text-white hover:bg-[#6b4bff]"
                   >
-                    Preview & Accept
+                    {tEditor('buttons.previewAndAccept')}
                   </button>
                 </div>
               ) : null}
@@ -2441,7 +2444,7 @@ export default function CreationStudio({
                   className="font-semibold text-foreground underline"
                   onClick={() => void triggerWorkspaceExportDownload(exportedVideoUrl, exportedVideoKey || 'video-export.mp4')}
                 >
-                  Download again
+                  {tEditor('buttons.downloadAgain')}
                 </button>
               </div>
             ) : null}
@@ -2471,8 +2474,8 @@ export default function CreationStudio({
                   onClick={handleTranslateClick}
                   isLoading={isTranslating}
                   disabled={!isTranscribed || isTranslating}
-                  label="Translate"
-                  loadingLabel="Translating..."
+                  label={tEditor('buttons.translate')}
+                  loadingLabel={tEditor('buttons.translating')}
                   className="btn-viral-shorts-analyze btn-viral-shorts-translate-inline h-10 shrink-0 rounded-xl px-5 text-sm font-semibold whitespace-nowrap"
                 />
               </div>
@@ -2498,7 +2501,10 @@ export default function CreationStudio({
                   onClick={() => setShowVoiceStyleModal(true)}
                   disabled={voiceModelsLoading || isGenerating}
                 >
-                  {tViral('chooseVoiceStyleButton')}
+                  <span className="inline-flex items-center gap-1.5">
+                    {voiceModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+                    {voiceModelsLoading ? tEditor('buttons.loading') : tViral('chooseVoiceStyleButton')}
+                  </span>
                 </button>
               </div>
 
@@ -2506,8 +2512,8 @@ export default function CreationStudio({
                 onClick={() => void handleGenerate()}
                 isLoading={isGenerating}
                 disabled={!isTranslated || isGenerating}
-                label="Generate"
-                loadingLabel="Generating..."
+                label={tEditor('buttons.generate')}
+                loadingLabel={tEditor('buttons.generating')}
                 className="btn-viral-shorts h-11 w-full rounded-xl px-4 text-sm font-semibold"
               />
 
@@ -2519,10 +2525,13 @@ export default function CreationStudio({
                 <button
                   type="button"
                   onClick={() => void handleSyncVoiceToVideo()}
-                  disabled={!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
+                  disabled={isSyncingVoice || !videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                 >
-                  Sync voice length to audio
+                  <span className="inline-flex items-center gap-1.5">
+                    {isSyncingVoice ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+                    {isSyncingVoice ? tEditor('buttons.syncingVoiceLength') : tEditor('buttons.syncVoiceLengthToAudio')}
+                  </span>
                 </button>
                 <button
                   type="button"
@@ -2533,12 +2542,17 @@ export default function CreationStudio({
                     !voiceOverS3Key ||
                     !videoFullyLoaded ||
                     !voiceFullyLoaded ||
-                    Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100) ||
+                    isBalancedSyncRunning ||
                     balancedSyncEstimateLoading
                   }
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                 >
-                  {'Balanced sync (render & combine)'}
+                  <span className="inline-flex items-center gap-1.5">
+                    {isBalancedSyncRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+                    {isBalancedSyncRunning
+                      ? tEditor('buttons.renderingBalancedSync')
+                      : tEditor('buttons.balancedSyncRenderCombine')}
+                  </span>
                 </button>
                 {balancedSyncEstimateError ? (
                   <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
@@ -2568,7 +2582,7 @@ export default function CreationStudio({
                   }}
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface"
                 >
-                  Protection (flip + hue)
+                  {tEditor('buttons.protectionFlipHue')}
                 </button>
                 {syncUi.kind !== 'idle' ? (
                   <div
@@ -2588,10 +2602,13 @@ export default function CreationStudio({
                   onMouseEnter={() => void ensureSubtitlesEstimate()}
                   onFocus={() => void ensureSubtitlesEstimate()}
                   onClick={handleSubtitlesClick}
-                  disabled={!workspaceS3Key || Boolean(subtitlesProgress && subtitlesProgress.percent < 100)}
+                  disabled={!workspaceS3Key || isSubtitlesRunning}
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                 >
-                  Generate subtitles
+                  <span className="inline-flex items-center gap-1.5">
+                    {isSubtitlesRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+                    {isSubtitlesRunning ? tEditor('buttons.generatingSubtitles') : tEditor('buttons.generateSubtitles')}
+                  </span>
                 </button>
                 {subtitlesError ? (
                   <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-xs leading-relaxed text-red-200">
@@ -2605,14 +2622,14 @@ export default function CreationStudio({
                       className="flex min-h-10 w-full items-center justify-center rounded-lg bg-[#7c5cff] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
                       onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
                     >
-                      Download (.srt)
+                      {tEditor('buttons.downloadSrt')}
                     </button>
                     <button
                       type="button"
                       className="flex min-h-10 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-surface"
                       onClick={() => setLeftTab('srt')}
                     >
-                      Open SRT editor
+                      {tEditor('buttons.openSrtEditor')}
                     </button>
                   </div>
                 ) : null}
@@ -2624,7 +2641,7 @@ export default function CreationStudio({
 
         {showTranscribeConfirm ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Confirm transcription"
@@ -2646,18 +2663,23 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => setShowTranscribeConfirm(false)}
                 >
-                  Cancel
+                  {tEditor('buttons.cancel')}
                 </button>
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={isTranscribing || !workspaceS3Key}
+                  disabled={
+                    isTranscribing ||
+                    Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
+                    !workspaceS3Key ||
+                    !videoFullyLoaded
+                  }
                   onClick={() => {
                     setShowTranscribeConfirm(false);
                     void startTranscribe();
                   }}
                 >
-                  Continue
+                  {tEditor('buttons.continue')}
                 </button>
               </div>
             </div>
@@ -2666,7 +2688,7 @@ export default function CreationStudio({
 
         {showTranslateConfirm ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Confirm translation"
@@ -2693,7 +2715,7 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => setShowTranslateConfirm(false)}
                 >
-                  Cancel
+                  {tEditor('buttons.cancel')}
                 </button>
                 <button
                   type="button"
@@ -2704,7 +2726,7 @@ export default function CreationStudio({
                     void handleTranslate();
                   }}
                 >
-                  Continue
+                  {tEditor('buttons.continue')}
                 </button>
               </div>
             </div>
@@ -2713,7 +2735,7 @@ export default function CreationStudio({
 
         {showSubtitlesConfirm ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Confirm subtitles"
@@ -2738,18 +2760,18 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => setShowSubtitlesConfirm(false)}
                 >
-                  Cancel
+                  {tEditor('buttons.cancel')}
                 </button>
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={subtitlesEstimateLoading}
+                  disabled={subtitlesEstimateLoading || isSubtitlesRunning}
                   onClick={() => {
                     setShowSubtitlesConfirm(false);
                     void startSubtitles();
                   }}
                 >
-                  Confirm
+                  {isSubtitlesRunning ? tEditor('buttons.generatingSubtitles') : tEditor('buttons.confirm')}
                 </button>
               </div>
             </div>
@@ -2758,7 +2780,7 @@ export default function CreationStudio({
 
         {showExportConfirm ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Confirm export"
@@ -2783,7 +2805,7 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => setShowExportConfirm(false)}
                 >
-                  Cancel
+                  {tEditor('buttons.cancel')}
                 </button>
                 <button
                   type="button"
@@ -2794,7 +2816,7 @@ export default function CreationStudio({
                     void startFinalExport();
                   }}
                 >
-                  Confirm
+                  {tEditor('buttons.confirm')}
                 </button>
               </div>
             </div>
@@ -2803,7 +2825,7 @@ export default function CreationStudio({
 
         {showVoiceStyleModal ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-labelledby="voice-style-modal-title"
@@ -2846,7 +2868,7 @@ export default function CreationStudio({
 
         {showVoiceOverConfirm ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Confirm voice over"
@@ -2873,7 +2895,7 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => setShowVoiceOverConfirm(false)}
                 >
-                  Cancel
+                  {tEditor('buttons.cancel')}
                 </button>
                 <button
                   type="button"
@@ -2884,7 +2906,7 @@ export default function CreationStudio({
                     void startVoiceOver();
                   }}
                 >
-                  Confirm
+                  {tEditor('buttons.confirm')}
                 </button>
               </div>
             </div>
@@ -2893,7 +2915,7 @@ export default function CreationStudio({
 
         {showBalancedSyncConfirm ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Confirm balanced sync"
@@ -2920,18 +2942,18 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => setShowBalancedSyncConfirm(false)}
                 >
-                  Cancel
+                  {tEditor('buttons.cancel')}
                 </button>
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={balancedSyncEstimateLoading}
+                  disabled={balancedSyncEstimateLoading || isBalancedSyncRunning}
                   onClick={() => {
                     setShowBalancedSyncConfirm(false);
                     void handleStartBalancedSync();
                   }}
                 >
-                  Confirm
+                  {isBalancedSyncRunning ? tEditor('buttons.renderingBalancedSync') : tEditor('buttons.confirm')}
                 </button>
               </div>
             </div>
@@ -2940,7 +2962,7 @@ export default function CreationStudio({
 
         {showBalancedPreview && isBalancedPreviewMode ? (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
             role="dialog"
             aria-modal="true"
             aria-label="Balanced sync preview"
@@ -2958,7 +2980,7 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => void handleRejectBalancedSync()}
                 >
-                  Close
+                  {tEditor('buttons.close')}
                 </button>
               </div>
               <div className="bg-black p-3">
@@ -2976,14 +2998,14 @@ export default function CreationStudio({
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
                   onClick={() => void handleRejectBalancedSync()}
                 >
-                  Reject
+                  {tEditor('buttons.reject')}
                 </button>
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
                   onClick={() => void handleAcceptBalancedSync()}
                 >
-                  Accept
+                  {tEditor('buttons.accept')}
                 </button>
               </div>
             </div>

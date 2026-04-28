@@ -6,6 +6,7 @@ import { Captions, Download } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
 import ActionButton from '@/components/shared/components/action-button';
+import ProgressBar from '@/components/shared/components/progress-bar';
 import { AUTH_CHANGED_EVENT, clearClientAuth, getStoredAccessToken } from '@/lib/auth-token';
 import { openGenerationJobSseStream } from '@/lib/generation-job-sse';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
@@ -280,14 +281,12 @@ export default function SubtitlesPage() {
                     </p>
                     <p className="text-xs font-semibold text-muted-foreground tabular-nums">{progress.percent}%</p>
                   </div>
-                  <div className="mt-2 h-2 w-full rounded-full bg-subtle">
-                    <div
-                      className={`h-2 rounded-full transition-[width] ${
-                        progress.percent >= 100 ? 'bg-emerald-600' : 'bg-foreground'
-                      }`}
-                      style={{ width: `${progress.percent}%` }}
-                    />
-                  </div>
+                  <ProgressBar
+                    value={progress.percent}
+                    max={100}
+                    ariaLabel={progress.label}
+                    isComplete={progress.percent >= 100}
+                  />
                 </div>
               ) : null}
 
