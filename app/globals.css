@@ -23,6 +23,9 @@
   --landing-home-primary-bg: #e6c978;
   --landing-home-primary-fg: #0a1128;
   --landing-home-primary-hover: #efd589;
+  --scrollbar-track: #e8e8ec;
+  --scrollbar-thumb: #b4b4bc;
+  --scrollbar-thumb-hover: #8b8b96;
 }
 
 .dark {
@@ -47,6 +50,9 @@
   --landing-home-primary-bg: #e6c978;
   --landing-home-primary-fg: #0f1128;
   --landing-home-primary-hover: #efd589;
+  --scrollbar-track: rgba(255, 255, 255, 0.06);
+  --scrollbar-thumb: rgba(167, 139, 250, 0.42);
+  --scrollbar-thumb-hover: rgba(196, 181, 253, 0.72);
 }
 
 .dark select {
@@ -97,6 +103,31 @@
 }
 .group:hover .landing-home-primary--group {
   background-color: var(--landing-home-primary-hover);
+}
+
+/* Themed scrollbars for overflow panels (WebKit + Firefox) */
+.scrollbar-themed {
+  scrollbar-width: thin;
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+}
+.scrollbar-themed::-webkit-scrollbar {
+  width: 8px;
+}
+.scrollbar-themed::-webkit-scrollbar-track {
+  margin-block: 4px;
+  border-radius: 9999px;
+  background: var(--scrollbar-track);
+}
+.scrollbar-themed::-webkit-scrollbar-thumb {
+  border-radius: 9999px;
+  background: var(--scrollbar-thumb);
+  border: 2px solid var(--scrollbar-track);
+  background-clip: padding-box;
+}
+.scrollbar-themed::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+  border-color: var(--scrollbar-track);
+  background-clip: padding-box;
 }
 
 html {

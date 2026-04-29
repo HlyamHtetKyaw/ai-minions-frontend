@@ -58,7 +58,10 @@ export default function VoiceOverPage() {
       : null;
   const estimateUnavailable = Boolean(estimateError);
 
-  const canGenerate = useMemo(() => scriptText.trim().length > 0 && !isLoading, [scriptText, isLoading]);
+  const isGenerating = useMemo(
+    () => isLoading || (progress !== null && progress.percent < 100),
+    [isLoading, progress],
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -147,6 +150,9 @@ export default function VoiceOverPage() {
           setProgress(null);
         },
       });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setProgress(null);
     } finally {
       setIsLoading(false);
     }
@@ -184,7 +190,7 @@ export default function VoiceOverPage() {
                     exampleHint={t('scriptInput.example')}
                     variant="voiceStudio"
                     showCharacterCount={false}
-                    disabled={isLoading}
+                    disabled={isGenerating}
                   />
 
                   <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-4 py-4 sm:px-5">
@@ -217,7 +223,7 @@ export default function VoiceOverPage() {
                 </div>
 
                 {/* Right: voice, generate, progress, output (sticky on wide screens) */}
-                <div className="flex min-w-0 flex-col gap-6 lg:sticky lg:top-24 lg:self-start">
+                <div className="flex min-w-0 flex-col gap-8 lg:sticky lg:top-24 lg:self-start">
                   <div className="space-y-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">{t('models.label')}</p>
                     <VoiceToneVoicePicker
@@ -228,11 +234,15 @@ export default function VoiceOverPage() {
                       onToneGroupChange={setVoiceToneGroupId}
                       selectedVoiceId={selectedVoiceId}
                       onVoiceIdChange={setSelectedVoiceId}
-                      disabled={isLoading}
+                      disabled={isGenerating}
                     />
                   </div>
 
-                  <GenerateButton onClick={handleGenerate} isLoading={isLoading} disabled={!canGenerate} />
+                  <GenerateButton
+                    onClick={handleGenerate}
+                    isLoading={isGenerating}
+                    disabled={!scriptText.trim()}
+                  />
 
                   {progress ? (
                     <div
