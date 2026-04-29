@@ -19,7 +19,9 @@ export default function LocaleSwitcher({ label }: { label: string }) {
   function handleSelect(code: string) {
     setOpen(false);
     startTransition(() => {
-      router.replace(pathname, { locale: code });
+      // `usePathname()` can include dynamic route templates (e.g. `/account/usage-history/[id]`),
+      // which are valid at runtime for locale-only switches but too strict for TS route inference.
+      router.replace(pathname as never, { locale: code });
     });
   }
 
