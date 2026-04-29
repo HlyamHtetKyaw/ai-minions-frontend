@@ -2,13 +2,12 @@
 
 import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { Eye, EyeOff } from 'lucide-react';
 import { signup } from '@/lib/auth';
 
 type PasswordStrength = {
   score: number;
-  label: 'Weak' | 'Fair' | 'Good' | 'Strong';
-  hint: string;
 };
 
 function getPasswordStrength(value: string): PasswordStrength {
@@ -22,36 +21,21 @@ function getPasswordStrength(value: string): PasswordStrength {
   const score = checks.filter(Boolean).length;
 
   if (score <= 2) {
-    return {
-      score,
-      label: 'Weak',
-      hint: 'Use at least 8 chars with uppercase, lowercase, number, and symbol.',
-    };
+    return { score };
   }
   if (score === 3) {
-    return {
-      score,
-      label: 'Fair',
-      hint: 'Add more variety (uppercase, number, or symbol) for better security.',
-    };
+    return { score };
   }
   if (score === 4) {
-    return {
-      score,
-      label: 'Good',
-      hint: 'Good password. Adding a symbol or extra length makes it stronger.',
-    };
+    return { score };
   }
 
-  return {
-    score,
-    label: 'Strong',
-    hint: 'Strong password.',
-  };
+  return { score };
 }
 
 export default function SignupPage() {
   const router = useRouter();
+  const t = useTranslations('signup');
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -73,11 +57,11 @@ export default function SignupPage() {
     e.preventDefault();
     setError('');
     if (passwordStrength.score < 4) {
-      setError('Please choose a stronger password before continuing.');
+      setError(t('errors.chooseStronger'));
       return;
     }
     if (!passwordsMatch) {
-      setError('Passwords do not match.');
+      setError(t('errors.passwordMismatch'));
       return;
     }
     setLoading(true);
@@ -90,7 +74,7 @@ export default function SignupPage() {
       router.push('/verify');
       router.refresh();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Signup failed';
+      const message = err instanceof Error ? err.message : t('errors.signupFailed');
       if (message.toLowerCase().includes('already exists via google login')) {
         router.push({ pathname: '/password-setup', query: { email: email.trim() } });
         router.refresh();
@@ -106,8 +90,8 @@ export default function SignupPage() {
     <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">Create account</h1>
-          <p className="mt-1 text-sm text-muted">Join AI Minions and start creating</p>
+          <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
+          <p className="mt-1 text-sm text-muted">{t('subtitle')}</p>
         </div>
 
         <form
@@ -122,7 +106,7 @@ export default function SignupPage() {
 
           <div className="space-y-1.5">
             <label htmlFor="username" className="text-sm font-medium text-foreground">
-              Username
+              {t('fields.username')}
             </label>
             <input
               id="username"
@@ -138,7 +122,7 @@ export default function SignupPage() {
 
           <div className="space-y-1.5">
             <label htmlFor="email" className="text-sm font-medium text-foreground">
-              Email
+              {t('fields.email')}
             </label>
             <input
               id="email"
@@ -154,7 +138,7 @@ export default function SignupPage() {
 
           <div className="space-y-1.5">
             <label htmlFor="password" className="text-sm font-medium text-foreground">
-              Password
+              {t('fields.password')}
             </label>
             <div className="relative">
               <input
@@ -170,7 +154,7 @@ export default function SignupPage() {
                 type="button"
                 onClick={() => setShowPassword((prev) => !prev)}
                 className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
-                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                aria-label={showPassword ? t('aria.hidePassword') : t('aria.showPassword')}
               >
                 {showPassword ? (
                   <EyeOff className="mx-auto h-4 w-4" />
@@ -182,7 +166,16 @@ export default function SignupPage() {
             {password.length > 0 && (
               <div className="space-y-1">
                 <p className="text-xs text-muted">
-                  Strength: <span className="font-medium text-foreground">{passwordStrength.label}</span>
+                  {t('strength.label')}:{' '}
+                  <span className="font-medium text-foreground">
+                    {passwordStrength.score <= 2
+                      ? t('strength.weak')
+                      : passwordStrength.score === 3
+                        ? t('strength.fair')
+                        : passwordStrength.score === 4
+                          ? t('strength.good')
+                          : t('strength.strong')}
+                  </span>
                 </p>
                 <div className="h-1.5 w-full rounded-full bg-card-border/70">
                   <div
@@ -198,14 +191,22 @@ export default function SignupPage() {
                     style={{ width: `${Math.max(20, passwordStrength.score * 20)}%` }}
                   />
                 </div>
-                <p className="text-xs text-muted">{passwordStrength.hint}</p>
+                <p className="text-xs text-muted">
+                  {passwordStrength.score <= 2
+                    ? t('strength.hints.weak')
+                    : passwordStrength.score === 3
+                      ? t('strength.hints.fair')
+                      : passwordStrength.score === 4
+                        ? t('strength.hints.good')
+                        : t('strength.hints.strong')}
+                </p>
               </div>
             )}
           </div>
 
           <div className="space-y-1.5">
             <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-              Confirm password
+              {t('fields.confirmPassword')}
             </label>
             <div className="relative">
               <input
@@ -221,7 +222,7 @@ export default function SignupPage() {
                 type="button"
                 onClick={() => setShowConfirmPassword((prev) => !prev)}
                 className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
-                aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                aria-label={showConfirmPassword ? t('aria.hideConfirmPassword') : t('aria.showConfirmPassword')}
               >
                 {showConfirmPassword ? (
                   <EyeOff className="mx-auto h-4 w-4" />
@@ -232,7 +233,7 @@ export default function SignupPage() {
             </div>
             {confirmPassword.length > 0 && (
               <p className={`text-xs ${passwordsMatch ? 'text-emerald-400' : 'text-red-400'}`}>
-                {passwordsMatch ? 'Passwords match.' : 'Passwords do not match.'}
+                {passwordsMatch ? t('passwordMatch.match') : t('passwordMatch.mismatch')}
               </p>
             )}
           </div>
@@ -242,14 +243,14 @@ export default function SignupPage() {
             disabled={!canSubmit}
             className="w-full rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-fg transition-colors hover:bg-primary-hover disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            {loading ? 'Creating account…' : 'Create account'}
+            {loading ? t('submit.loading') : t('submit.idle')}
           </button>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted">
-          Already have an account?{' '}
+          {t('footer.haveAccount')}{' '}
           <Link href="/login" className="font-medium text-accent-gold hover:underline">
-            Sign in
+            {t('footer.signIn')}
           </Link>
         </p>
       </div>

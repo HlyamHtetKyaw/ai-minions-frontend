@@ -2036,7 +2036,7 @@ export default function CreationStudio({
                       setTranscriptText(v);
                     }
                   }}
-                  placeholder="Click Transcribe to generate script."
+                  placeholder={tEditor('labels.scriptPlaceholder')}
                   className="min-h-[220px] w-full resize-y rounded border border-card-border bg-subtle/30 px-2 py-2 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
                 />
               ) : (
@@ -2051,7 +2051,7 @@ export default function CreationStudio({
                           onChange={(e) => setShowSubtitlesOverlay(e.target.checked)}
                           className="shrink-0"
                         />
-                        <span>Show on video</span>
+                        <span>{tEditor('labels.showOnVideo')}</span>
                       </label>
                       <label className="inline-flex cursor-pointer items-center gap-1.5">
                         <input
@@ -2061,13 +2061,13 @@ export default function CreationStudio({
                           onChange={(e) => setSubtitlesEditPosition(e.target.checked)}
                           className="shrink-0"
                         />
-                        <span>Move on video</span>
+                        <span>{tEditor('labels.moveOnVideo')}</span>
                       </label>
                     </div>
                     <div className="grid gap-2 border-t border-card-border/60 pt-2 sm:grid-cols-2">
                       <div className="space-y-1.5">
                         <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Font size (export px)
+                          {tEditor('labels.fontSizeExport')}
                         </p>
                         <p className="text-[9px] leading-snug text-muted-foreground/90">
                           Preview scales this to your clip so on-screen size matches burned export.
@@ -2139,7 +2139,7 @@ export default function CreationStudio({
                       </div>
                       <div className="space-y-1.5">
                         <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          Background opacity
+                          {tEditor('labels.backgroundOpacity')}
                         </p>
                         <p className="text-[9px] leading-snug text-muted-foreground/90">
                           Same value is applied to the burned export (black box alpha).
@@ -2167,7 +2167,7 @@ export default function CreationStudio({
                   <div className="flex min-h-0 max-h-[min(420px,48vh)] flex-col gap-2">
                     <div className="min-h-0 flex-1 overflow-auto rounded border border-card-border bg-subtle/10 p-1.5">
                       {editableCues.length === 0 ? (
-                        <p className="px-1 py-2 text-xs text-muted">Generate subtitles first to populate cues.</p>
+                        <p className="px-1 py-2 text-xs text-muted">{tEditor('labels.generateSubtitlesFirst')}</p>
                       ) : (
                         <div className="space-y-1.5">
                           {editableCues.slice(0, 80).map((c) => (
