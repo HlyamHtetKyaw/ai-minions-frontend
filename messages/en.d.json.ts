@@ -895,6 +895,12 @@ declare const messages: {
       "unavailable": "Estimate unavailable: {message}",
       "prompt": "Select a file to estimate points."
     },
+    "mode": {
+      "kicker": "Subtitle mode",
+      "burmese": "Translated to Burmese",
+      "original": "Original audio text",
+      "hint": "Only subtitle text output changes; timestamps stay the same."
+    },
     "generateButton": {
       "label": "Generate subtitles (SRT)",
       "loading": "Generating…"

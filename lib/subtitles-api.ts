@@ -18,6 +18,7 @@ export type SubtitlesCompleteData = {
   s3Key: string;
   storageUrl: string;
 };
+export type SubtitlesTargetMode = 'burmese' | 'original';
 
 export type PointsEstimate = {
   baseCostPoints: number;
@@ -41,7 +42,14 @@ function inferSourceType(file: File): 'audio' | 'video' {
   return 'audio';
 }
 
-export async function subtitlesPrepareUpload(file: File): Promise<SubtitlesPrepareData> {
+function resolveTargetLanguage(mode: SubtitlesTargetMode): 'my' | 'original' {
+  return mode === 'original' ? 'original' : 'my';
+}
+
+export async function subtitlesPrepareUpload(
+  file: File,
+  mode: SubtitlesTargetMode = 'burmese',
+): Promise<SubtitlesPrepareData> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set (NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)');
 
@@ -59,7 +67,7 @@ export async function subtitlesPrepareUpload(file: File): Promise<SubtitlesPrepa
       fileName: file.name,
       contentType,
       sourceType,
-      targetLanguage: 'my',
+      targetLanguage: resolveTargetLanguage(mode),
       style: 'caption_rules_v1',
     }),
   });

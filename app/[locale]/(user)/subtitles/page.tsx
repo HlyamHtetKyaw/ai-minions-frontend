@@ -19,6 +19,7 @@ import {
   subtitlesPrepareUpload,
   uploadToSignedUrl,
   type PointsEstimate,
+  type SubtitlesTargetMode,
 } from '@/lib/subtitles-api';
 import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
 
@@ -57,6 +58,7 @@ export default function SubtitlesPage() {
   const [previewTruncated, setPreviewTruncated] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [subtitlesMode, setSubtitlesMode] = useState<SubtitlesTargetMode>('burmese');
 
   const toUserSafeError = useCallback(
     (raw: string): string => {
@@ -141,7 +143,7 @@ export default function SubtitlesPage() {
     setPreviewError(null);
     try {
       setProgress({ percent: 10, label: t('progress.preparingUpload') });
-      const prep = await withTimeout(subtitlesPrepareUpload(uploadedFile), 20000, t('timeouts.prepareUpload'));
+      const prep = await withTimeout(subtitlesPrepareUpload(uploadedFile, subtitlesMode), 20000, t('timeouts.prepareUpload'));
 
       setProgress({ percent: 25, label: t('progress.uploading') });
       await withTimeout(uploadToSignedUrl(prep.uploadUrl, uploadedFile), 120000, t('timeouts.upload'));
@@ -258,6 +260,34 @@ export default function SubtitlesPage() {
                       ? t('estimate.unavailable', { message: estimateError })
                       : t('estimate.prompt')}
               </p>
+            </div>
+
+            <div className="rounded-xl border border-card-border bg-card px-4 py-3">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{t('mode.kicker')}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-4">
+                <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="radio"
+                    name="subtitles-target-mode"
+                    value="burmese"
+                    checked={subtitlesMode === 'burmese'}
+                    onChange={() => setSubtitlesMode('burmese')}
+                    disabled={isLoading}
+                  />
+                  <span>{t('mode.burmese')}</span>
+                </label>
+                <label className="inline-flex items-center gap-2 text-sm text-foreground">
+                  <input
+                    type="radio"
+                    name="subtitles-target-mode"
+                    value="original"
+                    checked={subtitlesMode === 'original'}
+                    onChange={() => setSubtitlesMode('original')}
+                    disabled={isLoading}
+                  />
+                  <span>{t('mode.original')}</span>
+                </label>
+              </div>
             </div>
 
             <ActionButton
