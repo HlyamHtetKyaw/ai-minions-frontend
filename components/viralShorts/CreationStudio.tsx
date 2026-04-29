@@ -1616,9 +1616,10 @@ export default function CreationStudio({
     setExportedVideoUrl(null);
     setExportedVideoKey('');
     try {
-      if (!workspaceS3Key) throw new Error('Video key is missing. Please re-upload the video.');
+      const estimatedVideoSrcKey = extractWorkspaceKeyFromVideoUrl(String(videoUrl ?? '')) ?? workspaceS3Key ?? null;
+      if (!estimatedVideoSrcKey) throw new Error('Video key is missing. Please re-upload the video.');
       setExportEstimateLoading(true);
-      const est = await videoEditorExportEstimateExisting(workspaceS3Key);
+      const est = await videoEditorExportEstimateExisting(estimatedVideoSrcKey);
       const reserve = Number((est as any).reserveCostPoints);
       setExportEstimate({ reserveCostPoints: Number.isFinite(reserve) ? reserve : 0 });
       setShowExportConfirm(true);
@@ -1642,7 +1643,10 @@ export default function CreationStudio({
         throw new Error('Video duration not ready. Play the video once, then try Export again.');
       }
       const baseUrl = String(videoUrl ?? '');
-      const videoSrcKey = extractWorkspaceKeyFromVideoUrl(baseUrl);
+      const videoSrcKey = extractWorkspaceKeyFromVideoUrl(baseUrl) ?? workspaceS3Key ?? null;
+      if (!videoSrcKey) {
+        throw new Error('Video source key is missing. Please re-upload the video and try again.');
+      }
       const noFrag = baseUrl.includes('#') ? baseUrl.slice(0, baseUrl.indexOf('#')) : baseUrl;
       const canvasW = Math.max(1, Math.round(previewFramePx.w));
       const canvasH = Math.max(1, Math.round(previewFramePx.h));
@@ -1657,6 +1661,7 @@ export default function CreationStudio({
       const payload = {
         videoUrl: noFrag,
         videoSrcKey,
+        workspaceS3Key: videoSrcKey,
         duration,
         trimStart: 0,
         trimEnd: 0,
