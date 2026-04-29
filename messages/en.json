@@ -128,7 +128,14 @@
         "noDetails": "No details available for this status.",
         "input": "Input",
         "output": "Output",
+        "downloadSubtitle": "Download subtitle",
+        "downloadingSubtitle": "Preparing download…",
+        "downloadAudio": "Download audio",
+        "downloadingAudio": "Preparing audio download…",
+        "downloadVideo": "Download video",
+        "downloadingVideo": "Preparing video download…",
         "downloadImage": "Download image",
+        "downloadingImage": "Preparing image download…",
         "audioUnsupported": "Your browser does not support audio playback."
       }
     }

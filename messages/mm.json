@@ -128,7 +128,14 @@
         "noDetails": "ဤ status အတွက် အသေးစိတ် မရှိပါ။",
         "input": "ထည့်သွင်းချက်",
         "output": "ထွက်ရှိချက်",
+        "downloadSubtitle": "စာတန်းဖိုင် ဒေါင်းလုဒ်လုပ်ရန်",
+        "downloadingSubtitle": "ဒေါင်းလုဒ် ပြင်ဆင်နေသည်…",
+        "downloadAudio": "အသံဖိုင် ဒေါင်းလုဒ်လုပ်ရန်",
+        "downloadingAudio": "အသံဖိုင် ဒေါင်းလုဒ် ပြင်ဆင်နေသည်…",
+        "downloadVideo": "ဗီဒီယိုဖိုင် ဒေါင်းလုဒ်လုပ်ရန်",
+        "downloadingVideo": "ဗီဒီယိုဖိုင် ဒေါင်းလုဒ် ပြင်ဆင်နေသည်…",
         "downloadImage": "ပုံဒေါင်းလုပ်ယူရန်",
+        "downloadingImage": "ပုံဒေါင်းလုဒ် ပြင်ဆင်နေသည်…",
         "audioUnsupported": "ဤ browser တွင် audio မဖွင့်နိုင်ပါ။"
       }
     }

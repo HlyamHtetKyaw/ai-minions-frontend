@@ -175,3 +175,17 @@ export async function fetchUsageHistoryDetail(id: number): Promise<UsageHistoryD
   const raw = await apiFetch(`/api/v1/auth/usage-history/${id}`);
   return unwrap<UsageHistoryDetail>(raw);
 }
+
+export async function fetchUsageHistoryContentImageDownloadUrl(
+  id: number,
+): Promise<{ downloadUrl: string; key: string }> {
+  const raw = await apiFetch(`/api/v1/auth/usage-history/${id}/content-image-download-url`);
+  return unwrap<{ downloadUrl: string; key: string }>(raw);
+}
+
+export async function fetchUsageHistoryDownloadUrl(
+  id: number,
+): Promise<{ downloadUrl: string; key: string }> {
+  const raw = await apiFetch(`/api/v1/auth/usage-history/${id}/download-url`);
+  return unwrap<{ downloadUrl: string; key: string }>(raw);
+}
