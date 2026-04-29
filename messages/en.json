@@ -136,6 +136,8 @@
         "downloadingVideo": "Preparing video download…",
         "downloadImage": "Download image",
         "downloadingImage": "Preparing image download…",
+        "downloadFailed": "Could not start download. Please try again.",
+        "downloadUrlInvalid": "Download is not available yet. Please try again in a moment.",
         "audioUnsupported": "Your browser does not support audio playback."
       }
     }

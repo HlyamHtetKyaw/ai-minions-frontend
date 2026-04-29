@@ -38,6 +38,23 @@ function resolveExportMediaUrlPreserveFragment(src: string | null | undefined): 
   return trimmed;
 }
 
+function extractWorkspaceKeyFromVideoSrc(src: string | null | undefined): string | null {
+  if (src == null || typeof src !== 'string' || src.trim() === '') return null;
+  try {
+    const u = new URL(src);
+    const frag = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash;
+    for (const token of frag.split('&')) {
+      const [k, v] = token.split('=');
+      if (k === 'wk' && v != null && v.trim() !== '') {
+        return decodeURIComponent(v);
+      }
+    }
+  } catch {
+    // ignore malformed URLs
+  }
+  return null;
+}
+
 /**
  * Pure snapshot of editor data for FFmpeg / API export.
  *
@@ -123,6 +140,7 @@ export function buildExportPayload(state: EditorState) {
 
   return {
     videoUrl: resolveExportVideoUrl(state.videoSrc),
+    videoSrcKey: extractWorkspaceKeyFromVideoSrc(state.videoSrc),
     duration: state.duration,
     trimStart: state.trimStart,
     trimEnd: state.trimEnd,

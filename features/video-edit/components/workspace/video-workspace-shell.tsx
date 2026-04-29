@@ -398,6 +398,8 @@ export function VideoWorkspaceShell() {
   const [workspaceSyncStatus, setWorkspaceSyncStatus] = useState('Connecting workspace stream...');
   const [workspaceUiPhase, setWorkspaceUiPhase] = useState<'loading' | 'canvas-only' | 'editor'>('loading');
   const [workspaceHydratedWithVideo, setWorkspaceHydratedWithVideo] = useState(false);
+  const [workspaceCachedVideoReady, setWorkspaceCachedVideoReady] = useState(false);
+  const [workspaceCachedVideoLoadPercent, setWorkspaceCachedVideoLoadPercent] = useState(0);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [exportOverlayPhase, setExportOverlayPhase] = useState<'idle' | 'exporting' | 'downloading'>('idle');
@@ -609,6 +611,67 @@ export function VideoWorkspaceShell() {
       cancelled = true;
     };
   }, [applyHistorySnapshot]);
+
+  useEffect(() => {
+    const shouldGateByMediaReadiness =
+      workspaceHydratedWithVideo && workspaceUiPhase === 'editor' && videoSrc != null;
+    if (!shouldGateByMediaReadiness) {
+      setWorkspaceCachedVideoReady(true);
+      setWorkspaceCachedVideoLoadPercent(100);
+      return;
+    }
+    const v = videoElement;
+    if (!v) {
+      setWorkspaceCachedVideoReady(false);
+      setWorkspaceCachedVideoLoadPercent(8);
+      return;
+    }
+    const estimateLoadPercent = () => {
+      // Prefer buffered progress; fall back to readyState tiers when buffering info is unavailable.
+      const durationSec = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
+      const bufferedEndSec =
+        durationSec > 0 && v.buffered.length > 0 ? Math.max(0, v.buffered.end(v.buffered.length - 1)) : 0;
+      const bufferedRatio =
+        durationSec > 0 && bufferedEndSec > 0 ? Math.max(0, Math.min(1, bufferedEndSec / durationSec)) : 0;
+      if (bufferedRatio > 0) {
+        return Math.max(8, Math.min(100, Math.round(bufferedRatio * 100)));
+      }
+      const readyStateRatioByTier = [0.08, 0.18, 0.42, 0.72, 1];
+      const tier = Math.max(0, Math.min(4, v.readyState));
+      return Math.max(8, Math.min(100, Math.round(readyStateRatioByTier[tier]! * 100)));
+    };
+    const evaluateReady = () => {
+      const hasMeta =
+        v.readyState >= 1 &&
+        Number.isFinite(v.duration) &&
+        v.duration > 0 &&
+        v.error == null;
+      setWorkspaceCachedVideoReady(hasMeta);
+      setWorkspaceCachedVideoLoadPercent((prev) => {
+        const next = hasMeta ? 100 : estimateLoadPercent();
+        return next > prev ? next : prev;
+      });
+    };
+    evaluateReady();
+    v.addEventListener('loadedmetadata', evaluateReady);
+    v.addEventListener('loadeddata', evaluateReady);
+    v.addEventListener('canplay', evaluateReady);
+    v.addEventListener('progress', evaluateReady);
+    v.addEventListener('canplaythrough', evaluateReady);
+    v.addEventListener('durationchange', evaluateReady);
+    v.addEventListener('emptied', evaluateReady);
+    v.addEventListener('error', evaluateReady);
+    return () => {
+      v.removeEventListener('loadedmetadata', evaluateReady);
+      v.removeEventListener('loadeddata', evaluateReady);
+      v.removeEventListener('canplay', evaluateReady);
+      v.removeEventListener('progress', evaluateReady);
+      v.removeEventListener('canplaythrough', evaluateReady);
+      v.removeEventListener('durationchange', evaluateReady);
+      v.removeEventListener('emptied', evaluateReady);
+      v.removeEventListener('error', evaluateReady);
+    };
+  }, [videoElement, videoSrc, workspaceHydratedWithVideo, workspaceUiPhase]);
 
   useEffect(() => {
     const flushPending = async () => {
@@ -1345,7 +1408,7 @@ export function VideoWorkspaceShell() {
     workspaceHydratedWithVideo &&
     workspaceUiPhase === 'editor' &&
     videoSrc != null &&
-    duration <= 0;
+    !workspaceCachedVideoReady;
 
   const performResetWorkspace = useCallback(async () => {
     setResetBusy(true);
@@ -1417,7 +1480,10 @@ export function VideoWorkspaceShell() {
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-foreground">
+    <div
+      className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-foreground"
+      aria-busy={controlsDisabledWhileCacheVideoLoading}
+    >
       <WorkspaceTopBar
         exportLabel={t('exportVideo')}
         exportDisabled={resolveExportVideoUrl(videoSrc) == null}
@@ -1640,6 +1706,29 @@ export function VideoWorkspaceShell() {
           )
         ) : null}
       </div>
+
+      {controlsDisabledWhileCacheVideoLoading ? (
+        <div
+          className="absolute inset-0 z-[150] flex items-center justify-center bg-black/45 backdrop-blur-[1px]"
+          role="status"
+          aria-live="polite"
+        >
+          <div className="w-[min(86vw,480px)] rounded-lg border border-white/15 bg-zinc-950/90 px-3 py-3 text-xs text-zinc-200 shadow-xl">
+            <div className="flex items-center justify-between gap-3">
+              <span>Loading workspace video... controls will enable automatically.</span>
+              <span className="tabular-nums text-zinc-300">
+                {Math.max(0, Math.min(100, workspaceCachedVideoLoadPercent))}%
+              </span>
+            </div>
+            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
+              <div
+                className="h-full rounded-full bg-violet-400 transition-[width] duration-300 ease-out"
+                style={{ width: `${Math.max(8, Math.min(100, workspaceCachedVideoLoadPercent))}%` }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       {resetDialogOpen ? (
         <div
