@@ -65,7 +65,9 @@ export default function WorkflowSidebar({ currentStep, tip }: Props) {
                   </div>
                 ) : (
                   <Link
-                    href={feature.href}
+                    // `FeatureConfig.href` uses shared AppPathname union, which includes dynamic templates.
+                    // Workflow links are static here; cast avoids next-intl generic mismatch at compile-time.
+                    href={feature.href as never}
                     className="flex items-center gap-3 rounded-lg px-2 py-2 transition-colors hover:bg-surface"
                   >
                     {badge}
