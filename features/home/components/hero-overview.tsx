@@ -19,7 +19,7 @@ export default async function HeroOverview() {
         </p>
         <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
           <Link
-            href={captionStudioHref}
+            href={captionStudioHref as never}
             className="landing-home-primary inline-flex w-fit items-center justify-center rounded-full px-7 py-3 text-sm font-bold shadow-lg"
           >
             {tHome('openStudio')}

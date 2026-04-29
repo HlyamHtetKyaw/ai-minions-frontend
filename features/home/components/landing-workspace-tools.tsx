@@ -53,7 +53,7 @@ function StartHereCard({
 
   return (
     <Link
-      href={feature.href}
+      href={feature.href as never}
       className="group relative flex w-full flex-col gap-6 overflow-hidden rounded-xl border-2 border-sky-500/75 bg-card/70 p-6 shadow-[0_0_36px_-10px_rgba(56,189,248,0.45)] transition hover:border-sky-400 hover:bg-card/80 sm:flex-row sm:items-center sm:justify-between sm:gap-8 sm:p-8"
     >
       <span className="absolute right-4 top-4 text-xs font-bold uppercase tracking-wide text-amber-400">
@@ -90,7 +90,7 @@ function CompactToolCard({
 
   return (
     <Link
-      href={feature.href}
+      href={feature.href as never}
       className="group flex min-h-[200px] flex-col rounded-xl bg-card/55 p-5 ring-1 ring-foreground/8 transition hover:bg-card/70 hover:ring-foreground/12 sm:min-h-[220px] sm:p-6"
     >
       <div className="flex flex-1 flex-col">

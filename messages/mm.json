@@ -540,6 +540,21 @@
         "ratio4_3": "4:3"
       },
       "exportVideo": "ဗီဒီယို ထုတ်မည်",
+      "exportGuard": {
+        "waitForUpload": "Upload ပြီးသည်အထိ စောင့်ပါ",
+        "addVideoFirst": "အရင် ဗီဒီယိုတစ်ခု ထည့်ပါ",
+        "httpsRequired": "Export အတွက် ဗီဒီယို URL သည် HTTPS ဖြစ်ရပါမည်"
+      },
+      "exportConfirm": {
+        "ariaLabel": "Export အတည်ပြုရန်",
+        "title": "ဗီဒီယိုကို export လုပ်မလား?",
+        "estimatedCost": "ခန့်မှန်း export ကုန်ကျစရိတ်:",
+        "pointsUnit": "ပိုင့်",
+        "balance": "လက်ကျန်: {points} ပိုင့်",
+        "notEnoughPoints": "ဤဗီဒီယိုကို export လုပ်ရန် ပိုင့် မလုံလောက်ပါ။",
+        "cancel": "မလုပ်တော့ပါ",
+        "confirm": "Export အတည်ပြုရန်"
+      },
       "exportOverlay": {
         "exporting": "ဗီဒီယို ထုတ်ပေးနေသည်…",
         "downloading": "ဒေါင်းလုဒ်လုပ်နေသည်…"
@@ -579,6 +594,13 @@
         "subs": "စာတန်း",
         "trim": "ဖြတ်တောက်",
         "audio": "အသံ"
+      },
+      "audio": {
+        "addAudio": "အသံထည့်ရန်",
+        "segmentAudio": "အသံအပိုင်း"
+      },
+      "image": {
+        "dragHint": "Thumbnail ကို ဗီဒီယို preview ပေါ်သို့ ဆွဲချပါ၊ + ကိုနှိပ်ပြီး ထည့်ပါ၊ သို့မဟုတ် timeline မှ image clip ကို ရွေးပါ။"
       },
       "tabs": {
         "properties": "ဂုဏ်သတ္တိများ"
@@ -753,6 +775,124 @@
       "loading": "ထုတ်ပေးနေသည်…"
     }
   },
+  "resetPassword": {
+    "title": "စကားဝှက် ပြန်လည်သတ်မှတ်ရန်",
+    "subtitle": "Reset token ကိုထည့်ပြီး စကားဝှက်အသစ် ရွေးပါ။",
+    "success": "စကားဝှက် ပြန်လည်သတ်မှတ်ပြီးပါပြီ။ Login သို့ ပြန်လည်ပို့နေသည်...",
+    "requestNewLink": "Reset link အသစ်တောင်းရန်",
+    "backToLogin": "Login သို့ ပြန်သွားရန်",
+    "fields": {
+      "token": {
+        "label": "Reset token",
+        "placeholder": "သင့် reset token ကို ကူးထည့်ပါ"
+      },
+      "newPassword": {
+        "label": "စကားဝှက်အသစ်",
+        "show": "စကားဝှက်အသစ် ပြရန်",
+        "hide": "စကားဝှက်အသစ် ဖျောက်ရန်"
+      },
+      "confirmPassword": {
+        "label": "စကားဝှက် အတည်ပြုရန်",
+        "show": "အတည်ပြုစကားဝှက် ပြရန်",
+        "hide": "အတည်ပြုစကားဝှက် ဖျောက်ရန်"
+      }
+    },
+    "errors": {
+      "passwordMin": "စကားဝှက်သည် အနည်းဆုံး ၈ လုံး ရှိရပါမည်။",
+      "passwordMismatch": "စကားဝှက်နှစ်ခု မကိုက်ညီပါ။"
+    },
+    "submit": {
+      "idle": "စကားဝှက် ပြန်လည်သတ်မှတ်ရန်",
+      "loading": "ပြန်လည်သတ်မှတ်နေသည်..."
+    }
+  },
+  "login": {
+    "title": "ပြန်လည်ကြိုဆိုပါတယ်",
+    "subtitle": "AI Minions ကို ဆက်လက်အသုံးပြုရန် ဝင်ရောက်ပါ",
+    "modes": {
+      "password": "စကားဝှက်",
+      "code": "အကောင့်ကုဒ်"
+    },
+    "code": {
+      "label": "သင်၏ အကောင့်ကုဒ်",
+      "hint": "အကောင့်ဖွင့်စဉ် ရရှိခဲ့သော ကုဒ်ကို ထည့်ပါ။ စကားဝှက် မလိုအပ်ပါ။",
+      "placeholder": "ဥပမာ MY-CODE-42"
+    },
+    "fields": {
+      "usernameOrEmail": "အသုံးပြုသူအမည် သို့မဟုတ် အီးမေးလ်",
+      "password": "စကားဝှက်"
+    },
+    "aria": {
+      "signInOptions": "ဝင်ရောက်ရန် ရွေးချယ်စရာများ",
+      "showPassword": "စကားဝှက် ပြရန်",
+      "hidePassword": "စကားဝှက် ဖျောက်ရန်"
+    },
+    "links": {
+      "forgotPassword": "စကားဝှက် မေ့နေပါသလား?",
+      "googleOtpSetup": "Google နဲ့အကောင့်ဖွင့်ခဲ့ပါသလား? OTP နဲ့ စကားဝှက်ဖွင့်ပါ"
+    },
+    "submit": {
+      "verifyingCode": "ကုဒ် စစ်ဆေးနေသည်...",
+      "signingIn": "ဝင်ရောက်နေသည်...",
+      "continueWithCode": "ကုဒ်ဖြင့် ဆက်လုပ်ရန်",
+      "signIn": "ဝင်ရောက်ရန်"
+    },
+    "or": "သို့မဟုတ်",
+    "continueWithGoogle": "Google ဖြင့် ဆက်လုပ်ရန်",
+    "footer": {
+      "noAccount": "အကောင့် မရှိသေးဘူးလား?",
+      "signUp": "အကောင့်ဖွင့်ရန်"
+    },
+    "errors": {
+      "loginFailed": "ဝင်ရောက်မှု မအောင်မြင်ပါ"
+    }
+  },
+  "signup": {
+    "title": "အကောင့်ဖွင့်ရန်",
+    "subtitle": "AI Minions နဲ့ ပူးပေါင်းပြီး စတင်ဖန်တီးပါ",
+    "fields": {
+      "username": "အသုံးပြုသူအမည်",
+      "email": "အီးမေးလ်",
+      "password": "စကားဝှက်",
+      "confirmPassword": "စကားဝှက် အတည်ပြုရန်"
+    },
+    "aria": {
+      "showPassword": "စကားဝှက် ပြရန်",
+      "hidePassword": "စကားဝှက် ဖျောက်ရန်",
+      "showConfirmPassword": "အတည်ပြုစကားဝှက် ပြရန်",
+      "hideConfirmPassword": "အတည်ပြုစကားဝှက် ဖျောက်ရန်"
+    },
+    "strength": {
+      "label": "အားကောင်းမှု",
+      "weak": "အားနည်း",
+      "fair": "အလယ်အလတ်",
+      "good": "ကောင်း",
+      "strong": "အလွန်ကောင်း",
+      "hints": {
+        "weak": "အနည်းဆုံး ၈ လုံးနှင့် စာလုံးကြီး၊ စာလုံးသေး၊ နံပါတ်၊ သင်္ကေတ ပါအောင် သုံးပါ။",
+        "fair": "လုံခြုံရေးကောင်းစေရန် စာလုံးကြီး၊ နံပါတ် သို့မဟုတ် သင်္ကေတ ထပ်ထည့်ပါ။",
+        "good": "စကားဝှက် ကောင်းပါတယ်။ သင်္ကေတ သို့မဟုတ် အရှည် ထပ်တိုးလျှင် ပိုအားကောင်းပါမည်။",
+        "strong": "အလွန်အားကောင်းသော စကားဝှက် ဖြစ်သည်။"
+      }
+    },
+    "passwordMatch": {
+      "match": "စကားဝှက်နှစ်ခု ကိုက်ညီပါသည်။",
+      "mismatch": "စကားဝှက်နှစ်ခု မကိုက်ညီပါ။"
+    },
+    "submit": {
+      "idle": "အကောင့်ဖွင့်ရန်",
+      "loading": "အကောင့်ဖွင့်နေသည်..."
+    },
+    "footer": {
+      "haveAccount": "အကောင့်ရှိပြီးသားလား?",
+      "signIn": "ဝင်ရောက်ရန်"
+    },
+    "errors": {
+      "chooseStronger": "ဆက်မလုပ်မီ ပိုအားကောင်းသော စကားဝှက် ရွေးချယ်ပါ။",
+      "passwordMismatch": "စကားဝှက်နှစ်ခု မကိုက်ညီပါ။",
+      "signupFailed": "အကောင့်ဖွင့်မှု မအောင်မြင်ပါ"
+    }
+  },
   "viralShorts": {
     "page": {
       "title": "Viral ဗီဒီယို",
@@ -831,6 +971,14 @@
         "reject": "ပယ်ချရန်",
         "accept": "လက်ခံရန်",
         "loading": "ဖတ်နေသည်..."
+      },
+      "labels": {
+        "scriptPlaceholder": "Script ထုတ်ရန် Transcribe ကို နှိပ်ပါ။",
+        "showOnVideo": "ဗီဒီယိုပေါ်တွင် ပြရန်",
+        "moveOnVideo": "ဗီဒီယိုပေါ်တွင် ရွှေ့ရန်",
+        "fontSizeExport": "ဖောင့်အရွယ် (export px)",
+        "backgroundOpacity": "နောက်ခံဖျော့မှန်မှု",
+        "generateSubtitlesFirst": "Cue များထည့်သွင်းရန် အရင် subtitles ထုတ်ပေးပါ။"
       }
     }
   },
@@ -1002,6 +1150,19 @@
       "hashtags": "တိုတောင်းသော အကြောင်းအရာကို ချဲ့ထွင်၍၊ ရှည်သော စာသားမှ အနှစ်ချုပ် သို့ အသေးစိတ် ထုတ်ယူ၍ hashtag ထုတ်ပေးသည်။"
     },
     "outputModeLabel": "ထုတ်ကုန်",
+    "targetLanguage": {
+      "label": "ပစ်မှတ် ဘာသာစကား",
+      "myanmar": "မြန်မာ",
+      "english": "အင်္ဂလိပ်"
+    },
+    "toonStyle": {
+      "label": "Toon စတိုင်"
+    },
+    "overlay": {
+      "showAiText": "AI overlay စာသား ပြရန်",
+      "userTextOptional": "အသုံးပြုသူ overlay စာသား (ရွေးချယ်နိုင်)",
+      "userTextPlaceholder": "မိမိ overlay စာသားကို ထည့်ပါ..."
+    },
     "outputModes": {
       "imageAndText": "ပုံနှင့် စာသား",
       "textOnly": "စာသားသာ",

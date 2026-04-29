@@ -1489,12 +1489,12 @@ export function VideoWorkspaceShell() {
         exportDisabled={resolveExportVideoUrl(videoSrc) == null}
         exportDisabledTitle={
           videoSrc?.startsWith('blob:')
-            ? 'Wait for upload to finish'
+            ? t('exportGuard.waitForUpload')
             : videoSrc == null
-              ? 'Add a video first'
-              : 'Video must be available as an HTTPS URL for export'
+              ? t('exportGuard.addVideoFirst')
+              : t('exportGuard.httpsRequired')
         }
-        resetLabel="Reset"
+        resetLabel={t('resetDialog.confirm')}
         onExportClick={onExportClick}
         onResetClick={() => setResetDialogOpen(true)}
         onUndoClick={undo}
@@ -1619,7 +1619,7 @@ export function VideoWorkspaceShell() {
             deleteSegmentEnabled={canDeleteSelectedVideoSegment}
             onDeleteVideoSegment={onDeleteSelectedVideoSegment}
             audioUploadVisible={activeTool === 'audio'}
-            addAudioLabel="Add audio"
+            addAudioLabel={t('audio.addAudio')}
             onAddAudio={() => audioInputRef.current?.click()}
             />
           </div>
@@ -1630,7 +1630,7 @@ export function VideoWorkspaceShell() {
               <div className="shrink-0 border-b border-white/10 px-4 py-3">
                 <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                   {panelMode === 'segment'
-                    ? 'Segment audio'
+                    ? t('audio.segmentAudio')
                     : panelMode === 'speed'
                         ? t('tools.speed')
                         : panelMode === 'subs'
@@ -1673,8 +1673,7 @@ export function VideoWorkspaceShell() {
                       </div>
                     ) : activeTool === 'image' ? (
                       <p className="shrink-0 text-xs leading-relaxed text-muted">
-                        Drag a thumbnail onto the video preview, click + to add, or select an image clip
-                        on the timeline.
+                        {t('image.dragHint')}
                       </p>
                     ) : null}
                   </div>
@@ -1829,28 +1828,28 @@ export function VideoWorkspaceShell() {
           className="fixed inset-0 z-[180] flex items-end justify-center bg-black/70 p-4 sm:items-center"
           role="dialog"
           aria-modal="true"
-          aria-label="Confirm export"
+          aria-label={t('exportConfirm.ariaLabel')}
           onMouseDown={() => setExportConfirmOpen(false)}
         >
           <div
             className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black/60"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-white">Export video?</p>
+            <p className="text-sm font-semibold text-white">{t('exportConfirm.title')}</p>
             <p className="mt-2 text-sm text-zinc-300">
-              Estimated export cost:{' '}
+              {t('exportConfirm.estimatedCost')}{' '}
               <span className="font-semibold text-white">
                 {exportEstimateLoading ? '…' : exportEstimatedPoints}
               </span>{' '}
-              points
+              {t('exportConfirm.pointsUnit')}
             </p>
-            <p className="mt-1 text-xs text-zinc-500">Balance: {creditBalance ?? 0} points</p>
+            <p className="mt-1 text-xs text-zinc-500">{t('exportConfirm.balance', { points: creditBalance ?? 0 })}</p>
             {exportEstimateError ? (
               <p className="mt-2 text-sm text-rose-300">{exportEstimateError}</p>
             ) : null}
             {creditBalance != null && creditBalance < exportEstimatedPoints && !exportEstimateLoading ? (
               <p className="mt-2 text-sm text-amber-300">
-                Not enough points to export this video.
+                {t('exportConfirm.notEnoughPoints')}
               </p>
             ) : null}
             <div className="mt-4 flex items-center justify-end gap-2">
@@ -1859,7 +1858,7 @@ export function VideoWorkspaceShell() {
                 className="rounded-lg border border-white/15 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/5"
                 onClick={() => setExportConfirmOpen(false)}
               >
-                Cancel
+                {t('exportConfirm.cancel')}
               </button>
               <button
                 type="button"
@@ -1874,7 +1873,7 @@ export function VideoWorkspaceShell() {
                   void executeExport();
                 }}
               >
-                Confirm export
+                {t('exportConfirm.confirm')}
               </button>
             </div>
           </div>

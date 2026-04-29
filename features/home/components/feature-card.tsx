@@ -25,7 +25,9 @@ export default function FeatureCard({
 }: FeatureCardProps) {
   return (
     <Link
-      href={href}
+      // `AppPathname` includes dynamic templates from shared routing config.
+      // This card only navigates to concrete feature pages at runtime.
+      href={href as never}
       className="group glass-card relative flex min-h-50 flex-col rounded-[26px] p-6 transition hover:border-accent-gold/30 hover:shadow-xl"
     >
       <div className="mb-4 flex items-start justify-between gap-3">

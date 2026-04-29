@@ -543,6 +543,21 @@ declare const messages: {
         "ratio4_3": "4:3"
       },
       "exportVideo": "Export video",
+      "exportGuard": {
+        "waitForUpload": "Wait for upload to finish",
+        "addVideoFirst": "Add a video first",
+        "httpsRequired": "Video must be available as an HTTPS URL for export"
+      },
+      "exportConfirm": {
+        "ariaLabel": "Confirm export",
+        "title": "Export video?",
+        "estimatedCost": "Estimated export cost:",
+        "pointsUnit": "points",
+        "balance": "Balance: {points} points",
+        "notEnoughPoints": "Not enough points to export this video.",
+        "cancel": "Cancel",
+        "confirm": "Confirm export"
+      },
       "exportOverlay": {
         "exporting": "Exporting video…",
         "downloading": "Downloading export…"
@@ -582,6 +597,13 @@ declare const messages: {
         "subs": "subs",
         "trim": "trim",
         "audio": "audio"
+      },
+      "audio": {
+        "addAudio": "Add audio",
+        "segmentAudio": "Segment audio"
+      },
+      "image": {
+        "dragHint": "Drag a thumbnail onto the video preview, click + to add, or select an image clip on the timeline."
       },
       "tabs": {
         "properties": "properties"
@@ -756,6 +778,124 @@ declare const messages: {
       "loading": "Generating…"
     }
   },
+  "resetPassword": {
+    "title": "Reset password",
+    "subtitle": "Enter your reset token and choose a new password.",
+    "success": "Password reset successful. Redirecting to login...",
+    "requestNewLink": "Request a new reset link",
+    "backToLogin": "Back to login",
+    "fields": {
+      "token": {
+        "label": "Reset token",
+        "placeholder": "Paste your reset token"
+      },
+      "newPassword": {
+        "label": "New password",
+        "show": "Show new password",
+        "hide": "Hide new password"
+      },
+      "confirmPassword": {
+        "label": "Confirm password",
+        "show": "Show confirm password",
+        "hide": "Hide confirm password"
+      }
+    },
+    "errors": {
+      "passwordMin": "Password must be at least 8 characters.",
+      "passwordMismatch": "Passwords do not match."
+    },
+    "submit": {
+      "idle": "Reset password",
+      "loading": "Resetting..."
+    }
+  },
+  "login": {
+    "title": "Welcome back",
+    "subtitle": "Sign in to continue to AI Minions",
+    "modes": {
+      "password": "Password",
+      "code": "Access code"
+    },
+    "code": {
+      "label": "Your access code",
+      "hint": "Enter the code you received when your account was created. No password needed.",
+      "placeholder": "e.g. MY-CODE-42"
+    },
+    "fields": {
+      "usernameOrEmail": "Username or email",
+      "password": "Password"
+    },
+    "aria": {
+      "signInOptions": "Sign in options",
+      "showPassword": "Show password",
+      "hidePassword": "Hide password"
+    },
+    "links": {
+      "forgotPassword": "Forgot password?",
+      "googleOtpSetup": "Signed up with Google? Enable password via OTP"
+    },
+    "submit": {
+      "verifyingCode": "Verifying code...",
+      "signingIn": "Signing in...",
+      "continueWithCode": "Continue with code",
+      "signIn": "Sign in"
+    },
+    "or": "or",
+    "continueWithGoogle": "Continue with Google",
+    "footer": {
+      "noAccount": "Don't have an account?",
+      "signUp": "Sign up"
+    },
+    "errors": {
+      "loginFailed": "Login failed"
+    }
+  },
+  "signup": {
+    "title": "Create account",
+    "subtitle": "Join AI Minions and start creating",
+    "fields": {
+      "username": "Username",
+      "email": "Email",
+      "password": "Password",
+      "confirmPassword": "Confirm password"
+    },
+    "aria": {
+      "showPassword": "Show password",
+      "hidePassword": "Hide password",
+      "showConfirmPassword": "Show confirm password",
+      "hideConfirmPassword": "Hide confirm password"
+    },
+    "strength": {
+      "label": "Strength",
+      "weak": "Weak",
+      "fair": "Fair",
+      "good": "Good",
+      "strong": "Strong",
+      "hints": {
+        "weak": "Use at least 8 chars with uppercase, lowercase, number, and symbol.",
+        "fair": "Add more variety (uppercase, number, or symbol) for better security.",
+        "good": "Good password. Adding a symbol or extra length makes it stronger.",
+        "strong": "Strong password."
+      }
+    },
+    "passwordMatch": {
+      "match": "Passwords match.",
+      "mismatch": "Passwords do not match."
+    },
+    "submit": {
+      "idle": "Create account",
+      "loading": "Creating account..."
+    },
+    "footer": {
+      "haveAccount": "Already have an account?",
+      "signIn": "Sign in"
+    },
+    "errors": {
+      "chooseStronger": "Please choose a stronger password before continuing.",
+      "passwordMismatch": "Passwords do not match.",
+      "signupFailed": "Signup failed"
+    }
+  },
   "viralShorts": {
     "page": {
       "title": "Viral video",
@@ -834,6 +974,14 @@ declare const messages: {
         "reject": "Reject",
         "accept": "Accept",
         "loading": "Loading..."
+      },
+      "labels": {
+        "scriptPlaceholder": "Click Transcribe to generate script.",
+        "showOnVideo": "Show on video",
+        "moveOnVideo": "Move on video",
+        "fontSizeExport": "Font size (export px)",
+        "backgroundOpacity": "Background opacity",
+        "generateSubtitlesFirst": "Generate subtitles first to populate cues."
       }
     }
   },
@@ -1005,6 +1153,19 @@ declare const messages: {
       "hashtags": "Short or long lists—short seeds get extrapolated; long prompts get distilled or mined for specifics."
     },
     "outputModeLabel": "Output",
+    "targetLanguage": {
+      "label": "Target language",
+      "myanmar": "Myanmar",
+      "english": "English"
+    },
+    "toonStyle": {
+      "label": "Toon style"
+    },
+    "overlay": {
+      "showAiText": "Show AI overlay text",
+      "userTextOptional": "User overlay text (optional)",
+      "userTextPlaceholder": "Enter your own overlay text..."
+    },
     "outputModes": {
       "imageAndText": "Image & text",
       "textOnly": "Text only",

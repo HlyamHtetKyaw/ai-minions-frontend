@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { Eye, EyeOff } from 'lucide-react';
 import { getPublicApiBaseUrl } from '@/lib/api-base';
 import {
@@ -13,6 +14,7 @@ import {
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const t = useTranslations('resetPassword');
   const [token, setToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -46,11 +48,11 @@ export default function ResetPasswordPage() {
     setIsExpiredError(false);
 
     if (!isPasswordValid) {
-      setError('Password must be at least 8 characters.');
+      setError(t('errors.passwordMin'));
       return;
     }
     if (!passwordsMatch) {
-      setError('Passwords do not match.');
+      setError(t('errors.passwordMismatch'));
       return;
     }
 
@@ -82,7 +84,7 @@ export default function ResetPasswordPage() {
         return;
       }
 
-      setSuccessMessage('Password reset successful. Redirecting to login...');
+      setSuccessMessage(t('success'));
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('aiminions_reset_token');
       }
@@ -106,9 +108,9 @@ export default function ResetPasswordPage() {
     <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-foreground">Reset password</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>
           <p className="mt-1 text-sm text-muted">
-            Enter your reset token and choose a new password.
+            {t('subtitle')}
           </p>
         </div>
 
@@ -131,7 +133,7 @@ export default function ResetPasswordPage() {
                   onClick={() => router.push('/forgot-password')}
                   className="text-xs font-medium text-accent-gold underline-offset-4 hover:underline"
                 >
-                  Request a new reset link
+                  {t('requestNewLink')}
                 </button>
               )}
             </div>
@@ -140,7 +142,7 @@ export default function ResetPasswordPage() {
           <fieldset disabled={loading} className="space-y-4 disabled:opacity-70">
             <div className="space-y-1.5">
               <label htmlFor="token" className="text-sm font-medium text-foreground">
-                Reset token
+                {t('fields.token.label')}
               </label>
               <input
                 id="token"
@@ -148,14 +150,14 @@ export default function ResetPasswordPage() {
                 required
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="Paste your reset token"
+                placeholder={t('fields.token.placeholder')}
                 className="w-full rounded-lg border border-card-border bg-surface px-3 py-2.5 text-sm text-foreground placeholder:text-muted focus:border-accent-gold focus:outline-none transition-colors"
               />
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="newPassword" className="text-sm font-medium text-foreground">
-                New password
+                {t('fields.newPassword.label')}
               </label>
               <div className="relative">
                 <input
@@ -171,7 +173,7 @@ export default function ResetPasswordPage() {
                   type="button"
                   onClick={() => setShowNewPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
-                  aria-label={showNewPassword ? 'Hide new password' : 'Show new password'}
+                  aria-label={showNewPassword ? t('fields.newPassword.hide') : t('fields.newPassword.show')}
                 >
                   {showNewPassword ? (
                     <EyeOff className="mx-auto h-4 w-4" />
@@ -181,13 +183,13 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
               {newPassword.length > 0 && !isPasswordValid && (
-                <p className="text-xs text-red-400">Password must be at least 8 characters.</p>
+                <p className="text-xs text-red-400">{t('errors.passwordMin')}</p>
               )}
             </div>
 
             <div className="space-y-1.5">
               <label htmlFor="confirmPassword" className="text-sm font-medium text-foreground">
-                Confirm password
+                {t('fields.confirmPassword.label')}
               </label>
               <div className="relative">
                 <input
@@ -203,7 +205,7 @@ export default function ResetPasswordPage() {
                   type="button"
                   onClick={() => setShowConfirmPassword((prev) => !prev)}
                   className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
-                  aria-label={showConfirmPassword ? 'Hide confirm password' : 'Show confirm password'}
+                  aria-label={showConfirmPassword ? t('fields.confirmPassword.hide') : t('fields.confirmPassword.show')}
                 >
                   {showConfirmPassword ? (
                     <EyeOff className="mx-auto h-4 w-4" />
@@ -213,7 +215,7 @@ export default function ResetPasswordPage() {
                 </button>
               </div>
               {confirmPassword.length > 0 && !passwordsMatch && (
-                <p className="text-xs text-red-400">Passwords do not match.</p>
+                <p className="text-xs text-red-400">{t('errors.passwordMismatch')}</p>
               )}
             </div>
 
@@ -225,14 +227,14 @@ export default function ResetPasswordPage() {
               {loading && (
                 <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-fg/40 border-t-primary-fg" />
               )}
-              {loading ? 'Resetting…' : 'Reset password'}
+              {loading ? t('submit.loading') : t('submit.idle')}
             </button>
           </fieldset>
         </form>
 
         <p className="mt-4 text-center text-sm text-muted">
           <Link href="/login" className="font-medium text-accent-gold hover:underline">
-            Back to login
+            {t('backToLogin')}
           </Link>
         </p>
       </div>

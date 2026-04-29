@@ -340,7 +340,7 @@ export default function ContentGenerationPage() {
               <TopicInput value={topic} onChange={setTopic} />
               {outputMode === 'imageAndText' || outputMode === 'textOnly' ? (
                 <div className="space-y-1">
-                  <p className="text-xs text-muted">Target language</p>
+                  <p className="text-xs text-muted">{t('targetLanguage.label')}</p>
                   <div className="flex items-center gap-6 rounded-md border border-card-border bg-background px-3 py-2">
                     <label className="flex items-center gap-2 text-sm text-foreground">
                       <input
@@ -350,7 +350,7 @@ export default function ContentGenerationPage() {
                         checked={targetLanguage === 'Myanmar'}
                         onChange={() => setTargetLanguage('Myanmar')}
                       />
-                      Myanmar
+                      {t('targetLanguage.myanmar')}
                     </label>
                     <label className="flex items-center gap-2 text-sm text-foreground">
                       <input
@@ -360,7 +360,7 @@ export default function ContentGenerationPage() {
                         checked={targetLanguage === 'English'}
                         onChange={() => setTargetLanguage('English')}
                       />
-                      English
+                      {t('targetLanguage.english')}
                     </label>
                   </div>
                 </div>
@@ -432,7 +432,7 @@ export default function ContentGenerationPage() {
                       </h2>
                       {isVisualOutput ? (
                         <div className="space-y-1">
-                          <p className="text-xs text-muted">Toon style</p>
+                          <p className="text-xs text-muted">{t('toonStyle.label')}</p>
                           <select
                             value={toonStyle}
                             onChange={(e) => setToonStyle(e.target.value)}
@@ -454,14 +454,14 @@ export default function ContentGenerationPage() {
                               checked={aiOverlayTextEnabled}
                               onChange={(e) => setAiOverlayTextEnabled(e.target.checked)}
                             />
-                            Show AI overlay text
+                            {t('overlay.showAiText')}
                           </label>
                           <div className="space-y-1">
-                            <p className="text-xs text-muted">User overlay text (optional)</p>
+                            <p className="text-xs text-muted">{t('overlay.userTextOptional')}</p>
                             <input
                               value={userOverlayText}
                               onChange={(e) => setUserOverlayText(e.target.value)}
-                              placeholder="Enter your own overlay text..."
+                              placeholder={t('overlay.userTextPlaceholder')}
                               className="w-full rounded-md border border-card-border bg-background px-3 py-2 text-sm text-foreground outline-none"
                             />
                           </div>
