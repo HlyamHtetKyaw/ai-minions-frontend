@@ -136,6 +136,8 @@
         "downloadingVideo": "ဗီဒီယိုဖိုင် ဒေါင်းလုဒ် ပြင်ဆင်နေသည်…",
         "downloadImage": "ပုံဒေါင်းလုပ်ယူရန်",
         "downloadingImage": "ပုံဒေါင်းလုဒ် ပြင်ဆင်နေသည်…",
+        "downloadFailed": "ဒေါင်းလုဒ် မစတင်နိုင်ပါ။ ထပ်စမ်းကြည့်ပါ။",
+        "downloadUrlInvalid": "ဒေါင်းလုဒ် လင့်ခ် မရရှိသေးပါ။ ခဏနောက်မှ ထပ်စမ်းပါ။",
         "audioUnsupported": "ဤ browser တွင် audio မဖွင့်နိုင်ပါ။"
       }
     }

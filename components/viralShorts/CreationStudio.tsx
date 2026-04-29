@@ -163,6 +163,23 @@ function fitVideoDisplayRect(
   return { w: iw * scale, h: ih * scale };
 }
 
+function extractWorkspaceKeyFromVideoUrl(value: string | null | undefined): string | null {
+  if (value == null || typeof value !== 'string' || value.trim() === '') return null;
+  try {
+    const u = new URL(value);
+    const frag = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash;
+    for (const token of frag.split('&')) {
+      const [k, v] = token.split('=');
+      if (k === 'wk' && v != null && v.trim() !== '') {
+        return decodeURIComponent(v);
+      }
+    }
+  } catch {
+    // ignore malformed URL
+  }
+  return null;
+}
+
 type Props = {
   videoUrl: string;
   videoName: string;
@@ -1625,6 +1642,7 @@ export default function CreationStudio({
         throw new Error('Video duration not ready. Play the video once, then try Export again.');
       }
       const baseUrl = String(videoUrl ?? '');
+      const videoSrcKey = extractWorkspaceKeyFromVideoUrl(baseUrl);
       const noFrag = baseUrl.includes('#') ? baseUrl.slice(0, baseUrl.indexOf('#')) : baseUrl;
       const canvasW = Math.max(1, Math.round(previewFramePx.w));
       const canvasH = Math.max(1, Math.round(previewFramePx.h));
@@ -1638,6 +1656,7 @@ export default function CreationStudio({
 
       const payload = {
         videoUrl: noFrag,
+        videoSrcKey,
         duration,
         trimStart: 0,
         trimEnd: 0,

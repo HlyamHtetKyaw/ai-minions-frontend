@@ -43,20 +43,53 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
 
   const generationId = useMemo(() => Number.parseInt(id, 10), [id]);
 
+  function isHttpDownloadUrl(value: string): boolean {
+    if (typeof value !== 'string' || value.trim() === '') return false;
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  }
+
+  function resolveFileNameFromKey(objectKey: string, fallbackName: string): string {
+    const key = typeof objectKey === 'string' ? objectKey.trim() : '';
+    if (!key) return fallbackName;
+    const name = key.split('/').filter(Boolean).pop();
+    return name && name.trim() !== '' ? name : fallbackName;
+  }
+
+  async function triggerDownloadUrl(downloadUrl: string, fileName: string): Promise<void> {
+    if (!isHttpDownloadUrl(downloadUrl)) {
+      throw new Error(t('usageHistory.detail.downloadUrlInvalid'));
+    }
+    const res = await fetch(downloadUrl, { method: 'GET' });
+    if (!res.ok) {
+      throw new Error(t('usageHistory.detail.downloadFailed'));
+    }
+    const blob = await res.blob();
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = objectUrl;
+    a.download = fileName;
+    a.rel = 'noopener noreferrer';
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(objectUrl);
+  }
+
   async function downloadContentImageByGenerationId(value: string) {
     const generationId = Number.parseInt(value, 10);
     if (!Number.isFinite(generationId) || generationId <= 0) return;
     setDownloadingField(`img-${value}`);
     try {
       const data = await fetchUsageHistoryContentImageDownloadUrl(generationId);
-      const a = document.createElement('a');
-      a.href = data.downloadUrl;
-      a.download = '';
-      a.rel = 'noopener noreferrer';
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      await triggerDownloadUrl(data.downloadUrl, resolveFileNameFromKey(data.key, `content-image-${generationId}.png`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('usageHistory.detail.downloadFailed'));
     } finally {
       setDownloadingField(null);
     }
@@ -68,14 +101,9 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
     setDownloadingField(loadingKey);
     try {
       const data = await fetchUsageHistoryDownloadUrl(generationId);
-      const a = document.createElement('a');
-      a.href = data.downloadUrl;
-      a.download = '';
-      a.rel = 'noopener noreferrer';
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      await triggerDownloadUrl(data.downloadUrl, resolveFileNameFromKey(data.key, `usage-download-${generationId}`));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('usageHistory.detail.downloadFailed'));
     } finally {
       setDownloadingField(null);
     }
@@ -96,6 +124,19 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
 
   function isImageFeature(key: UsageHistoryFeatureKey): boolean {
     return String(key ?? '').toUpperCase() === 'CONTENT_V2';
+  }
+
+  function looksLikeLegacyDownloadValue(value: string): boolean {
+    const raw = typeof value === 'string' ? value.trim() : '';
+    if (raw === '') return false;
+    const lower = raw.toLowerCase();
+    return (
+      lower.startsWith('http://') ||
+      lower.startsWith('https://') ||
+      lower.startsWith('gs://') ||
+      lower.startsWith('s3://') ||
+      raw.includes('/')
+    );
   }
 
   useEffect(() => {
@@ -169,7 +210,10 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
                     {detail.output.map((field, idx) => (
                       <div key={`${field.label}-${idx}`}>
                         <p className="text-xs text-muted">{field.label}</p>
-                        {field.kind === 'download' || (isSubtitleFeature(detail.featureKey) && field.label === 'Subtitle') ? (
+                        {field.kind === 'download' ||
+                        (isSubtitleFeature(detail.featureKey) &&
+                          field.label === 'Subtitle' &&
+                          looksLikeLegacyDownloadValue(field.value)) ? (
                           <button
                             type="button"
                             onClick={() => downloadUsageFileByGenerationId(String(detail.id), `subtitle-${detail.id}`)}
@@ -180,7 +224,8 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
                               ? t('usageHistory.detail.downloadingSubtitle')
                               : t('usageHistory.detail.downloadSubtitle')}
                           </button>
-                        ) : field.kind === 'audio_download' || isAudioFeature(detail.featureKey) ? (
+                        ) : field.kind === 'audio_download' ||
+                          (isAudioFeature(detail.featureKey) && looksLikeLegacyDownloadValue(field.value)) ? (
                           <button
                             type="button"
                             onClick={() => downloadUsageFileByGenerationId(String(detail.id), `audio-${detail.id}`)}
@@ -191,7 +236,8 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
                               ? t('usageHistory.detail.downloadingAudio')
                               : t('usageHistory.detail.downloadAudio')}
                           </button>
-                        ) : field.kind === 'video_download' || isVideoFeature(detail.featureKey) ? (
+                        ) : field.kind === 'video_download' ||
+                          (isVideoFeature(detail.featureKey) && looksLikeLegacyDownloadValue(field.value)) ? (
                           <button
                             type="button"
                             onClick={() => downloadUsageFileByGenerationId(String(detail.id), `video-${detail.id}`)}
@@ -202,7 +248,8 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
                               ? t('usageHistory.detail.downloadingVideo')
                               : t('usageHistory.detail.downloadVideo')}
                           </button>
-                        ) : field.kind === 'image_download' || isImageFeature(detail.featureKey) ? (
+                        ) : field.kind === 'image_download' ||
+                          (isImageFeature(detail.featureKey) && looksLikeLegacyDownloadValue(field.value)) ? (
                           <button
                             type="button"
                             onClick={() => downloadContentImageByGenerationId(String(detail.id))}
