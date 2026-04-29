@@ -237,12 +237,12 @@ export default function VoiceToneVoicePicker({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="space-y-2">
+    <div className="space-y-5">
+      <div className="space-y-3">
         <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-600 dark:text-slate-400">
           {t('step1')}
         </p>
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-3">
           {toneOptions.map((opt) => {
             const pressed = toneGroupId === opt.id;
             return (
@@ -268,21 +268,21 @@ export default function VoiceToneVoicePicker({
         </div>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         <p className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-600 dark:text-slate-400">
           {t('step2')}
         </p>
 
         <audio ref={audioRef} preload="none" className="hidden" />
 
-        <div className="space-y-2">
+        <div className="space-y-3">
           {previewError ? (
             <p className="text-[11px] text-red-600 dark:text-red-300">{previewError}</p>
           ) : (
             <p className="text-[11px] text-zinc-600 dark:text-slate-400">{t('previewHint')}</p>
           )}
 
-          <div className="max-h-64 space-y-2 overflow-y-auto pr-1">
+          <div className="scrollbar-themed max-h-64 space-y-3 overflow-y-auto pr-0.5 pb-1">
             {voicesInTone.map((m) => {
               const checked = m.id.toLowerCase() === normalizedSelected.toLowerCase();
               const isPlaying = isPreviewPlaying && previewingVoiceId?.toLowerCase() === m.id.toLowerCase();
@@ -290,7 +290,7 @@ export default function VoiceToneVoicePicker({
               return (
                 <div
                   key={m.id}
-                  className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-2 ${
+                  className={`flex items-center justify-between gap-3 rounded-lg border px-3 py-3 ${
                     checked
                       ? 'border-violet-500/60 bg-violet-500/10'
                       : 'border-card-border bg-card/40 hover:bg-card/60'
