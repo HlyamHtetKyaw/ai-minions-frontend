@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Link, useRouter } from '@/i18n/navigation';
+import { useTranslations } from 'next-intl';
 import { Eye, EyeOff, KeyRound, Lock, Sparkles } from 'lucide-react';
 import { beginGoogleLogin, login, loginWithCode } from '@/lib/auth';
 
@@ -9,6 +10,7 @@ type Mode = 'password' | 'code';
 
 export default function LoginPage() {
   const router = useRouter();
+  const t = useTranslations('login');
   const [mode, setMode] = useState<Mode>('password');
   const [usernameOrEmail, setUsernameOrEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -35,7 +37,7 @@ export default function LoginPage() {
       router.push('/tools');
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Login failed');
+      setError(err instanceof Error ? err.message : t('errors.loginFailed'));
     } finally {
       setLoading(false);
     }
@@ -57,17 +59,17 @@ export default function LoginPage() {
             <Sparkles className="h-6 w-6 text-accent-gold" strokeWidth={1.75} />
           </div>
           <h1 className="text-3xl font-semibold tracking-tight text-foreground">
-            Welcome back
+            {t('title')}
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Sign in to continue to AI Minions
+            {t('subtitle')}
           </p>
         </div>
 
         <div
           className="rounded-3xl border border-glass-border bg-glass p-1 shadow-[0_24px_80px_-24px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:border-white/10 dark:shadow-[0_24px_80px_-20px_rgba(0,0,0,0.65)]"
           role="region"
-          aria-label="Sign in options"
+          aria-label={t('aria.signInOptions')}
         >
           <div className="rounded-[1.35rem] border border-card-border bg-card/90 p-6 dark:bg-card/70">
             <div className="mb-6 grid grid-cols-2 gap-1 rounded-full border border-card-border bg-surface/50 p-1 dark:bg-surface/30">
@@ -84,7 +86,7 @@ export default function LoginPage() {
                 }`}
               >
                 <Lock className="h-4 w-4 shrink-0 opacity-80" />
-                Password
+                {t('modes.password')}
               </button>
               <button
                 type="button"
@@ -99,7 +101,7 @@ export default function LoginPage() {
                 }`}
               >
                 <KeyRound className="h-4 w-4 shrink-0 opacity-80" />
-                Access code
+                {t('modes.code')}
               </button>
             </div>
 
@@ -128,11 +130,10 @@ export default function LoginPage() {
                       htmlFor="accessCode"
                       className="block text-sm font-medium text-foreground"
                     >
-                      Your access code
+                      {t('code.label')}
                     </label>
                     <p className="text-xs text-muted sm:text-sm">
-                      Enter the code you received when your account was created.
-                      No password needed.
+                      {t('code.hint')}
                     </p>
                   </div>
                   <input
@@ -144,7 +145,7 @@ export default function LoginPage() {
                     spellCheck={false}
                     value={accessCode}
                     onChange={(e) => setAccessCode(e.target.value)}
-                    placeholder="e.g. MY-CODE-42"
+                    placeholder={t('code.placeholder')}
                     className="w-full rounded-xl border border-card-border bg-surface/80 px-4 py-3.5 text-center font-mono text-base tracking-[0.2em] text-foreground placeholder:text-muted placeholder:tracking-normal focus:border-accent-gold focus:outline-none focus:ring-2 focus:ring-accent-gold/25 dark:bg-surface/50"
                   />
                 </div>
@@ -155,7 +156,7 @@ export default function LoginPage() {
                       htmlFor="usernameOrEmail"
                       className="text-sm font-medium text-foreground"
                     >
-                      Username or email
+                      {t('fields.usernameOrEmail')}
                     </label>
                     <input
                       id="usernameOrEmail"
@@ -174,7 +175,7 @@ export default function LoginPage() {
                       htmlFor="password"
                       className="text-sm font-medium text-foreground"
                     >
-                      Password
+                      {t('fields.password')}
                     </label>
                     <div className="relative">
                       <input
@@ -191,7 +192,7 @@ export default function LoginPage() {
                         type="button"
                         onClick={() => setShowPassword((prev) => !prev)}
                         className="absolute inset-y-0 right-2 my-auto h-8 w-8 rounded-md text-muted transition-colors hover:text-foreground"
-                        aria-label={showPassword ? 'Hide password' : 'Show password'}
+                        aria-label={showPassword ? t('aria.hidePassword') : t('aria.showPassword')}
                       >
                         {showPassword ? (
                           <EyeOff className="mx-auto h-4 w-4" />
@@ -205,7 +206,7 @@ export default function LoginPage() {
                         href="/forgot-password"
                         className="text-xs font-medium text-accent-gold underline-offset-4 hover:underline"
                       >
-                        Forgot password?
+                        {t('links.forgotPassword')}
                       </Link>
                     </div>
                     <div className="flex justify-end">
@@ -213,7 +214,7 @@ export default function LoginPage() {
                         href="/password-setup"
                         className="text-xs font-medium text-accent-gold underline-offset-4 hover:underline"
                       >
-                        Signed up with Google? Enable password via OTP
+                        {t('links.googleOtpSetup')}
                       </Link>
                     </div>
                   </div>
@@ -228,11 +229,11 @@ export default function LoginPage() {
                 <span className="relative z-10">
                   {loading
                     ? mode === 'code'
-                      ? 'Verifying code…'
-                      : 'Signing in…'
+                      ? t('submit.verifyingCode')
+                      : t('submit.signingIn')
                     : mode === 'code'
-                      ? 'Continue with code'
-                      : 'Sign in'}
+                      ? t('submit.continueWithCode')
+                      : t('submit.signIn')}
                 </span>
                 <span
                   className="absolute inset-0 bg-linear-to-r from-transparent via-white/10 to-transparent opacity-0 transition-opacity group-hover:opacity-100 dark:via-white/5"
@@ -242,7 +243,7 @@ export default function LoginPage() {
             </form>
             <div className="my-4 flex items-center gap-3">
               <div className="h-px flex-1 bg-card-border" />
-              <span className="text-xs text-muted">or</span>
+              <span className="text-xs text-muted">{t('or')}</span>
               <div className="h-px flex-1 bg-card-border" />
             </div>
             <button
@@ -250,18 +251,18 @@ export default function LoginPage() {
               onClick={() => beginGoogleLogin('/tools')}
               className="w-full rounded-xl border border-card-border bg-surface/60 px-4 py-3 text-sm font-medium text-foreground transition hover:bg-surface"
             >
-              Continue with Google
+              {t('continueWithGoogle')}
             </button>
           </div>
         </div>
 
         <p className="mt-8 text-center text-sm text-muted">
-          Don&apos;t have an account?{' '}
+          {t('footer.noAccount')}{' '}
           <Link
             href="/signup"
             className="font-medium text-accent-gold underline-offset-4 hover:underline"
           >
-            Sign up
+            {t('footer.signUp')}
           </Link>
         </p>
       </div>
