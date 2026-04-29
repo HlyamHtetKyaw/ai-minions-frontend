@@ -81,6 +81,23 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
     }
   }
 
+  function isVideoFeature(key: UsageHistoryFeatureKey): boolean {
+    const normalized = String(key ?? '').toUpperCase();
+    return normalized === 'WORKSPACE_EXPORT' || normalized === 'BALANCED_SYNC' || normalized === 'VIDEO_GENERATION';
+  }
+
+  function isAudioFeature(key: UsageHistoryFeatureKey): boolean {
+    return String(key ?? '').toUpperCase() === 'VOICE_OVER';
+  }
+
+  function isSubtitleFeature(key: UsageHistoryFeatureKey): boolean {
+    return String(key ?? '').toUpperCase() === 'SUBTITLES';
+  }
+
+  function isImageFeature(key: UsageHistoryFeatureKey): boolean {
+    return String(key ?? '').toUpperCase() === 'CONTENT_V2';
+  }
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -152,47 +169,47 @@ export default function AccountUsageHistoryDetailClient({ id }: { id: string }) 
                     {detail.output.map((field, idx) => (
                       <div key={`${field.label}-${idx}`}>
                         <p className="text-xs text-muted">{field.label}</p>
-                        {field.kind === 'download' ? (
+                        {field.kind === 'download' || (isSubtitleFeature(detail.featureKey) && field.label === 'Subtitle') ? (
                           <button
                             type="button"
-                            onClick={() => downloadUsageFileByGenerationId(field.value, `subtitle-${field.value}`)}
-                            disabled={downloadingField === `subtitle-${field.value}`}
+                            onClick={() => downloadUsageFileByGenerationId(String(detail.id), `subtitle-${detail.id}`)}
+                            disabled={downloadingField === `subtitle-${detail.id}`}
                             className="mt-1 rounded-lg border border-card-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {downloadingField === `subtitle-${field.value}`
+                            {downloadingField === `subtitle-${detail.id}`
                               ? t('usageHistory.detail.downloadingSubtitle')
                               : t('usageHistory.detail.downloadSubtitle')}
                           </button>
-                        ) : field.kind === 'audio_download' ? (
+                        ) : field.kind === 'audio_download' || isAudioFeature(detail.featureKey) ? (
                           <button
                             type="button"
-                            onClick={() => downloadUsageFileByGenerationId(field.value, `audio-${field.value}`)}
-                            disabled={downloadingField === `audio-${field.value}`}
+                            onClick={() => downloadUsageFileByGenerationId(String(detail.id), `audio-${detail.id}`)}
+                            disabled={downloadingField === `audio-${detail.id}`}
                             className="mt-1 rounded-lg border border-card-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {downloadingField === `audio-${field.value}`
+                            {downloadingField === `audio-${detail.id}`
                               ? t('usageHistory.detail.downloadingAudio')
                               : t('usageHistory.detail.downloadAudio')}
                           </button>
-                        ) : field.kind === 'video_download' ? (
+                        ) : field.kind === 'video_download' || isVideoFeature(detail.featureKey) ? (
                           <button
                             type="button"
-                            onClick={() => downloadUsageFileByGenerationId(field.value, `video-${field.value}`)}
-                            disabled={downloadingField === `video-${field.value}`}
+                            onClick={() => downloadUsageFileByGenerationId(String(detail.id), `video-${detail.id}`)}
+                            disabled={downloadingField === `video-${detail.id}`}
                             className="mt-1 rounded-lg border border-card-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {downloadingField === `video-${field.value}`
+                            {downloadingField === `video-${detail.id}`
                               ? t('usageHistory.detail.downloadingVideo')
                               : t('usageHistory.detail.downloadVideo')}
                           </button>
-                        ) : field.kind === 'image_download' ? (
+                        ) : field.kind === 'image_download' || isImageFeature(detail.featureKey) ? (
                           <button
                             type="button"
-                            onClick={() => downloadContentImageByGenerationId(field.value)}
-                            disabled={downloadingField === `img-${field.value}`}
+                            onClick={() => downloadContentImageByGenerationId(String(detail.id))}
+                            disabled={downloadingField === `img-${detail.id}`}
                             className="mt-1 rounded-lg border border-card-border px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface disabled:cursor-not-allowed disabled:opacity-60"
                           >
-                            {downloadingField === `img-${field.value}`
+                            {downloadingField === `img-${detail.id}`
                               ? t('usageHistory.detail.downloadingImage')
                               : t('usageHistory.detail.downloadImage')}
                           </button>
