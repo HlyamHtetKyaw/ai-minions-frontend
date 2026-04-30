@@ -529,6 +529,8 @@ export default function CreationStudio({
   const [audioBufferPct, setAudioBufferPct] = useState(0);
   const [videoFullyLoaded, setVideoFullyLoaded] = useState(false);
   const [voiceFullyLoaded, setVoiceFullyLoaded] = useState(false);
+  const [videoMetadataReady, setVideoMetadataReady] = useState(false);
+  const [voiceMetadataReady, setVoiceMetadataReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const previewSlotRef = useRef<HTMLDivElement | null>(null);
   const [previewSlotPx, setPreviewSlotPx] = useState({ w: 800, h: PREVIEW_MAX_VIDEO_HEIGHT_PX });
@@ -564,13 +566,18 @@ export default function CreationStudio({
   useEffect(() => {
     setVideoBufferPct(0);
     setVideoFullyLoaded(false);
+    setVideoMetadataReady(false);
 
     const v = videoRef.current;
     if (!v) return;
 
     const calc = () => {
       const d = v.duration;
-      if (!Number.isFinite(d) || d <= 0) return;
+      if (Number.isFinite(d) && d > 0) {
+        setVideoMetadataReady(true);
+      } else {
+        return;
+      }
       let end = 0;
       try {
         if (v.buffered && v.buffered.length > 0) {
@@ -592,7 +599,7 @@ export default function CreationStudio({
       // Some browsers signal this when it *expects* full playback without buffering.
       // We still prefer buffered check, but this is a good hint.
       calc();
-      if (videoBufferPct >= 0.995) setVideoFullyLoaded(true);
+      setVideoFullyLoaded(true);
     };
 
     v.addEventListener('progress', onProgress);
@@ -615,6 +622,7 @@ export default function CreationStudio({
   useEffect(() => {
     setAudioBufferPct(0);
     setVoiceFullyLoaded(false);
+    setVoiceMetadataReady(false);
     if (!voiceOverPlayableUrl && !voiceOverAudioUrl) return;
 
     const a = voiceRef.current;
@@ -622,7 +630,11 @@ export default function CreationStudio({
 
     const calc = () => {
       const d = a.duration;
-      if (!Number.isFinite(d) || d <= 0) return;
+      if (Number.isFinite(d) && d > 0) {
+        setVoiceMetadataReady(true);
+      } else {
+        return;
+      }
       let end = 0;
       try {
         if (a.buffered && a.buffered.length > 0) {
@@ -642,7 +654,7 @@ export default function CreationStudio({
     const onMeta = () => calc();
     const onCanPlayThrough = () => {
       calc();
-      if (audioBufferPct >= 0.995) setVoiceFullyLoaded(true);
+      setVoiceFullyLoaded(true);
     };
 
     a.addEventListener('progress', onProgress);
@@ -1568,7 +1580,7 @@ export default function CreationStudio({
 
   const handleTranscribeClick = () => {
     const transcribeInProgress = isTranscribing || Boolean(transcribeProgress && transcribeProgress.percent < 100);
-    if (transcribeInProgress || !workspaceS3Key || !videoFullyLoaded) return;
+    if (transcribeInProgress || !workspaceS3Key || !videoMetadataReady) return;
     // If we have an estimate, show a confirmation modal before spending points.
     if (estimate && !estimateLoading && !estimateError) {
       setShowTranscribeConfirm(true);
@@ -1900,7 +1912,7 @@ export default function CreationStudio({
         barClass: 'bg-emerald-500',
       };
     }
-    if (!videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)) {
+    if (!videoMetadataReady || (Boolean(voiceOverAudioUrl) && !voiceMetadataReady)) {
       const vPct = Math.round(videoBufferPct * 100);
       const aPct = Math.round(audioBufferPct * 100);
       const blended = voiceOverAudioUrl
@@ -1908,7 +1920,7 @@ export default function CreationStudio({
         : vPct;
       return {
         key: 'buffer',
-        title: 'Loading media',
+        title: 'Preparing media',
         label: voiceOverAudioUrl ? `Video ${vPct}% · Voice ${aPct}%` : `Video ${vPct}%`,
         percent: Math.min(99, Math.max(0, blended)),
         done: false,
@@ -1925,8 +1937,8 @@ export default function CreationStudio({
     balancedSyncProgress,
     subtitlesProgress,
     exporting,
-    videoFullyLoaded,
-    voiceFullyLoaded,
+    videoMetadataReady,
+    voiceMetadataReady,
     voiceOverAudioUrl,
     videoBufferPct,
     audioBufferPct,
@@ -2006,7 +2018,7 @@ export default function CreationStudio({
                 isTranscribing ||
                 Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
                 !workspaceS3Key ||
-                !videoFullyLoaded
+                !videoMetadataReady
               }
               className="btn-transcribe"
             >
@@ -2612,7 +2624,9 @@ export default function CreationStudio({
                 <button
                   type="button"
                   onClick={() => void handleSyncVoiceToVideo()}
-                  disabled={isSyncingVoice || !videoFullyLoaded || (Boolean(voiceOverAudioUrl) && !voiceFullyLoaded)}
+                  disabled={
+                    isSyncingVoice || !videoMetadataReady || (Boolean(voiceOverAudioUrl) && !voiceMetadataReady)
+                  }
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                 >
                   <span className="inline-flex items-center gap-1.5">
@@ -2627,8 +2641,8 @@ export default function CreationStudio({
                     isBalancedPreviewMode ||
                     !voiceOverAudioUrl ||
                     !voiceOverS3Key ||
-                    !videoFullyLoaded ||
-                    !voiceFullyLoaded ||
+                    !videoMetadataReady ||
+                    !voiceMetadataReady ||
                     isBalancedSyncRunning ||
                     balancedSyncEstimateLoading
                   }
@@ -2759,7 +2773,7 @@ export default function CreationStudio({
                     isTranscribing ||
                     Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
                     !workspaceS3Key ||
-                    !videoFullyLoaded
+                    !videoMetadataReady
                   }
                   onClick={() => {
                     setShowTranscribeConfirm(false);
