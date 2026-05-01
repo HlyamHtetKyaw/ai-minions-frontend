@@ -488,11 +488,21 @@ export default function CreationStudio({
   }, [voiceModelCatalog, selectedVoiceId, voiceToneGroupId]);
 
   const [isTranscribing, setIsTranscribing] = useState(false);
-  const [isTranscribed, setIsTranscribed] = useState(false);
+  const [isTranscribed, setIsTranscribed] = useState(() => {
+    const tr = typeof initialTranscriptText === 'string' ? initialTranscriptText : '';
+    return Boolean(tr.trim());
+  });
   const [isTranslating, setIsTranslating] = useState(false);
-  const [isTranslated, setIsTranslated] = useState(false);
+  const [isTranslated, setIsTranslated] = useState(() => {
+    const translated = typeof initialTranslatedText === 'string' ? initialTranslatedText : '';
+    return Boolean(translated.trim());
+  });
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isGenerated, setIsGenerated] = useState(false);
+  const [isGenerated, setIsGenerated] = useState(() => {
+    const k = typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key.trim() : '';
+    const url = typeof initialVoiceOverAudioUrl === 'string' ? initialVoiceOverAudioUrl.trim() : '';
+    return Boolean(k || url);
+  });
   const [transcriptText, setTranscriptText] = useState(() =>
     typeof initialTranscriptText === 'string' ? initialTranscriptText : '',
   );
@@ -860,7 +870,6 @@ export default function CreationStudio({
       setTranslatedText(restoredTranslated);
       setIsTranscribed(Boolean(restoredTranscript.trim()));
       setIsTranslated(Boolean(restoredTranslated.trim()));
-      setIsGenerated(false);
       setScriptText(restoredTranslated.trim() ? restoredTranslated : restoredTranscript);
       setTranscribeError(null);
       setTranscribeProgress(null);
@@ -879,6 +888,12 @@ export default function CreationStudio({
       setVoiceToneGroupId(defaultToneGroupForVoiceId(normalizePersistedVoiceId(initialVoiceOverVoice)));
       setVoiceOverAudioUrl(typeof initialVoiceOverAudioUrl === 'string' ? initialVoiceOverAudioUrl : '');
       setVoiceOverS3Key(typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key : '');
+      setIsGenerated(
+        Boolean(
+          (typeof initialVoiceOverS3Key === 'string' && initialVoiceOverS3Key.trim()) ||
+            (typeof initialVoiceOverAudioUrl === 'string' && initialVoiceOverAudioUrl.trim()),
+        ),
+      );
       setVoiceOverEnabled(Boolean(initialVoiceOverEnabled));
       setOriginalAudioEnabled(initialOriginalAudioEnabled == null ? true : Boolean(initialOriginalAudioEnabled));
       const r = typeof initialVoiceOverPlaybackRate === 'number' ? initialVoiceOverPlaybackRate : 1;
@@ -1450,6 +1465,7 @@ export default function CreationStudio({
 
   const startSubtitles = async () => {
     if (!workspaceS3Key) return;
+    const subtitleTranslatedText = (translatedText.trim() || scriptText.trim()) || undefined;
     setSubtitlesError(null);
     setSubtitlesProgress({ percent: 10, label: 'Starting subtitles…' });
     try {
@@ -1458,6 +1474,7 @@ export default function CreationStudio({
         sourceType: 'video',
         targetLanguage: 'my',
         style: 'caption_rules_v1',
+        translatedText: subtitleTranslatedText,
       });
       setSubtitlesGenerationId(complete.jobId);
       openGenerationJobSseStream(complete.jobId, {

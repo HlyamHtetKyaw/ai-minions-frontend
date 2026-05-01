@@ -132,6 +132,7 @@ export async function subtitlesFromExisting(params: {
   sourceType: 'video' | 'audio';
   targetLanguage?: string;
   style?: string;
+  translatedText?: string;
 }): Promise<SubtitlesCompleteData> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set');
