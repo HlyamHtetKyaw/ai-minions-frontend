@@ -13,7 +13,7 @@ export default function Header() {
   }
 
   return (
-    <header className="sticky top-0 z-[100] min-w-0 px-4 pt-4 sm:px-6">
+    <header className="sticky top-0 z-100 min-w-0 bg-background dark:bg-transparent">
       <HeaderShell
         dashboardLabel={t('dashboardLabel')}
         brandTitle={t('brandTitle')}

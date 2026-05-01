@@ -18,11 +18,11 @@ export default async function LandingHowItWorks() {
 
   return (
     <section
-      className="mb-12 scroll-mt-20 px-6 py-10 sm:mb-16 sm:px-10 sm:py-14 lg:mb-20 lg:px-14 lg:py-16"
+      className="mb-12 scroll-mt-20 py-10 sm:mb-16 sm:py-14 lg:mb-20 lg:py-16"
       id="how-it-works"
       aria-labelledby="how-it-works-heading"
     >
-      <div className="mx-auto max-w-7xl">
+      <div className="mx-auto w-full min-w-0">
         <header className="mx-auto mb-8 max-w-2xl text-center sm:mb-10 lg:mb-12 lg:max-w-3xl">
           <h2
             id="how-it-works-heading"

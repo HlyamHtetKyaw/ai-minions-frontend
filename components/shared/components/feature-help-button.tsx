@@ -39,7 +39,7 @@ export default function FeatureHelpButton({ ariaLabel, message }: FeatureHelpBut
           onMouseDown={() => setIsOpen(false)}
         >
           <div
-            className="w-full max-w-xl overflow-hidden rounded-2xl border border-card-border bg-card shadow-2xl"
+            className="w-full max-w-xl overflow-hidden rounded-2xl border border-card-border bg-elevated shadow-2xl"
             onMouseDown={(event) => event.stopPropagation()}
           >
             <div className="flex items-center justify-between border-b border-card-border px-5 py-4">

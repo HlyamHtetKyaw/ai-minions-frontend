@@ -218,8 +218,8 @@ export default function SubtitlesPage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          <div className="mx-auto w-full min-w-0 max-w-7xl space-y-6">
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col py-6 sm:py-6">
+          <div className="w-full min-w-0 space-y-6">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-foreground">{t('hero.kicker')}</h1>
               <FeatureHelpButton ariaLabel={t('hero.helpAria')} message={t('hero.helpMessage')} />

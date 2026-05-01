@@ -55,7 +55,7 @@ export default function LocaleSwitcher({ label }: { label: string }) {
       </button>
 
       {open && (
-        <ul className="absolute right-0 z-50 mt-1.5 min-w-full overflow-hidden rounded-xl border border-glass-border bg-card shadow-lg backdrop-blur-sm">
+        <ul className="absolute right-0 z-50 mt-1.5 min-w-full overflow-hidden rounded-xl border border-card-border bg-elevated shadow-lg backdrop-blur-sm">
           {LANGUAGES.map((l) => (
             <li key={l.code}>
               <button
