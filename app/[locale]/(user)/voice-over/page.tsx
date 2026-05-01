@@ -24,6 +24,7 @@ import {
   openVoiceOverSse,
   type VoiceModelDescriptor,
 } from '@/lib/voice-over-api';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 import { useVoiceOverEstimate } from '@/lib/use-voice-over-estimate';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 
@@ -77,7 +78,9 @@ export default function VoiceOverPage() {
       .catch((e) => {
         if (!cancelled) {
           setVoiceModelCatalog([]);
-          setVoiceModelsError(e instanceof Error ? e.message : String(e));
+          setVoiceModelsError(
+            normalizeClientErrorMessage(e instanceof Error ? e.message : String(e)),
+          );
         }
       })
       .finally(() => {
@@ -133,7 +136,7 @@ export default function VoiceOverPage() {
         },
         onDone: () => {},
         onError: (msg) => {
-          setError(msg);
+          setError(normalizeClientErrorMessage(msg));
           setProgress(null);
         },
         onTerminal: (payload) => {
@@ -146,12 +149,12 @@ export default function VoiceOverPage() {
               return;
             }
           }
-          setError(payload.message ?? 'Voice over failed');
+          setError(normalizeClientErrorMessage(payload.message ?? 'Voice over failed'));
           setProgress(null);
         },
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      setError(normalizeClientErrorMessage(e instanceof Error ? e.message : String(e)));
       setProgress(null);
     } finally {
       setIsLoading(false);

@@ -22,6 +22,7 @@ import {
   type SubtitlesTargetMode,
 } from '@/lib/subtitles-api';
 import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 
 export default function SubtitlesPage() {
   const t = useTranslations('subtitlesPage');
@@ -68,13 +69,10 @@ export default function SubtitlesPage() {
       if (lower.includes('full authentication is required')) {
         return t('errors.sessionExpired');
       }
-      if (lower.includes('insufficient points')) {
-        return t('errors.insufficientPoints');
-      }
       if (lower.includes('redis') && (lower.includes('unavailable') || lower.includes('connection'))) {
         return t('errors.serviceUnavailable');
       }
-      return msg.length > 160 ? `${msg.slice(0, 160)}…` : msg;
+      return normalizeClientErrorMessage(raw, { maxLength: 160 });
     },
     [t],
   );
