@@ -1,38 +1,43 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f4f5;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-border: #e4e4e7;
-  --muted: #71717a;
-  --primary: #18181b;
-  --primary-fg: #fafafa;
-  --primary-hover: #3f3f46;
-  --surface: #e4e4e7;
-  --subtle: #fafafa;
-  --glass: rgba(255, 255, 255, 0.85);
-  --glass-border: rgba(0, 0, 0, 0.08);
+  --background: #fcf8f8;
+  --foreground: #1a1714;
+  --card: #faf6f6;
+  --elevated: #ffffff;
+  --card-border: rgba(160, 140, 100, 0.18);
+  --border-emphasis: rgba(160, 140, 100, 0.3);
+  --muted: #7a7060;
+  --hint: #aaa090;
+  --primary: #1a1714;
+  --primary-fg: #fcf8f8;
+  --primary-hover: #2d2824;
+  --surface: #ebe6e6;
+  --subtle: #f5f1f1;
+  --glass: rgba(252, 248, 248, 0.92);
+  --glass-border: rgba(160, 140, 100, 0.18);
   --accent-gold: #d4a853;
   --accent-gold-muted: rgba(212, 168, 83, 0.35);
   --accent-purple: #a78bfa;
   --status-available: #34d399;
   --status-live: #a78bfa;
-  --nav-pill: rgba(0, 0, 0, 0.06);
+  --nav-pill: rgba(160, 140, 100, 0.12);
   /* Home / landing primary buttons — use with arbitrary Tailwind or .landing-home-primary */
   --landing-home-primary-bg: #e6c978;
   --landing-home-primary-fg: #0a1128;
   --landing-home-primary-hover: #efd589;
-  --scrollbar-track: #e8e8ec;
-  --scrollbar-thumb: #b4b4bc;
-  --scrollbar-thumb-hover: #8b8b96;
+  --scrollbar-track: #efeaea;
+  --scrollbar-thumb: #b8a995;
+  --scrollbar-thumb-hover: #9a8a76;
 }
 
 .dark {
   --background: #050a18;
   --foreground: #f4f4f8;
   --card: rgba(255, 255, 255, 0.05);
+  --elevated: #101b2e;
   --card-border: rgba(255, 255, 255, 0.1);
+  --border-emphasis: rgba(255, 255, 255, 0.22);
   --muted: #94a3b8;
   --primary: #f8fafc;
   --primary-fg: #0f172a;
@@ -73,8 +78,11 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
+  --color-elevated: var(--elevated);
   --color-card-border: var(--card-border);
+  --color-border-emphasis: var(--border-emphasis);
   --color-muted: var(--muted);
+  --color-hint: var(--hint);
   --color-primary: var(--primary);
   --color-primary-fg: var(--primary-fg);
   --color-primary-hover: var(--primary-hover);
@@ -139,6 +147,14 @@ body {
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+.light body {
+  background-color: #fcf8f8;
+}
+
+.dark body {
+  background-color: var(--background);
+}
+
 .app-gradient {
   min-height: 100vh;
 }
@@ -153,14 +169,17 @@ body {
 }
 
 .light .app-gradient {
-  background: linear-gradient(135deg, #b8ddf0 0%, #d4ecf8 50%, #c2e2f3 100%);
+  background: #fcf8f8;
 }
 
 .glass-panel {
-  background: var(--glass);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  background-color: var(--card);
   border: 1px solid var(--glass-border);
+}
+
+.dark .glass-panel {
+  background-color: #101b2e;
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
 .glass-card {
@@ -175,9 +194,9 @@ body {
  * so use this opaque surface for readable text in light and dark.
  */
 .viral-modal-panel {
-  background-color: #ffffff;
-  color: #0a0a0a;
-  border: 1px solid #e4e4e7;
+  background-color: var(--elevated);
+  color: var(--foreground);
+  border: 1px solid var(--card-border);
   box-shadow: 0 25px 80px rgba(15, 23, 42, 0.22);
 }
 
@@ -189,7 +208,7 @@ body {
 }
 
 .viral-modal-divider {
-  border-color: #e4e4e7;
+  border-color: var(--card-border);
 }
 
 .dark .viral-modal-divider {
@@ -223,8 +242,8 @@ body {
 .light .content-creator-shell,
 .light .voice-over-shell,
 .light .video-edit-shell {
-  background: rgba(255, 255, 255, 0.82);
-  box-shadow: 0 20px 40px rgba(15, 23, 42, 0.08);
+  background: rgba(252, 248, 248, 0.94);
+  box-shadow: 0 20px 40px rgba(26, 20, 20, 0.06);
 }
 
 .video-edit-icon-tile {
@@ -497,9 +516,9 @@ button.video-edit-export-card .video-edit-export-card-desc {
 
 .light .viral-shorts-icon-tile {
   color: var(--accent-gold);
-  background: linear-gradient(160deg, #f1f5f9 0%, #e2e8f0 100%);
+  background: linear-gradient(160deg, #faf6f6 0%, #f0eaea 100%);
   border: 1px solid var(--card-border);
-  box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+  box-shadow: 0 2px 12px rgba(26, 20, 20, 0.08);
 }
 
 .viral-shorts-upload-panel {
@@ -841,10 +860,10 @@ select.viral-translate-tone-select:focus {
 
 /* Hint popover + ? trigger — solid fills (dark --card is translucent and bleeds UI behind) */
 .content-type-hint-trigger {
-  background-color: #ffffff;
-  color: #3f3f46;
-  border: 1px solid #d4d4d8;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+  background-color: var(--elevated);
+  color: var(--foreground);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 1px 3px rgba(26, 20, 20, 0.06);
 }
 
 .dark .content-type-hint-trigger {
@@ -856,7 +875,7 @@ select.viral-translate-tone-select:focus {
 
 .content-type-hint-trigger:hover {
   border-color: rgba(236, 72, 153, 0.55);
-  color: #0a0a0a;
+  color: var(--foreground);
 }
 
 .dark .content-type-hint-trigger:hover {
@@ -865,10 +884,10 @@ select.viral-translate-tone-select:focus {
 }
 
 .content-type-hint-popover {
-  background-color: #ffffff;
-  color: #18181b;
-  border: 1px solid #d4d4d8;
-  box-shadow: 0 12px 42px rgba(15, 23, 42, 0.2);
+  background-color: var(--elevated);
+  color: var(--foreground);
+  border: 1px solid var(--card-border);
+  box-shadow: 0 12px 42px rgba(26, 20, 20, 0.12);
 }
 
 .dark .content-type-hint-popover {

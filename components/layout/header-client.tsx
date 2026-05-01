@@ -29,7 +29,7 @@ export function HeaderDesktopNav({
     }`;
 
   return (
-    <nav className="hidden min-w-0 flex-1 items-center justify-center gap-0.5 px-1 sm:px-2 lg:flex lg:gap-1 lg:px-3">
+    <nav className="hidden min-w-0 items-center justify-center gap-0.5 px-1 sm:px-2 lg:flex lg:gap-1 lg:px-3">
       <NavLink href="/" className={navLinkDesktop(isHome)}>
         {homeLabel}
       </NavLink>
@@ -109,7 +109,7 @@ export function HeaderMobileNav({
             role="dialog"
             aria-modal="true"
             aria-labelledby="mobile-nav-title"
-            className="fixed left-3 right-3 top-[4.5rem] z-[120] max-h-[min(72vh,calc(100dvh-6rem))] overflow-y-auto rounded-2xl border border-card-border bg-card/95 p-2 shadow-[0_24px_64px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:bg-[rgba(10,15,30,0.92)] lg:hidden"
+            className="fixed left-3 right-3 top-[4.5rem] z-[120] max-h-[min(72vh,calc(100dvh-6rem))] overflow-y-auto rounded-2xl border border-card-border bg-elevated/95 p-2 shadow-[0_24px_64px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:bg-[rgba(10,15,30,0.92)] lg:hidden"
           >
             <div className="flex items-center justify-between border-b border-card-border px-2 py-2">
               <span
