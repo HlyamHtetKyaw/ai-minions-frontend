@@ -1450,6 +1450,7 @@ export default function CreationStudio({
 
   const startSubtitles = async () => {
     if (!workspaceS3Key) return;
+    const subtitleTranslatedText = (translatedText.trim() || scriptText.trim()) || undefined;
     setSubtitlesError(null);
     setSubtitlesProgress({ percent: 10, label: 'Starting subtitles…' });
     try {
@@ -1458,6 +1459,7 @@ export default function CreationStudio({
         sourceType: 'video',
         targetLanguage: 'my',
         style: 'caption_rules_v1',
+        translatedText: subtitleTranslatedText,
       });
       setSubtitlesGenerationId(complete.jobId);
       openGenerationJobSseStream(complete.jobId, {
