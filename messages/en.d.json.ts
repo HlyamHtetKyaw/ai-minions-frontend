@@ -8,7 +8,7 @@ declare const messages: {
     "signUp": "Sign up",
     "languageLabel": "Language",
     "dashboardLabel": "Dashboard",
-    "brandTitle": "Your AI Minions",
+    "brandTitle": "Monetization Myanmar",
     "home": "Home",
     "pricing": "Pricing",
     "pointsBadge": "Points 120",
@@ -24,7 +24,7 @@ declare const messages: {
     "navigationLabel": "Site navigation"
   },
   "verify": {
-    "metaTitle": "Verify email — AI Minions",
+    "metaTitle": "Verify email — Monetization Myanmar",
     "metaDescription": "Enter the one-time code sent when you signed up.",
     "title": "Confirm your email",
     "subtitle": "Enter the verification code from your inbox. You can sign in with your username or email below.",
@@ -48,9 +48,9 @@ declare const messages: {
     "resendCooldown": "Resend available in {seconds}s"
   },
   "account": {
-    "metaTitleProfile": "Account — AI Minions",
+    "metaTitleProfile": "Account — Monetization Myanmar",
     "metaDescriptionProfile": "View and update your profile and contact details.",
-    "metaTitlePassword": "Change password — AI Minions",
+    "metaTitlePassword": "Change password — Monetization Myanmar",
     "metaDescriptionPassword": "Update your account password securely.",
     "kicker": "Your account",
     "title": "Profile & security",
@@ -121,7 +121,7 @@ declare const messages: {
       "featureVideoGeneration": "Video generation",
       "featureUnknown": "Unknown feature",
       "detail": {
-        "metaTitle": "Usage details — AI Minions",
+        "metaTitle": "Usage details — Monetization Myanmar",
         "metaDescription": "View input and output details for your feature usage history.",
         "title": "Usage details",
         "back": "Back to profile",
@@ -146,8 +146,8 @@ declare const messages: {
     }
   },
   "pricing": {
-    "metaTitle": "Pricing — AI Minions",
-    "metaDescription": "Member plans and credit top-ups for AI Minions. Transparent pricing in MMK.",
+    "metaTitle": "Pricing — Monetization Myanmar",
+    "metaDescription": "Member plans and credit top-ups for Monetization Myanmar. Transparent pricing in MMK.",
     "kicker": "Plans & credits",
     "title": "Simple pricing for serious creators",
     "subtitle": "Choose a membership tier for full studio access, or top up credits whenever you need more runway. All prices in Myanmar Kyat (MMK).",
@@ -180,7 +180,7 @@ declare const messages: {
     "available": "Available",
     "openCardLink": "Open tool",
     "toolsPage": {
-      "metaTitle": "Workspace tools — AI Minions",
+      "metaTitle": "Workspace tools — Monetization Myanmar",
       "metaDescription": "Your dashboard for transcription, captions, voice-over, translation, and the rest of your AI media workflow.",
       "heroTitle": "Your AI media workspace",
       "heroDescription": "Transcribe, caption, generate, and polish from one dashboard — pick a tool below or open Caption Studio to start."
@@ -213,7 +213,7 @@ declare const messages: {
         "subtitle": "Follow a clear path from upload to finished edit — no guesswork, just the tools you need in order."
       },
       "trust": {
-        "title": "Why creators use AI Minions",
+        "title": "Why creators use Monetization Myanmar",
         "subtitle": "A focused studio experience with transparent limits and room to grow.",
         "socialProof": "Trusted by 10,000+ creators.",
         "items": {
@@ -236,8 +236,8 @@ declare const messages: {
         "subtitle": "Quick answers about the studio, credits, files, and signing up.",
         "items": {
           "studio": {
-            "question": "What is AI Minions?",
-            "answer": "AI Minions is an AI-powered media studio for captions, transcription, content generation, voice-over, translation, and video workflows — designed as one cohesive dashboard."
+            "question": "What is Monetization Myanmar?",
+            "answer": "Monetization Myanmar is an AI-powered media studio for captions, transcription, content generation, voice-over, translation, and video workflows — designed as one cohesive dashboard."
           },
           "credits": {
             "question": "How do credits and plans work?",
@@ -813,7 +813,7 @@ declare const messages: {
   },
   "login": {
     "title": "Welcome back",
-    "subtitle": "Sign in to continue to AI Minions",
+    "subtitle": "Sign in to continue to Monetization Myanmar",
     "modes": {
       "password": "Password",
       "code": "Access code"
@@ -854,7 +854,7 @@ declare const messages: {
   },
   "signup": {
     "title": "Create account",
-    "subtitle": "Join AI Minions and start creating",
+    "subtitle": "Join Monetization Myanmar and start creating",
     "fields": {
       "username": "Username",
       "email": "Email",
@@ -1222,7 +1222,7 @@ declare const messages: {
     "result": {
       "title": "Generated content",
       "scriptOutputTitle": "Script output",
-      "previewAuthor": "AI Minions",
+      "previewAuthor": "Monetization Myanmar",
       "previewTime": "Just now",
       "download": "Download",
       "copy": "Copy",
@@ -1318,7 +1318,7 @@ declare const messages: {
     "socialProof": {
       "usersCount": "50,000+ videos processed",
       "rating": "4.8/5 rating",
-      "testimonial1": "AI Minions cut my editing time by 80%. I went from 4 hours to 30 minutes per video.",
+      "testimonial1": "Monetization Myanmar cut my editing time by 80%. I went from 4 hours to 30 minutes per video.",
       "testimonial2": "The auto-caption feature is a game-changer. My TikTok views doubled in a week.",
       "testimonial3": "Finally, a tool that understands creators. The Burmese translation is seamless.",
       "companies": "Trusted by creators at"
@@ -1380,7 +1380,7 @@ declare const messages: {
     "privacy": "Privacy Policy",
     "terms": "Terms of Service",
     "cta": "Start Free",
-    "copyright": "© 2024 AI Minions. All rights reserved."
+    "copyright": "© 2024 Monetization Myanmar. All rights reserved."
   },
   "tools": {
     "caption-studio": {

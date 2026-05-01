@@ -1,11 +1,9 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Link, useRouter } from '@/i18n/navigation';
+import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
 import { ChevronDown, LogOut, User } from 'lucide-react';
-import { apiFetch } from '@/lib/api';
-import { clearClientAuth } from '@/lib/auth-token';
 import { useAuthSession } from '@/components/layout/auth-session-context';
 
 function initials(name: string) {
@@ -20,8 +18,7 @@ function initials(name: string) {
 
 export default function HeaderSession() {
   const t = useTranslations('header');
-  const router = useRouter();
-  const { user, loading, setUser } = useAuthSession();
+  const { user, loading, signOut } = useAuthSession();
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -38,15 +35,7 @@ export default function HeaderSession() {
 
   async function handleLogout() {
     setMenuOpen(false);
-    try {
-      await apiFetch('/api/v1/auth/logout', { method: 'POST' });
-    } catch {
-      /* still clear client */
-    }
-    clearClientAuth();
-    setUser(null);
-    router.push('/login');
-    router.refresh();
+    await signOut();
   }
 
   const displayName = user?.displayName?.trim() || user?.username || '';
