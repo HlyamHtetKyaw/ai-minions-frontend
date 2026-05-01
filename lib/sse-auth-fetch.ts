@@ -3,7 +3,7 @@ import {
   detectCurrentLocale,
   getDefaultErrorMessage,
   getNetworkErrorMessage,
-  getStatusErrorMessage,
+  resolveHttpErrorMessage,
 } from '@/lib/api-error-message';
 
 type SseHandlers = {
@@ -40,7 +40,16 @@ export function consumeSseWithAuth(url: string, handlers: SseHandlers): () => vo
       });
 
       if (!res.ok) {
-        handlers.onError(getStatusErrorMessage(res.status, detectCurrentLocale()));
+        const errText = await res.text().catch(() => '');
+        let errBody: unknown = null;
+        if (errText) {
+          try {
+            errBody = JSON.parse(errText) as unknown;
+          } catch {
+            errBody = null;
+          }
+        }
+        handlers.onError(resolveHttpErrorMessage(res.status, errBody, detectCurrentLocale()));
         return;
       }
 

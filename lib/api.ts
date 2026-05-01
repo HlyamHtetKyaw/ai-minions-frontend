@@ -3,7 +3,7 @@ import { getPublicApiBaseUrl } from "./api-base";
 import {
   detectCurrentLocale,
   getNetworkErrorMessage,
-  getStatusErrorMessage,
+  resolveHttpErrorMessage,
 } from "./api-error-message";
 
 function redirectToLoginOnUnauthorized() {
@@ -41,7 +41,16 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
     if (res.status === 401) {
       redirectToLoginOnUnauthorized();
     }
-    throw new Error(getStatusErrorMessage(res.status, detectCurrentLocale()));
+    const errText = await res.text().catch(() => "");
+    let errBody: unknown = null;
+    if (errText) {
+      try {
+        errBody = JSON.parse(errText) as unknown;
+      } catch {
+        errBody = null;
+      }
+    }
+    throw new Error(resolveHttpErrorMessage(res.status, errBody, detectCurrentLocale()));
   }
 
   return res.json();

@@ -2,6 +2,7 @@ const API_ERROR_MESSAGES = {
   en: {
     400: "The request could not be processed. Please check your input and try again.",
     401: "You are not logged in. Please sign in to continue.",
+    402: "Insufficient Points.",
     403: "You do not have permission to perform this action.",
     404: "The requested resource could not be found.",
     408: "The request took too long. Please try again.",
@@ -15,10 +16,12 @@ const API_ERROR_MESSAGES = {
     504: "The server took too long to respond. Please try again.",
     network: "Unable to connect. Please check your internet connection.",
     default: "An unexpected error occurred. Please try again.",
+    userPointsNotFound: "You do not have any points yet.",
   },
   my: {
     400: "တောင်းဆိုချက်ကို လုပ်ဆောင်၍မရပါ။ သင့်အချက်အလက်များကို စစ်ဆေးပြီး ထပ်စမ်းကြည့်ပါ။",
     401: "သင် လော့ဂ်အင်မဝင်ရသေးပါ။ ဆက်လက်လုပ်ဆောင်ရန် လော့ဂ်အင်ဝင်ပါ။",
+    402: "ပွိုင့်မလုံလောက်ပါ",
     403: "ဤလုပ်ဆောင်ချက်ကို ပြုလုပ်ခွင့် သင့်တွင်မရှိပါ။",
     404: "တောင်းဆိုထားသော အရင်းအမြစ်ကို ရှာမတွေ့ပါ။",
     408: "တောင်းဆိုချက် အချိန်များသွားပါပြီ။ ထပ်စမ်းကြည့်ပါ။",
@@ -32,6 +35,7 @@ const API_ERROR_MESSAGES = {
     504: "ဆာဗာမှ တုံ့ပြန်ရန် အချိန်များသွားသည်။ ထပ်စမ်းကြည့်ပါ။",
     network: "ချိတ်ဆက်၍မရပါ။ သင့်အင်တာနက် ချိတ်ဆက်မှုကို စစ်ဆေးပါ။",
     default: "မမျှော်လင့်သော အမှားတစ်ခု ဖြစ်ပွားသွားသည်။ ထပ်စမ်းကြည့်ပါ။",
+    userPointsNotFound: "ပွိုင့် မရှိသေးပါ",
   },
 } as const;
 
@@ -48,6 +52,23 @@ export function detectCurrentLocale(): AppErrorLocale {
   return resolveErrorLocale(lang);
 }
 
+/** True when the API returned a 404-style "no UserPoints row" error (balance not initialized). */
+export function isUserPointsNotFoundErrorBody(body: unknown): boolean {
+  if (!body || typeof body !== "object") return false;
+  const msg = (body as Record<string, unknown>).message;
+  if (typeof msg !== "string") return false;
+  const lower = msg.toLowerCase();
+  return lower.includes("userpoints") && lower.includes("not found");
+}
+
+export function resolveHttpErrorMessage(status: number, body: unknown, locale?: string): string {
+  const key = locale === undefined ? detectCurrentLocale() : resolveErrorLocale(locale);
+  if (status === 404 && isUserPointsNotFoundErrorBody(body)) {
+    return API_ERROR_MESSAGES[key].userPointsNotFound;
+  }
+  return getStatusErrorMessage(status, key);
+}
+
 export function getStatusErrorMessage(status: number, locale?: string): string {
   const key = resolveErrorLocale(locale);
   const dict = API_ERROR_MESSAGES[key] as Record<string, string>;
@@ -60,4 +81,9 @@ export function getNetworkErrorMessage(locale?: string): string {
 
 export function getDefaultErrorMessage(locale?: string): string {
   return API_ERROR_MESSAGES[resolveErrorLocale(locale)].default;
+}
+
+export function getUserPointsNotFoundMessage(locale?: string): string {
+  const key = locale === undefined ? detectCurrentLocale() : resolveErrorLocale(locale);
+  return API_ERROR_MESSAGES[key].userPointsNotFound;
 }
