@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 import type { PointsEstimate } from '@/lib/voice-over-api';
 import { voiceOverEstimatePoints } from '@/lib/voice-over-api';
 
@@ -78,7 +79,7 @@ export function useVoiceOverEstimate(
         } catch (e) {
           if (cancelled) return;
           setEstimate(null);
-          setError(e instanceof Error ? e.message : String(e));
+          setError(normalizeClientErrorMessage(e instanceof Error ? e.message : String(e)));
         } finally {
           lastCompleteRef.current = Date.now();
           if (!cancelled) setLoading(false);

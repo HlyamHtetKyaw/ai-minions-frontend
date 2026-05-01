@@ -25,12 +25,7 @@ import {
   type ContentGenerateV2Params,
   type PointsEstimate,
 } from '@/lib/content-generation-api';
-import {
-  detectCurrentLocale,
-  getDefaultErrorMessage,
-  getNetworkErrorMessage,
-  getStatusErrorMessage,
-} from '@/lib/api-error-message';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 
 function isEstimateNotFoundError(message: string): boolean {
@@ -57,19 +52,7 @@ export default function ContentGenerationPage() {
   
   const t = useTranslations('contentGeneration');
 
-  const toUserSafeError = useCallback((raw: string): string => {
-    const msg = (raw ?? '').trim();
-    if (!msg) return getDefaultErrorMessage(detectCurrentLocale());
-    const lower = msg.toLowerCase();
-    const statusMatch = msg.match(/\b(\d{3})\b/);
-    if (statusMatch) {
-      return getStatusErrorMessage(Number(statusMatch[1]), detectCurrentLocale());
-    }
-    if (lower.includes('network') || lower.includes('failed to fetch')) {
-      return getNetworkErrorMessage(detectCurrentLocale());
-    }
-    return getDefaultErrorMessage(detectCurrentLocale());
-  }, []);
+  const toUserSafeError = useCallback((raw: string): string => normalizeClientErrorMessage(raw), []);
 
   const [contentType, setContentType] = useState<ContentTypeKey>('hook');
   const [outputMode, setOutputMode] = useState<OutputModeKey>('imageAndText');
