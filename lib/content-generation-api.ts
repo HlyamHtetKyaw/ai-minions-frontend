@@ -19,6 +19,8 @@ export type ContentGenerateV2Params = {
   outputMode: 'imageOnly' | 'imageAndText' | 'textOnly';
   tone: string;
   toonStyle?: string;
+  logoUrl?: string;
+  /** Legacy fallback for older backends; prefer `logoUrl`. */
   logoDataUrl?: string;
   aiOverlayTextEnabled?: boolean;
   userOverlayText?: string;
@@ -56,6 +58,12 @@ export function normalizeContentGenerateV2Result(raw: unknown): ContentGenerateV
 
 export type ContentGenerateV2StartResult = {
   jobId: string;
+};
+
+export type ContentLogoUploadUrlResult = {
+  uploadUrl: string;
+  s3Key: string;
+  storageUrl: string;
 };
 
 type ApiEnvelope<T> = {
@@ -104,6 +112,7 @@ export async function contentGenerationEstimatePoints(params: ContentGenerateV2P
       outputMode: params.outputMode,
       tone: params.tone,
       toonStyle: params.toonStyle,
+      logoUrl: params.logoUrl,
       logoDataUrl: params.logoDataUrl,
       aiOverlayTextEnabled: params.aiOverlayTextEnabled,
       userOverlayText: params.userOverlayText,
@@ -138,6 +147,44 @@ export async function startGenerateContentV2(params: ContentGenerateV2Params): P
     throw new Error(errorMessageFromBody(json, `Content generation start failed (${res.status})`));
   }
   return json.data;
+}
+
+export async function prepareContentLogoUploadUrl(fileName: string, contentType: string): Promise<ContentLogoUploadUrlResult> {
+  const base = getPublicApiBaseUrl();
+  if (!base) {
+    throw new Error('API base URL is not set (NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)');
+  }
+  const res = await fetchWithAuthRetry(`${base}/api/v1/ai/content/v2/logo/upload-url`, {
+    ...fetchInit,
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+      ...authHeaders(),
+    },
+    body: JSON.stringify({
+      fileName,
+      contentType,
+    }),
+  });
+  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<ContentLogoUploadUrlResult>;
+  if (!res.ok || !json.success || !json.data) {
+    throw new Error(errorMessageFromBody(json, `content logo upload-url failed (${res.status})`));
+  }
+  return json.data;
+}
+
+export async function uploadContentLogoToSignedUrl(uploadUrl: string, file: File): Promise<void> {
+  const contentType = file.type || 'application/octet-stream';
+  const res = await fetch(uploadUrl, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: file,
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Logo upload failed: ${res.status} ${text}`.trim());
+  }
 }
 
 export type ContentGenerateSseHandlers = {

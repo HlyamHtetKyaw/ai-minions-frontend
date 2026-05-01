@@ -1234,7 +1234,7 @@ declare const messages: {
     },
     "errors":{
       "invalidFormat": "Invalid file format. Only PNG and JPG files are allowed.",
-      "fileTooLarge": "File size is too large. Maximum size is 1 MB.",
+      "fileTooLarge": "File size is too large. Maximum size is 5 MB.",
       "fixLogoBeforeGenerating": "Please fix the logo upload issue before generating content."
     }
   },

@@ -1963,6 +1963,16 @@ export default function CreationStudio({
   const isSyncingVoice = syncUi.kind === 'working';
   const isBalancedSyncRunning = Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100);
   const isSubtitlesRunning = Boolean(subtitlesProgress && subtitlesProgress.percent < 100);
+  const isAnyTaskRunning =
+    Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
+    isTranscribing ||
+    isTranslating ||
+    Boolean(voiceOverProgress && voiceOverProgress.percent < 100) ||
+    isGenerating ||
+    isSyncingVoice ||
+    isBalancedSyncRunning ||
+    isSubtitlesRunning ||
+    exporting;
 
   return (
     <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
@@ -1976,6 +1986,7 @@ export default function CreationStudio({
             <button
               type="button"
               onClick={onDiscardWorkspace}
+              disabled={isAnyTaskRunning}
               className="h-8 rounded-md border border-red-500/30 bg-transparent px-3 text-xs font-semibold text-red-300 transition-colors hover:border-red-400/60 hover:bg-red-500/10"
             >
               {tEditor('buttons.discardWorkspace')}
@@ -1984,7 +1995,7 @@ export default function CreationStudio({
           <ActionButton
             onClick={() => void handleFinalExportClick()}
             isLoading={exporting}
-            disabled={!workspaceS3Key || exporting}
+            disabled={!workspaceS3Key || exporting || isAnyTaskRunning}
             label={tEditor('buttons.finalExport')}
             loadingLabel={tEditor('buttons.exporting')}
             className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
@@ -2032,6 +2043,7 @@ export default function CreationStudio({
               type="button"
               onClick={handleTranscribeClick}
               disabled={
+                isAnyTaskRunning ||
                 isTranscribing ||
                 Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
                 !workspaceS3Key ||
@@ -2055,6 +2067,7 @@ export default function CreationStudio({
               <button
                 type="button"
                 onClick={() => setLeftTab('script')}
+                disabled={isAnyTaskRunning}
                 className={`rounded px-2 py-1 text-center transition-colors ${
                   leftTab === 'script' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
                 }`}
@@ -2064,6 +2077,7 @@ export default function CreationStudio({
               <button
                 type="button"
                 onClick={() => setLeftTab('srt')}
+                disabled={isAnyTaskRunning}
                 className={`rounded px-2 py-1 text-center transition-colors ${
                   leftTab === 'srt' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
                 }`}
@@ -2080,6 +2094,7 @@ export default function CreationStudio({
               {leftTab === 'script' ? (
                 <textarea
                   value={scriptText}
+                  disabled={isAnyTaskRunning}
                   onChange={(e) => {
                     const v = e.target.value;
                     setScriptText(v);
@@ -2101,6 +2116,7 @@ export default function CreationStudio({
                         <input
                           type="checkbox"
                           checked={showSubtitlesOverlay}
+                          disabled={isAnyTaskRunning}
                           onChange={(e) => setShowSubtitlesOverlay(e.target.checked)}
                           className="shrink-0"
                         />
@@ -2110,7 +2126,7 @@ export default function CreationStudio({
                         <input
                           type="checkbox"
                           checked={subtitlesEditPosition}
-                          disabled={!showSubtitlesOverlay}
+                          disabled={!showSubtitlesOverlay || isAnyTaskRunning}
                           onChange={(e) => setSubtitlesEditPosition(e.target.checked)}
                           className="shrink-0"
                         />
@@ -2131,7 +2147,7 @@ export default function CreationStudio({
                               type="button"
                               className="h-7 w-7 border-r border-card-border text-[13px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
                               onClick={() => setSubtitlesFontSize((v) => Math.max(14, v - 1))}
-                              disabled={subtitlesFontSize <= 14}
+                              disabled={subtitlesFontSize <= 14 || isAnyTaskRunning}
                               aria-label="Decrease subtitle size"
                             >
                               –
@@ -2157,7 +2173,7 @@ export default function CreationStudio({
                               type="button"
                               className="h-7 w-7 border-l border-card-border text-[13px] font-semibold text-foreground hover:bg-surface disabled:opacity-50"
                               onClick={() => setSubtitlesFontSize((v) => Math.min(60, v + 1))}
-                              disabled={subtitlesFontSize >= 60}
+                              disabled={subtitlesFontSize >= 60 || isAnyTaskRunning}
                               aria-label="Increase subtitle size"
                             >
                               +
@@ -2165,6 +2181,7 @@ export default function CreationStudio({
                           </div>
                           <select
                             value={String(subtitlesFontSize)}
+                            disabled={isAnyTaskRunning}
                             onChange={(e) => {
                               const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
                               setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
@@ -2205,6 +2222,7 @@ export default function CreationStudio({
                             max={100}
                             step={1}
                             value={subtitlesBackgroundOpacity}
+                            disabled={isAnyTaskRunning}
                             onChange={(e) => {
                               const n = Math.max(0, Math.min(100, Number(e.target.value) || 0));
                               setSubtitlesBackgroundOpacity(Number.isFinite(n) ? n : 0);
@@ -2230,6 +2248,7 @@ export default function CreationStudio({
                                   Start
                                   <input
                                     value={formatSrtTimestamp(c.startTime)}
+                                    disabled={isAnyTaskRunning}
                                     onChange={(e) => {
                                       const next = parseTimeInput(e.target.value);
                                       if (next == null) return;
@@ -2246,6 +2265,7 @@ export default function CreationStudio({
                                   End
                                   <input
                                     value={formatSrtTimestamp(c.endTime)}
+                                    disabled={isAnyTaskRunning}
                                     onChange={(e) => {
                                       const next = parseTimeInput(e.target.value);
                                       if (next == null) return;
@@ -2262,6 +2282,7 @@ export default function CreationStudio({
                                   <button
                                     type="button"
                                     className="h-7 rounded border border-card-border bg-card px-2 text-[10px] font-semibold text-foreground hover:bg-surface"
+                                    disabled={isAnyTaskRunning}
                                     onClick={() => {
                                       const nextStart = Math.max(0, c.endTime);
                                       const nextEnd = nextStart + 1.6;
@@ -2284,6 +2305,7 @@ export default function CreationStudio({
                                   <button
                                     type="button"
                                     className="h-7 rounded border border-red-500/35 bg-transparent px-2 text-[10px] font-semibold text-red-300 hover:bg-red-500/10"
+                                    disabled={isAnyTaskRunning}
                                     onClick={() => setEditableCues((prev) => prev.filter((x) => x.id !== c.id))}
                                   >
                                     {tEditor('buttons.remove')}
@@ -2299,6 +2321,7 @@ export default function CreationStudio({
                                 </div>
                                 <textarea
                                   value={c.content}
+                                  disabled={isAnyTaskRunning}
                                   onChange={(e) => {
                                     const v = e.target.value;
                                     setEditableCues((prev) =>
@@ -2322,6 +2345,7 @@ export default function CreationStudio({
                         <button
                           type="button"
                           className="h-8 w-full rounded-md bg-[#7c5cff] text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                          disabled={isAnyTaskRunning}
                           onClick={() => {
                             srtSyncFromTableRef.current = true;
                             setSubtitlesSrtText(cuesToSrt(editableCues));
@@ -2339,6 +2363,7 @@ export default function CreationStudio({
                     <summary className="cursor-pointer text-[10px] font-semibold text-muted">Advanced: edit raw .srt</summary>
                     <textarea
                       value={subtitlesSrtText}
+                      disabled={isAnyTaskRunning}
                       onChange={(e) => setSubtitlesSrtText(e.target.value)}
                       placeholder="Raw .srt text…"
                       className="mt-2 min-h-[160px] w-full resize-y rounded border border-card-border bg-subtle/20 p-2 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
@@ -2461,6 +2486,7 @@ export default function CreationStudio({
                   <button
                     type="button"
                     onClick={() => setShowBalancedPreview(true)}
+                    disabled={isAnyTaskRunning}
                     className="h-7 rounded-md bg-[#7c5cff] px-2 font-semibold text-white hover:bg-[#6b4bff]"
                   >
                     {tEditor('buttons.previewAndAccept')}
@@ -2478,6 +2504,7 @@ export default function CreationStudio({
                     type="radio"
                     name="viral-audio-mode"
                     checked={originalAudioEnabled}
+                    disabled={isAnyTaskRunning}
                     onChange={() => {
                       setOriginalAudioEnabled(true);
                       setVoiceOverEnabled(false);
@@ -2490,7 +2517,7 @@ export default function CreationStudio({
                     type="radio"
                     name="viral-audio-mode"
                     checked={voiceOverEnabled}
-                    disabled={!voiceOverAudioUrl}
+                    disabled={!voiceOverAudioUrl || isAnyTaskRunning}
                     onChange={() => {
                       setVoiceOverEnabled(true);
                       setOriginalAudioEnabled(false);
@@ -2558,6 +2585,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="font-semibold text-foreground underline"
+                  disabled={isAnyTaskRunning}
                   onClick={() => void triggerWorkspaceExportDownload(exportedVideoUrl, exportedVideoKey || 'video-export.mp4')}
                 >
                   {tEditor('buttons.downloadAgain')}
@@ -2589,7 +2617,7 @@ export default function CreationStudio({
                 <ActionButton
                   onClick={handleTranslateClick}
                   isLoading={isTranslating}
-                  disabled={!isTranscribed || isTranslating}
+                  disabled={!isTranscribed || isTranslating || isAnyTaskRunning}
                   label={tEditor('buttons.translate')}
                   loadingLabel={tEditor('buttons.translating')}
                   className="btn-viral-shorts-analyze btn-viral-shorts-translate-inline h-10 shrink-0 rounded-xl px-5 text-sm font-semibold whitespace-nowrap"
@@ -2615,7 +2643,7 @@ export default function CreationStudio({
                   type="button"
                   className="shrink-0 self-center rounded-lg border border-card-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                   onClick={() => setShowVoiceStyleModal(true)}
-                  disabled={voiceModelsLoading || isGenerating}
+                  disabled={voiceModelsLoading || isGenerating || isAnyTaskRunning}
                 >
                   <span className="inline-flex items-center gap-1.5">
                     {voiceModelsLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
@@ -2627,7 +2655,7 @@ export default function CreationStudio({
               <ActionButton
                 onClick={() => void handleGenerate()}
                 isLoading={isGenerating}
-                disabled={!isTranslated || isGenerating}
+                disabled={!isTranslated || isGenerating || isAnyTaskRunning}
                 label={tEditor('buttons.generate')}
                 loadingLabel={tEditor('buttons.generating')}
                 className="btn-viral-shorts h-11 w-full rounded-xl px-4 text-sm font-semibold"
@@ -2642,6 +2670,7 @@ export default function CreationStudio({
                   type="button"
                   onClick={() => void handleSyncVoiceToVideo()}
                   disabled={
+                    isAnyTaskRunning ||
                     isSyncingVoice || !videoMetadataReady || (Boolean(voiceOverAudioUrl) && !voiceMetadataReady)
                   }
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
@@ -2655,6 +2684,7 @@ export default function CreationStudio({
                   type="button"
                   onClick={() => void handleBalancedSyncClick()}
                   disabled={
+                    isAnyTaskRunning ||
                     isBalancedPreviewMode ||
                     !voiceOverAudioUrl ||
                     !voiceOverS3Key ||
@@ -2687,6 +2717,7 @@ export default function CreationStudio({
                     type="checkbox"
                     className="mt-1 shrink-0"
                     checked={allowStrongerSync}
+                    disabled={isAnyTaskRunning}
                     onChange={(e) => setAllowStrongerSync(e.target.checked)}
                   />
                   <span>Allow stronger sync (may sound less natural)</span>
@@ -2698,6 +2729,7 @@ export default function CreationStudio({
                     setProtectFlip(next);
                     setProtectHueDeg(next ? 25 : 0);
                   }}
+                  disabled={isAnyTaskRunning}
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface"
                 >
                   {tEditor('buttons.protectionFlipHue')}
@@ -2720,7 +2752,7 @@ export default function CreationStudio({
                   onMouseEnter={() => void ensureSubtitlesEstimate()}
                   onFocus={() => void ensureSubtitlesEstimate()}
                   onClick={handleSubtitlesClick}
-                  disabled={!workspaceS3Key || isSubtitlesRunning}
+                  disabled={!workspaceS3Key || isSubtitlesRunning || isAnyTaskRunning}
                   className="flex min-h-11 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                 >
                   <span className="inline-flex items-center gap-1.5">
@@ -2738,6 +2770,7 @@ export default function CreationStudio({
                     <button
                       type="button"
                       className="flex min-h-10 w-full items-center justify-center rounded-lg bg-[#7c5cff] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                      disabled={isAnyTaskRunning}
                       onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
                     >
                       {tEditor('buttons.downloadSrt')}
@@ -2745,6 +2778,7 @@ export default function CreationStudio({
                     <button
                       type="button"
                       className="flex min-h-10 w-full items-center justify-center rounded-lg border border-card-border bg-card px-3 py-2 text-[11px] font-semibold text-foreground transition-colors hover:bg-surface"
+                      disabled={isAnyTaskRunning}
                       onClick={() => setLeftTab('srt')}
                     >
                       {tEditor('buttons.openSrtEditor')}
@@ -2787,6 +2821,7 @@ export default function CreationStudio({
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
                   disabled={
+                    isAnyTaskRunning ||
                     isTranscribing ||
                     Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
                     !workspaceS3Key ||
@@ -2838,7 +2873,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={!isTranscribed || isTranslating || translateEstimateLoading}
+                  disabled={!isTranscribed || isTranslating || translateEstimateLoading || isAnyTaskRunning}
                   onClick={() => {
                     setShowTranslateConfirm(false);
                     void handleTranslate();
@@ -2883,7 +2918,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={subtitlesEstimateLoading || isSubtitlesRunning}
+                  disabled={subtitlesEstimateLoading || isSubtitlesRunning || isAnyTaskRunning}
                   onClick={() => {
                     setShowSubtitlesConfirm(false);
                     void startSubtitles();
@@ -2928,7 +2963,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-                  disabled={exportEstimateLoading || exporting}
+                  disabled={exportEstimateLoading || exporting || isAnyTaskRunning}
                   onClick={() => {
                     setShowExportConfirm(false);
                     void startFinalExport();
@@ -2968,7 +3003,7 @@ export default function CreationStudio({
                   onToneGroupChange={setVoiceToneGroupId}
                   selectedVoiceId={selectedVoiceId}
                   onVoiceIdChange={setSelectedVoiceId}
-                  disabled={isGenerating}
+                  disabled={isGenerating || isAnyTaskRunning}
                 />
               </div>
               <div className="viral-modal-divider flex justify-end border-t px-4 py-3">
@@ -3018,7 +3053,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={!isTranslated || isGenerating}
+                  disabled={!isTranslated || isGenerating || isAnyTaskRunning}
                   onClick={() => {
                     setShowVoiceOverConfirm(false);
                     void startVoiceOver();
@@ -3065,7 +3100,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={balancedSyncEstimateLoading || isBalancedSyncRunning}
+                  disabled={balancedSyncEstimateLoading || isBalancedSyncRunning || isAnyTaskRunning}
                   onClick={() => {
                     setShowBalancedSyncConfirm(false);
                     void handleStartBalancedSync();

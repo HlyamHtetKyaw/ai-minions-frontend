@@ -17,10 +17,11 @@ import UploadZone from '@/components/shared/components/upload-zone';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import {
   contentGenerationEstimatePoints,
-  fileToDataUrl,
   normalizeContentGenerateV2Result,
   openContentGenerationSse,
+  prepareContentLogoUploadUrl,
   startGenerateContentV2,
+  uploadContentLogoToSignedUrl,
   type ContentGenerateV2Params,
   type PointsEstimate,
 } from '@/lib/content-generation-api';
@@ -80,6 +81,7 @@ export default function ContentGenerationPage() {
   const [toonStyle, setToonStyle] = useState(DEFAULT_TOON_STYLE);
   const [topic, setTopic] = useState('');
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [isLogoUploading, setIsLogoUploading] = useState(false);
   const [aiOverlayTextEnabled, setAiOverlayTextEnabled] = useState(false);
   const [userOverlayText, setUserOverlayText] = useState('');
   const [generatedText, setGeneratedText] = useState('');
@@ -190,6 +192,10 @@ export default function ContentGenerationPage() {
       setStatus(t('errors.fixLogoBeforeGenerating') || 'Please fix the logo upload issue before generating content.');
       return;
     }
+    if (isLogoUploading) {
+      setStatus(t('errors.fixLogoBeforeGenerating') || 'Please wait for logo upload to complete before generating content.');
+      return;
+    }
 
     const runId = ++generationRunRef.current;
     clearProgressSimulator();
@@ -198,7 +204,17 @@ export default function ContentGenerationPage() {
     setStatus('');
     setProgress({ percent: 8, label: t('progress.preparing') });
     try {
-      const logoDataUrl = logoFile ? await fileToDataUrl(logoFile) : undefined;
+      let logoUrl: string | undefined;
+      if (logoFile) {
+        setIsLogoUploading(true);
+        const signed = await withTimeout(
+          prepareContentLogoUploadUrl(logoFile.name, logoFile.type || 'image/png'),
+          20000,
+          t('timeouts.prepareUpload'),
+        );
+        await withTimeout(uploadContentLogoToSignedUrl(signed.uploadUrl, logoFile), 120000, t('timeouts.upload'));
+        logoUrl = signed.storageUrl;
+      }
       const start = await startGenerateContentV2({
         topic,
         contentType,
@@ -207,7 +223,7 @@ export default function ContentGenerationPage() {
         outputMode,
         tone,
         toonStyle,
-        logoDataUrl,
+        logoUrl,
         aiOverlayTextEnabled,
         userOverlayText: userOverlayText.trim() || undefined,
       });
@@ -280,10 +296,14 @@ export default function ContentGenerationPage() {
       });
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
+      if (logoFile) {
+        setLogoError(toUserSafeError(raw));
+      }
       setStatus(toUserSafeError(raw));
       setProgress(null);
     } finally {
       clearProgressSimulator();
+      setIsLogoUploading(false);
       setIsLoading(false);
     }
   };
@@ -296,7 +316,7 @@ export default function ContentGenerationPage() {
       return;
     }
 
-    const MAX_SIZE = 1 * 1024 * 1024;
+    const MAX_SIZE = 5 * 1024 * 1024;
     const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
 
     if (!ALLOWED_TYPES.includes(file.type)) {
@@ -307,7 +327,7 @@ export default function ContentGenerationPage() {
     }
 
     if (file.size > MAX_SIZE) {
-      setLogoError(t('errors.fileTooLarge') || 'File size is too large. Maximum size is 1 MB.');
+      setLogoError(t('errors.fileTooLarge') || 'File size is too large. Maximum size is 5 MB.');
       setLogoFile(null);
       setUploadZoneKey((k) => k + 1);
       return;
@@ -521,7 +541,12 @@ export default function ContentGenerationPage() {
                                 : t('estimate.prompt')}
                         </p>
                       </div>
-                      <GenerateButton topic={topic} isLoading={isLoading} onClick={handleGenerate} />
+                      <GenerateButton
+                        topic={topic}
+                        isLoading={isLoading}
+                        disabled={isLogoUploading}
+                        onClick={handleGenerate}
+                      />
                       {progress ? (
                         <div
                           className={`rounded-xl border border-card-border bg-card px-4 py-3 ${progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''}`}
