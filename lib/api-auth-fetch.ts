@@ -19,14 +19,20 @@ type ApiEnvelopeLoose<T> = {
   message?: string;
 };
 
-/** Locale-aware message from HTTP status; special-cases UserPoints 404 from JSON body. */
-export function errorMessageFromBody(json: unknown, fallback: string): string {
-  const statusMatch = fallback.match(/\((\d{3})\)/);
-  if (statusMatch) {
-    const status = Number(statusMatch[1]);
-    if (Number.isFinite(status)) {
-      return resolveHttpErrorMessage(status, json, detectCurrentLocale());
-    }
+/**
+ * Locale-aware message from HTTP status; special-cases UserPoints 404 and insufficient-points 402 from JSON body.
+ * Pass {@code httpStatus} when the fallback string does not include {@code (ddd)}.
+ */
+export function errorMessageFromBody(json: unknown, fallback: string, httpStatus?: number): string {
+  const fromFallback = fallback.match(/\((\d{3})\)/);
+  const status =
+    typeof httpStatus === "number" && Number.isFinite(httpStatus)
+      ? httpStatus
+      : fromFallback
+        ? Number(fromFallback[1])
+        : NaN;
+  if (Number.isFinite(status)) {
+    return resolveHttpErrorMessage(status, json, detectCurrentLocale());
   }
   return getDefaultErrorMessage(detectCurrentLocale());
 }

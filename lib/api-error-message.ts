@@ -17,6 +17,8 @@ const API_ERROR_MESSAGES = {
     network: "Unable to connect. Please check your internet connection.",
     default: "An unexpected error occurred. Please try again.",
     userPointsNotFound: "You do not have any points yet.",
+    insufficientPointsDetail:
+      "You have {available} points available; {required} points are required for this action.",
   },
   my: {
     400: "တောင်းဆိုချက်ကို လုပ်ဆောင်၍မရပါ။ သင့်အချက်အလက်များကို စစ်ဆေးပြီး ထပ်စမ်းကြည့်ပါ။",
@@ -36,6 +38,8 @@ const API_ERROR_MESSAGES = {
     network: "ချိတ်ဆက်၍မရပါ။ သင့်အင်တာနက် ချိတ်ဆက်မှုကို စစ်ဆေးပါ။",
     default: "မမျှော်လင့်သော အမှားတစ်ခု ဖြစ်ပွားသွားသည်။ ထပ်စမ်းကြည့်ပါ။",
     userPointsNotFound: "ပွိုင့် မရှိသေးပါ",
+    insufficientPointsDetail:
+      "သင့်တွင် {available} ပွိုင့် ရှိပြီး၊ ဤလုပ်ဆောင်ချက်အတွက် {required} ပွိုင့် လိုအပ်ပါသည်။",
   },
 } as const;
 
@@ -61,12 +65,115 @@ export function isUserPointsNotFoundErrorBody(body: unknown): boolean {
   return lower.includes("userpoints") && lower.includes("not found");
 }
 
+function coerceFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim() !== "") {
+    const n = Number(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return null;
+}
+
+/** Parses insufficient-points payloads: envelope `data` or text like `available=17, required=230`. */
+function parseInsufficientPointsFromBody(body: unknown): { available: number; required: number } | null {
+  if (!body || typeof body !== "object") return null;
+  const rec = body as Record<string, unknown>;
+  const data = rec.data;
+  if (data != null && typeof data === "object") {
+    const d = data as Record<string, unknown>;
+    const available = coerceFiniteNumber(d.available ?? d.availablePoints);
+    const required = coerceFiniteNumber(d.required ?? d.requiredPoints);
+    if (available !== null && required !== null) return { available, required };
+  }
+  const msg = rec.message;
+  if (typeof msg !== "string") return null;
+  const m1 = msg.match(/available\s*=\s*(\d+)\s*,\s*required\s*=\s*(\d+)/i);
+  if (m1) return { available: Number(m1[1]), required: Number(m1[2]) };
+  const m2 = msg.match(/required\s*=\s*(\d+)\s*,\s*available\s*=\s*(\d+)/i);
+  if (m2) return { available: Number(m2[2]), required: Number(m2[1]) };
+  return null;
+}
+
+function formatInsufficientPointsMessage(
+  localeKey: AppErrorLocale,
+  available: number,
+  required: number,
+): string {
+  const tpl = API_ERROR_MESSAGES[localeKey].insufficientPointsDetail;
+  return tpl.replace("{available}", String(available)).replace("{required}", String(required));
+}
+
 export function resolveHttpErrorMessage(status: number, body: unknown, locale?: string): string {
   const key = locale === undefined ? detectCurrentLocale() : resolveErrorLocale(locale);
   if (status === 404 && isUserPointsNotFoundErrorBody(body)) {
     return API_ERROR_MESSAGES[key].userPointsNotFound;
   }
+  if (status === 402) {
+    const parsed = parseInsufficientPointsFromBody(body);
+    if (parsed) return formatInsufficientPointsMessage(key, parsed.available, parsed.required);
+    if (body && typeof body === "object") {
+      const msg = (body as Record<string, unknown>).message;
+      if (typeof msg === "string" && msg.trim()) return msg.trim();
+    }
+    return getStatusErrorMessage(status, key);
+  }
   return getStatusErrorMessage(status, key);
+}
+
+const DEFAULT_CLIENT_ERROR_MAX_LEN = 320;
+
+export type NormalizeClientErrorOptions = {
+  /** When set, overrides {@link detectCurrentLocale} (e.g. pass-through from next-intl). */
+  locale?: string;
+  /** Truncate uncategorized messages; omit for {@link DEFAULT_CLIENT_ERROR_MAX_LEN}. */
+  maxLength?: number;
+};
+
+/**
+ * Normalizes plain error strings from SSE, catches, etc. so insufficient-points / 402-style API text
+ * matches {@link resolveHttpErrorMessage} formatting across pages.
+ */
+export function normalizeClientErrorMessage(
+  raw: string,
+  opt?: NormalizeClientErrorOptions,
+): string {
+  const localeKey = opt?.locale === undefined ? detectCurrentLocale() : resolveErrorLocale(opt.locale);
+  const msg = (raw ?? "").trim();
+  if (!msg) return getDefaultErrorMessage(localeKey);
+
+  const fromCounts = parseInsufficientPointsFromBody({ message: msg });
+  if (fromCounts) {
+    return formatInsufficientPointsMessage(localeKey, fromCounts.available, fromCounts.required);
+  }
+
+  const lower = msg.toLowerCase();
+  if (lower.includes("insufficient points") || lower.includes("insufficient point")) {
+    return resolveHttpErrorMessage(402, { message: msg }, localeKey);
+  }
+
+  const parenMatch = msg.match(/\((\d{3})\)/);
+  if (parenMatch) {
+    const st = Number(parenMatch[1]);
+    if (Number.isFinite(st)) {
+      return resolveHttpErrorMessage(st, { message: msg }, localeKey);
+    }
+  }
+
+  const leadingStatus = msg.match(/^(\d{3})\b/);
+  if (leadingStatus) {
+    const st = Number(leadingStatus[1]);
+    if (Number.isFinite(st) && st >= 400 && st <= 599) {
+      return resolveHttpErrorMessage(st, { message: msg }, localeKey);
+    }
+  }
+
+  if (lower.includes("network") || lower.includes("failed to fetch")) {
+    return getNetworkErrorMessage(localeKey);
+  }
+
+  const maxLen = opt?.maxLength ?? DEFAULT_CLIENT_ERROR_MAX_LEN;
+  if (msg.length > maxLen) return `${msg.slice(0, maxLen)}…`;
+  return msg;
 }
 
 export function getStatusErrorMessage(status: number, locale?: string): string {
