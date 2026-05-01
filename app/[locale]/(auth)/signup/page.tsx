@@ -87,7 +87,7 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-12">
+    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold text-foreground">{t('title')}</h1>

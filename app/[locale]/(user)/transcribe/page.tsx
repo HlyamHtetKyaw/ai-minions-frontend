@@ -273,8 +273,8 @@ export default function TranscribePage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          <div className="mx-auto w-full min-w-0 max-w-7xl md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,26rem)] md:items-start md:gap-8 lg:gap-10 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,28rem)] xl:gap-12">
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col py-6 sm:py-6">
+          <div className="w-full min-w-0 md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,26rem)] md:items-start md:gap-8 lg:gap-10 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,28rem)] xl:gap-12">
             <div className="hidden min-w-0 flex-col gap-4 md:flex md:sticky md:top-24">
               {splitLayoutActive ? (
                 <>

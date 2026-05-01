@@ -163,9 +163,8 @@ export default function VoiceOverPage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          <div className="mx-auto w-full max-w-7xl">
-            <div className="voice-over-shell space-y-10">
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col py-6 sm:py-6">
+          <div className="voice-over-shell min-w-0 w-full space-y-10">
               <PageHeader
                 icon={
                   <PageHeader.Icon tileClassName="content-creator-icon-tile">
@@ -281,7 +280,6 @@ export default function VoiceOverPage() {
               </div>
             </div>
           </div>
-        </div>
       )}
     </>
   );

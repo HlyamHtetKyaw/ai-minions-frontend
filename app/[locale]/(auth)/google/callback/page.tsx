@@ -47,7 +47,7 @@ export default function GoogleCallbackPage() {
   const error = immediateError ?? refreshError;
 
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-16">
+    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center py-16">
       <div className="w-full max-w-md rounded-2xl border border-card-border bg-card p-6 text-center">
         {error ? (
           <>

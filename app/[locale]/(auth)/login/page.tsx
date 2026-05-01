@@ -44,7 +44,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-16">
+    <div className="relative flex min-h-[calc(100vh-5rem)] items-center justify-center py-16">
       <div
         className="pointer-events-none absolute inset-0 overflow-hidden"
         aria-hidden
