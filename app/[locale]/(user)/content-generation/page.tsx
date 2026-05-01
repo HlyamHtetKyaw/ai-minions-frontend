@@ -53,6 +53,7 @@ async function withTimeout<T>(p: Promise<T>, ms: number, message: string): Promi
 const isSignedIn = true;
 
 export default function ContentGenerationPage() {
+  
   const t = useTranslations('contentGeneration');
 
   const toUserSafeError = useCallback((raw: string): string => {
@@ -71,6 +72,8 @@ export default function ContentGenerationPage() {
 
   const [contentType, setContentType] = useState<ContentTypeKey>('hook');
   const [outputMode, setOutputMode] = useState<OutputModeKey>('imageAndText');
+  const [logoError, setLogoError] = useState<string | null>(null);
+  const [uploadZoneKey, setUploadZoneKey] = useState(0);
   const [textLength, setTextLength] = useState<'short' | 'long'>('short');
   const [targetLanguage, setTargetLanguage] = useState<'English' | 'Myanmar'>('Myanmar');
   const [tone, setTone] = useState<ToneKey>('inspiring');
@@ -183,9 +186,14 @@ export default function ContentGenerationPage() {
   };
 
   const handleGenerate = async () => {
+    if (logoError && outputMode !== 'imageOnly'){
+      setStatus(t('errors.fixLogoBeforeGenerating') || 'Please fix the logo upload issue before generating content.');
+      return;
+    }
+
     const runId = ++generationRunRef.current;
     clearProgressSimulator();
-
+  
     setIsLoading(true);
     setStatus('');
     setProgress({ percent: 8, label: t('progress.preparing') });
@@ -280,6 +288,35 @@ export default function ContentGenerationPage() {
     }
   };
 
+  const handleLogoChange = useCallback((file: File | null) => {
+    setLogoError(null);
+
+    if (!file) {
+      setLogoFile(null);
+      return;
+    }
+
+    const MAX_SIZE = 1 * 1024 * 1024;
+    const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg'];
+
+    if (!ALLOWED_TYPES.includes(file.type)) {
+      setLogoError(t('errors.invalidFormat') || 'Invalid format: Only PNG and JPG are allowed.');
+      setLogoFile(null);
+      setUploadZoneKey((k) => k + 1);
+      return;
+    }
+
+    if (file.size > MAX_SIZE) {
+      setLogoError(t('errors.fileTooLarge') || 'File size is too large. Maximum size is 1 MB.');
+      setLogoFile(null);
+      setUploadZoneKey((k) => k + 1);
+      return;
+    }
+
+    setLogoFile(file);
+  }, [t]);
+
+
   const handleCopyScript = useCallback(async () => {
     if (!generatedText.trim()) return;
     try {
@@ -328,14 +365,18 @@ export default function ContentGenerationPage() {
                 <p className="text-xs leading-relaxed text-muted-foreground">{t('imageOnlyContextHint')}</p>
               ) : null}
               {isVisualOutput ? (
-                <UploadZone
-                  accept="image/png,image/jpeg"
-                  onFileChange={setLogoFile}
-                  kicker={t('logoUpload.kicker')}
-                  label={t('logoUpload.label')}
-                  instructionPrimary={t('logoUpload.instruction')}
-                  instructionSecondary={t('logoUpload.formats')}
-                />
+              <UploadZone
+                key={uploadZoneKey}
+                accept="image/png,image/jpeg"
+                onFileChange={handleLogoChange}
+                kicker={t('logoUpload.kicker')}
+                label={t('logoUpload.label')}
+                instructionPrimary={t('logoUpload.instruction')}
+                instructionSecondary={t('logoUpload.formats')}
+              />
+              ) : null}
+              {isVisualOutput && logoError ? (
+                <p className="text-xs text-red-400">{logoError}</p>
               ) : null}
               <TopicInput value={topic} onChange={setTopic} />
               {outputMode === 'imageAndText' || outputMode === 'textOnly' ? (

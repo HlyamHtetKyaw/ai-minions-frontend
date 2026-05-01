@@ -1183,7 +1183,7 @@ declare const messages: {
       "kicker": "Brand logo",
       "label": "Upload logo (optional)",
       "instruction": "Click to upload your logo",
-      "formats": "PNG, JPG, WEBP, SVG"
+      "formats": "PNG, JPG"
     },
     "topicLabel": "Topic or description",
     "topicPlaceholder": "Describe what you want to create content about… Example: A video about AI tools for content creators",
@@ -1230,6 +1230,11 @@ declare const messages: {
       "downloadAria": "Download generated image",
       "copyAria": "Copy generated text to clipboard",
       "copyScriptAria": "Copy script to clipboard"
+    },
+    "errors":{
+      "invalidFormat": "Invalid file format. Only PNG and JPG files are allowed.",
+      "fileTooLarge": "File size is too large. Maximum size is 1 MB.",
+      "fixLogoBeforeGenerating": "Please fix the logo upload issue before generating content."
     }
   },
   "translation": {
