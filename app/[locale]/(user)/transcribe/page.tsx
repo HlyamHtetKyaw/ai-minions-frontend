@@ -22,12 +22,7 @@ import {
   extractTranscriptTextFromOutputData,
   parseGenerationSseProgressPayload,
 } from '@/lib/generation-job-sse';
-import {
-  detectCurrentLocale,
-  getDefaultErrorMessage,
-  getNetworkErrorMessage,
-  getStatusErrorMessage,
-} from '@/lib/api-error-message';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 
 export default function TranscribePage() {
   const t = useTranslations('transcribe');
@@ -96,19 +91,7 @@ export default function TranscribePage() {
   const useMediaSplitColumn = Boolean(uploadedFile && (isVideoFile || isAudioFile));
   const splitLayoutActive = useMediaSplitColumn && Boolean(splitPreviewUrl);
 
-  const toUserSafeError = (raw: string): string => {
-    const msg = (raw ?? '').trim();
-    if (!msg) return getDefaultErrorMessage(detectCurrentLocale());
-    const lower = msg.toLowerCase();
-    const statusMatch = msg.match(/\((\d{3})\)/);
-    if (statusMatch) {
-      return getStatusErrorMessage(Number(statusMatch[1]), detectCurrentLocale());
-    }
-    if (lower.includes('network') || lower.includes('failed to fetch')) {
-      return getNetworkErrorMessage(detectCurrentLocale());
-    }
-    return getDefaultErrorMessage(detectCurrentLocale());
-  };
+  const toUserSafeError = (raw: string): string => normalizeClientErrorMessage(raw);
 
   const withTimeout = async <T,>(
     p: Promise<T>,

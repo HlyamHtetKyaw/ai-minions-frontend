@@ -36,6 +36,20 @@ type ApiEnvelope<T> = {
   data?: T;
 };
 
+export const SUBTITLES_M4A_NOT_SUPPORTED_CODE = 'SUBTITLES_M4A_NOT_SUPPORTED';
+
+function isM4aFile(file: File): boolean {
+  const name = (file.name || '').toLowerCase();
+  const type = (file.type || '').toLowerCase();
+  return name.endsWith('.m4a') || type === 'audio/mp4' || type === 'audio/x-m4a' || type === 'audio/m4a';
+}
+
+export function assertSupportedSubtitlesFile(file: File): void {
+  if (isM4aFile(file)) {
+    throw new Error(SUBTITLES_M4A_NOT_SUPPORTED_CODE);
+  }
+}
+
 function inferSourceType(file: File): 'audio' | 'video' {
   const t = file.type.toLowerCase();
   if (t.startsWith('video/')) return 'video';
@@ -50,6 +64,7 @@ export async function subtitlesPrepareUpload(
   file: File,
   mode: SubtitlesTargetMode = 'burmese',
 ): Promise<SubtitlesPrepareData> {
+  assertSupportedSubtitlesFile(file);
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set (NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)');
 
@@ -80,6 +95,7 @@ export async function subtitlesPrepareUpload(
 }
 
 export async function subtitlesEstimatePoints(file: File): Promise<PointsEstimate> {
+  assertSupportedSubtitlesFile(file);
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set (NEXT_PUBLIC_API_URL in .env.local, then restart npm run dev)');
   const sourceType = inferSourceType(file);

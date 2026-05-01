@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { Geist, Geist_Mono } from 'next/font/google';
 import "@/app/globals.css"
 import Header from '@/components/layout/header';
+import Footer from '@/components/layout/footer';
 import { VerificationRedirect } from '@/components/auth/verification-redirect';
 import ThemeProvider from '@/components/theme/theme-provider';
 import { NextIntlClientProvider } from 'next-intl';
@@ -69,6 +70,7 @@ export default async function RootLayout({
                   {children}
                 </div>
               </main>
+              <Footer />
             </div>
           </ThemeProvider>
         </NextIntlClientProvider>

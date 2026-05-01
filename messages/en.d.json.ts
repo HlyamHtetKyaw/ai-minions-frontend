@@ -1079,6 +1079,7 @@ declare const messages: {
       "generic": "Something went wrong. Please try again.",
       "sessionExpired": "Your session expired. Please sign in again.",
       "insufficientPoints": "Not enough points to generate subtitles. Please top up and try again.",
+      "m4aNotSupported": "M4A is not supported for subtitle generation. Please upload MP3, WAV, or video files.",
       "serviceUnavailable": "Service is temporarily unavailable. Please try again in a moment.",
       "jobFailed": "Subtitle job failed.",
       "generationFailed": "Subtitle generation failed."
@@ -1233,7 +1234,7 @@ declare const messages: {
     },
     "errors":{
       "invalidFormat": "Invalid file format. Only PNG and JPG files are allowed.",
-      "fileTooLarge": "File size is too large. Maximum size is 1 MB.",
+      "fileTooLarge": "File size is too large. Maximum size is 5 MB.",
       "fixLogoBeforeGenerating": "Please fix the logo upload issue before generating content."
     }
   },

@@ -2,11 +2,19 @@ import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
 import { Check } from 'lucide-react';
 import { FEATURES } from '@/features';
+import WorkspaceLiveRanking from '@/features/home/components/workspace-live-ranking';
 
 export default async function HeroOverview() {
   const tHome = await getTranslations('home');
+  const tFeatures = await getTranslations('features');
   const captionStudioHref =
     FEATURES.find((f) => f.key === 'transcribe')?.href ?? FEATURES[0]?.href ?? '/transcribe';
+  const rankingItems = FEATURES.map((feature) => ({
+    key: feature.key,
+    kicker: feature.key.replace(/-/g, ' ').toUpperCase(),
+    headline: tFeatures(`${feature.key}.name`),
+    description: tFeatures(`${feature.key}.description`),
+  }));
 
   return (
     <section className="mb-14 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start lg:gap-10">
@@ -45,24 +53,7 @@ export default async function HeroOverview() {
             {tHome('overview.live')}
           </span>
         </div>
-        <div className="grid gap-3">
-          {(['captions', 'dubbing', 'news']).map((key) => (
-            <div
-              key={key}
-              className="rounded-2xl border border-card-border bg-subtle/80 px-4 py-3.5 backdrop-blur-sm"
-            >
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted">
-                {tHome(`overview.items.${key}.kicker`)}
-              </p>
-              <p className="mt-0.5 font-semibold text-foreground">
-                {tHome(`overview.items.${key}.headline`)}
-              </p>
-              <p className="mt-1 text-sm text-muted leading-snug">
-                {tHome(`overview.items.${key}.description`)}
-              </p>
-            </div>
-          ))}
-        </div>
+        <WorkspaceLiveRanking items={rankingItems} />
       </aside>
     </section>
   );

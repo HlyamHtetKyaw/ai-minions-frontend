@@ -12,6 +12,8 @@ import { AUTH_CHANGED_EVENT, clearClientAuth, getStoredAccessToken } from '@/lib
 import { openGenerationJobSseStream } from '@/lib/generation-job-sse';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
 import {
+  SUBTITLES_M4A_NOT_SUPPORTED_CODE,
+  assertSupportedSubtitlesFile,
   fetchSubtitleDownloadUrl,
   fetchSubtitleSrtText,
   subtitlesCompleteUpload,
@@ -22,6 +24,7 @@ import {
   type SubtitlesTargetMode,
 } from '@/lib/subtitles-api';
 import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 
 export default function SubtitlesPage() {
   const t = useTranslations('subtitlesPage');
@@ -71,10 +74,13 @@ export default function SubtitlesPage() {
       if (lower.includes('insufficient points')) {
         return t('errors.insufficientPoints');
       }
+      if (msg === SUBTITLES_M4A_NOT_SUPPORTED_CODE) {
+        return t('errors.m4aNotSupported');
+      }
       if (lower.includes('redis') && (lower.includes('unavailable') || lower.includes('connection'))) {
         return t('errors.serviceUnavailable');
       }
-      return msg.length > 160 ? `${msg.slice(0, 160)}…` : msg;
+      return normalizeClientErrorMessage(raw, { maxLength: 160 });
     },
     [t],
   );
@@ -231,12 +237,41 @@ export default function SubtitlesPage() {
             </div>
 
             <UploadZone
-              accept="audio/*,video/*"
+              accept=".mp3,.wav,video/*,audio/mpeg,audio/wav,audio/x-wav"
               kicker={t('uploadZone.kicker')}
               instructionPrimary={t('uploadZone.instructionPrimary')}
               instructionSecondary={t('uploadZone.instructionSecondary')}
               className="space-y-2"
               onFileChange={(f) => {
+                if (!f) {
+                  setUploadedFile(null);
+                  setStatus('');
+                  setProgress(null);
+                  setEstimate(null);
+                  setEstimateError(null);
+                  setDownloadUrl(null);
+                  setPreviewCues([]);
+                  setPreviewTruncated(false);
+                  setPreviewLoading(false);
+                  setPreviewError(null);
+                  return;
+                }
+                try {
+                  assertSupportedSubtitlesFile(f);
+                } catch (e) {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  setUploadedFile(null);
+                  setStatus(toUserSafeError(msg));
+                  setProgress(null);
+                  setEstimate(null);
+                  setEstimateError(null);
+                  setDownloadUrl(null);
+                  setPreviewCues([]);
+                  setPreviewTruncated(false);
+                  setPreviewLoading(false);
+                  setPreviewError(null);
+                  return;
+                }
                 setUploadedFile(f);
                 setStatus('');
                 setProgress(null);

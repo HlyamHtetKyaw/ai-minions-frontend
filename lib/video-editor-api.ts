@@ -135,7 +135,7 @@ export async function videoEditorExportWorkspace(payload: unknown): Promise<Work
   const s3Key =
     typeof raw.s3Key === 'string' ? raw.s3Key : typeof raw.key === 'string' ? raw.key : '';
   if (!downloadUrl) {
-    throw new Error(errorMessageFromBody(json, 'video export failed: missing download URL'));
+    throw new Error(errorMessageFromBody(json, 'video export failed: missing download URL', res.status));
   }
   notifyUserCreditBalanceRefresh();
   return { storageUrl, downloadUrl, s3Key };
