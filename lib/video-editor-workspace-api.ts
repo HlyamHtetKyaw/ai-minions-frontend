@@ -25,6 +25,22 @@ export type VideoEditorUploadUrlResult = {
   storageUrl: string;
 };
 
+function looksLikeExpiredPresignedUpload(status: number, responseText: string): boolean {
+  if (status !== 400 && status !== 401 && status !== 403) {
+    return false;
+  }
+  const body = responseText.toLowerCase();
+  return (
+    body.includes('expired') ||
+    body.includes('request has expired') ||
+    body.includes('signaturedoesnotmatch') ||
+    body.includes('invalid signature') ||
+    body.includes('x-amz-expires') ||
+    body.includes('x-goog-expires') ||
+    body.includes('token is expired')
+  );
+}
+
 export type VideoEditorExportResult = {
   storageUrl: string;
   downloadUrl: string;
@@ -112,16 +128,27 @@ export async function prepareVideoEditorUploadUrl(
 }
 
 export async function uploadVideoEditorFile(file: File): Promise<VideoEditorUploadUrlResult> {
-  const prep = await prepareVideoEditorUploadUrl(file.name, file.type || 'application/octet-stream');
-  const putRes = await fetch(prep.uploadUrl, {
-    method: 'PUT',
-    headers: { 'Content-Type': file.type || 'application/octet-stream' },
-    body: file,
-  });
-  if (!putRes.ok) {
-    throw new Error(`Upload failed (${putRes.status})`);
+  const contentType = file.type || 'application/octet-stream';
+  let prep = await prepareVideoEditorUploadUrl(file.name, contentType);
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const putRes = await fetch(prep.uploadUrl, {
+      method: 'PUT',
+      headers: { 'Content-Type': contentType },
+      body: file,
+    });
+    if (putRes.ok) {
+      return prep;
+    }
+    const responseText = await putRes.text().catch(() => '');
+    const shouldRefreshPresign = attempt === 0 && looksLikeExpiredPresignedUpload(putRes.status, responseText);
+    if (shouldRefreshPresign) {
+      prep = await prepareVideoEditorUploadUrl(file.name, contentType);
+      continue;
+    }
+    const detail = responseText.trim();
+    throw new Error(detail ? `Upload failed (${putRes.status}): ${detail}` : `Upload failed (${putRes.status})`);
   }
-  return prep;
+  throw new Error('Upload failed after retry');
 }
 
 export async function exportVideoEditorWorkspace(payload: unknown): Promise<VideoEditorExportResult> {
