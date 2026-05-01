@@ -15,8 +15,8 @@ export default async function HomePage() {
   const tHome = await getTranslations('home');
 
   return (
-    <div className="mx-auto min-w-0 max-w-7xl px-4 pb-16 pt-8 sm:px-6 sm:pb-24 sm:pt-12">
-      <section className="mb-12 sm:mb-16 lg:mb-20">
+    <div className="min-w-0 pb-16 pt-8 sm:pb-24 sm:pt-12">
+      <section className="mb-12 overflow-x-clip sm:mb-16 lg:mb-20">
         <div className="mx-auto grid w-full min-w-0 max-w-6xl gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:items-center lg:gap-10">
           <div>
             <h1
@@ -47,7 +47,7 @@ export default async function HomePage() {
             </div>
           </div>
 
-          <div className="relative mx-auto w-full max-w-136 lg:justify-self-end">
+          <div className="relative mx-auto min-w-0 w-full max-w-136 overflow-x-clip lg:justify-self-end">
             <div className="relative aspect-4/5 overflow-hidden rounded-4xl border border-card-border bg-card shadow-[0_24px_80px_-24px_rgba(0,0,0,0.35)] sm:aspect-5/6">
               <div className="absolute inset-x-[8%] top-[7%] h-[26%] rounded-3xl bg-linear-to-br from-accent-gold/70 via-accent-gold/35 to-accent-purple/25 blur-2xl" />
               <div className="absolute inset-4 sm:inset-5">

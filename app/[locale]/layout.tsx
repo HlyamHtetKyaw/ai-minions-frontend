@@ -20,6 +20,25 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: 'AI Minions — AI-powered media tools',
   description: 'Caption, translate, transcribe, and edit video content with AI.',
+  manifest: '/site.webmanifest',
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicon-32x32.png', sizes: '32x32', type: 'image/png' },
+      {
+        url: '/android-chrome-192x192.png',
+        sizes: '192x192',
+        type: 'image/png',
+      },
+      {
+        url: '/android-chrome-512x512.png',
+        sizes: '512x512',
+        type: 'image/png',
+      },
+    ],
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export default async function RootLayout({
@@ -44,7 +63,12 @@ export default async function RootLayout({
             <div className="app-gradient min-w-0 w-full overflow-x-clip">
               <VerificationRedirect />
               <Header />
-              <main className="min-w-0">{children}</main>
+              <main className="min-w-0 w-full overflow-x-clip">
+                {/* Same horizontal track as `HeaderShell` glass row: no extra outer gutter */}
+                <div className="mx-auto min-w-0 w-full max-w-7xl px-4 sm:px-5">
+                  {children}
+                </div>
+              </main>
             </div>
           </ThemeProvider>
         </NextIntlClientProvider>

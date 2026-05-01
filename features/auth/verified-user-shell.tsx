@@ -41,7 +41,7 @@ export function VerifiedUserShell({ children }: { children: React.ReactNode }) {
 
   if (!ready) {
     return (
-      <div className="mx-auto max-w-3xl px-4 py-24">
+      <div className="mx-auto max-w-3xl w-full py-24">
         <div className="animate-pulse space-y-4 rounded-2xl border border-card-border bg-card/40 p-10">
           <div className="mx-auto h-8 w-48 rounded-lg bg-surface" />
           <div className="h-12 w-full rounded-xl bg-surface" />
