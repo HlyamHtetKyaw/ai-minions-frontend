@@ -41,6 +41,33 @@ export default function AudioPlayer({ src, filename }: Props) {
     setProgress(Number(e.target.value));
   };
 
+  // --- NEW DOWNLOAD LOGIC ---
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(src);
+      if (!response.ok) throw new Error('Network response was not ok');
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = filename || 'audio-file.mp3';
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback: opens in new tab if the fetch is blocked by CORS
+      window.open(src, '_blank');
+    }
+  };
+  // ---------------------------
+
   useEffect(() => {
     const audio = audioRef.current;
     return () => {
@@ -57,6 +84,7 @@ export default function AudioPlayer({ src, filename }: Props) {
         onEnded={handleEnded}
         className="hidden"
       />
+      
       <button
         type="button"
         onClick={togglePlay}
@@ -69,6 +97,7 @@ export default function AudioPlayer({ src, filename }: Props) {
           <Play className="h-4 w-4" />
         )}
       </button>
+
       <input
         type="range"
         min={0}
@@ -78,14 +107,15 @@ export default function AudioPlayer({ src, filename }: Props) {
         aria-label="Seek"
         className="h-1 min-w-0 flex-1 cursor-pointer accent-primary"
       />
-      <a
-        href={src}
-        download={filename}
+
+      <button
+        type="button"
+        onClick={handleDownload}
         aria-label={t('download')}
-        className="shrink-0 rounded-full p-2 text-muted hover:text-foreground"
+        className="shrink-0 rounded-full p-2 text-muted hover:text-foreground transition-colors"
       >
         <Download className="h-4 w-4" />
-      </a>
+      </button>
     </div>
   );
 }
