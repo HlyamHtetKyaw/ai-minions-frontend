@@ -1,6 +1,10 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
 import { getStoredAccessToken, setSessionHintCookie, setStoredAccessToken } from '@/lib/auth-token';
-import { detectCurrentLocale, getDefaultErrorMessage, getStatusErrorMessage } from '@/lib/api-error-message';
+import {
+  detectCurrentLocale,
+  getDefaultErrorMessage,
+  resolveHttpErrorMessage,
+} from '@/lib/api-error-message';
 
 export const fetchInit: RequestInit = { credentials: 'include' };
 
@@ -15,13 +19,13 @@ type ApiEnvelopeLoose<T> = {
   message?: string;
 };
 
-/** Always returns locale-aware fixed messages by response status. */
-export function errorMessageFromBody(_: unknown, fallback: string): string {
+/** Locale-aware message from HTTP status; special-cases UserPoints 404 from JSON body. */
+export function errorMessageFromBody(json: unknown, fallback: string): string {
   const statusMatch = fallback.match(/\((\d{3})\)/);
   if (statusMatch) {
     const status = Number(statusMatch[1]);
     if (Number.isFinite(status)) {
-      return getStatusErrorMessage(status, detectCurrentLocale());
+      return resolveHttpErrorMessage(status, json, detectCurrentLocale());
     }
   }
   return getDefaultErrorMessage(detectCurrentLocale());

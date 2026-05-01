@@ -1,9 +1,21 @@
 'use client';
 
-import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
+import { useRouter } from '@/i18n/navigation';
+import { apiFetch } from '@/lib/api';
 import {
   ACCESS_TOKEN_STORAGE_KEY,
   AUTH_CHANGED_EVENT,
+  clearClientAuth,
   getStoredAccessToken,
 } from '@/lib/auth-token';
 import { USER_CREDIT_BALANCE_REFRESH_EVENT } from '@/lib/user-credit-balance';
@@ -13,14 +25,28 @@ type AuthSessionValue = {
   user: MeUser | null;
   loading: boolean;
   setUser: (u: MeUser | null) => void;
+  signOut: () => Promise<void>;
 };
 
 const AuthSessionContext = createContext<AuthSessionValue | null>(null);
 
 export function AuthSessionProvider({ children }: { children: ReactNode }) {
+  const router = useRouter();
   const [user, setUser] = useState<MeUser | null>(null);
   const [loading, setLoading] = useState(true);
   const userRef = useRef<MeUser | null>(null);
+
+  const signOut = useCallback(async () => {
+    try {
+      await apiFetch('/api/v1/auth/logout', { method: 'POST' });
+    } catch {
+      /* still clear client */
+    }
+    clearClientAuth();
+    setUser(null);
+    router.push('/login');
+    router.refresh();
+  }, [router]);
 
   useEffect(() => {
     userRef.current = user;
@@ -94,8 +120,9 @@ export function AuthSessionProvider({ children }: { children: ReactNode }) {
       user,
       loading,
       setUser,
+      signOut,
     }),
-    [user, loading],
+    [user, loading, signOut],
   );
 
   return <AuthSessionContext.Provider value={value}>{children}</AuthSessionContext.Provider>;
