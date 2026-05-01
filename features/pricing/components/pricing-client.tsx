@@ -97,7 +97,7 @@ export function PricingClient({ data }: { data: PublicPricingData | null }) {
   const t = useTranslations('pricing');
 
   return (
-    <div className="relative mx-auto max-w-7xl px-4 pb-24 pt-8 sm:px-6">
+    <div className="relative min-w-0 pb-24 pt-8">
       <div
         className="pointer-events-none absolute inset-x-0 -top-24 flex justify-center"
         aria-hidden

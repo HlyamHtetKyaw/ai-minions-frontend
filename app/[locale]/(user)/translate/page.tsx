@@ -113,8 +113,8 @@ export default function TranslatePage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-4 sm:px-6 sm:py-6">
-          <div className="mx-auto w-full max-w-7xl space-y-4 sm:space-y-6 md:space-y-8">
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col py-4 sm:py-6">
+          <div className="w-full min-w-0 space-y-4 sm:space-y-6 md:space-y-8">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-foreground">{t('page.title')}</h1>
               <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />

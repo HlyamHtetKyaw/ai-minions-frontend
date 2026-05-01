@@ -341,9 +341,8 @@ export default function ContentGenerationPage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col px-4 py-6 sm:px-6">
-          <div className="mx-auto w-full max-w-7xl">
-            <div className="content-creator-shell">
+        <div className="flex min-h-[calc(100vh-8rem)] flex-col py-6 sm:py-6">
+          <div className="content-creator-shell w-full min-w-0">
               <PageHeader
                 icon={
                   <PageHeader.Icon tileClassName="content-creator-icon-tile">
@@ -637,7 +636,6 @@ export default function ContentGenerationPage() {
               </div>
             </div>
           </div>
-        </div>
       )}
     </>
   );

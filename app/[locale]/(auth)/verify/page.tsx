@@ -19,7 +19,7 @@ export async function generateMetadata({
 
 function VerifyFallback() {
   return (
-    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-16">
+    <div className="flex min-h-[calc(100vh-5rem)] items-center justify-center py-16">
       <div className="h-40 w-full max-w-md animate-pulse rounded-2xl border border-card-border bg-card/40" />
     </div>
   );

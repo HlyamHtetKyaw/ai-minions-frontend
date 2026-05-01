@@ -99,7 +99,7 @@ export default function HeaderSession() {
 
           {menuOpen && (
             <div
-              className="absolute right-0 top-full z-50 mt-2 min-w-[12rem] rounded-2xl border border-glass-border bg-glass py-1 shadow-xl backdrop-blur-xl dark:border-white/10"
+              className="absolute right-0 top-full z-50 mt-2 min-w-[12rem] rounded-2xl border border-card-border bg-elevated py-1 shadow-xl backdrop-blur-xl dark:border-white/10"
               role="menu"
             >
               <div className="border-b border-card-border px-3 py-2.5 sm:hidden">

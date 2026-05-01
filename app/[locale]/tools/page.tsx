@@ -25,7 +25,7 @@ export default async function ToolsPage({
   setRequestLocale(locale);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 pb-20 pt-6 sm:px-6">
+    <div className="min-w-0 pb-20 pt-6">
       <HeroOverview />
       <FeatureGrid />
     </div>

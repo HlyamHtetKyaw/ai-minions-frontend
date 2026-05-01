@@ -49,7 +49,7 @@ export default function LanguageSelector({ label, value, options, onChange }: Pr
       </button>
 
       {open && (
-        <ul className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-glass-border bg-card shadow-lg backdrop-blur-sm">
+        <ul className="absolute left-0 right-0 z-50 mt-1.5 overflow-hidden rounded-xl border border-card-border bg-elevated shadow-lg backdrop-blur-sm">
           {options.map((opt) => (
             <li key={opt.code}>
               <button
