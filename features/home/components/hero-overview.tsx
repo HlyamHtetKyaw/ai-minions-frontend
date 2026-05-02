@@ -1,60 +1,36 @@
-import { Link } from '@/i18n/navigation';
 import { getTranslations } from 'next-intl/server';
-import { Check } from 'lucide-react';
-import { FEATURES } from '@/features';
-import WorkspaceLiveRanking from '@/features/home/components/workspace-live-ranking';
+import HeroToolsWorkflow from '@/features/home/components/hero-tools-workflow';
 
 export default async function HeroOverview() {
   const tHome = await getTranslations('home');
-  const tFeatures = await getTranslations('features');
-  const captionStudioHref =
-    FEATURES.find((f) => f.key === 'transcribe')?.href ?? FEATURES[0]?.href ?? '/transcribe';
-  const rankingItems = FEATURES.map((feature) => ({
-    key: feature.key,
-    kicker: feature.key.replace(/-/g, ' ').toUpperCase(),
-    headline: tFeatures(`${feature.key}.name`),
-    description: tFeatures(`${feature.key}.description`),
-  }));
 
   return (
-    <section className="mb-14 grid gap-8 lg:grid-cols-[1.15fr_0.85fr] lg:items-start lg:gap-10">
-      <div className="flex flex-col justify-center">
-        <h1 className="mb-4 max-w-xl text-3xl font-bold leading-tight tracking-tight text-foreground sm:text-4xl lg:text-[2.35rem] lg:leading-[1.15]">
-          {tHome('toolsPage.heroTitle')}
-        </h1>
-        <p className="mb-8 max-w-lg text-base leading-relaxed text-muted sm:text-lg">
-          {tHome('toolsPage.heroDescription')}
-        </p>
-        <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-center">
-          <Link
-            href={captionStudioHref as never}
-            className="landing-home-primary inline-flex w-fit items-center justify-center rounded-full px-7 py-3 text-sm font-bold shadow-lg"
-          >
-            {tHome('openStudio')}
-          </Link>
-          <div className="flex items-center gap-2 text-sm text-muted">
-            <span className="flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500/20 text-emerald-400">
-              <Check className="h-4 w-4" strokeWidth={2.5} />
-            </span>
-            <span>{tHome('signedInStatus')}</span>
-          </div>
-        </div>
-      </div>
+    <section className="relative mb-14 overflow-hidden rounded-[28px] border border-white/10 bg-[#0B0F1A] shadow-2xl shadow-black/50 ring-1 ring-white/5">
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -right-28 -top-36 h-96 w-96 rounded-full bg-purple-500/22 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute -bottom-40 left-0 h-80 w-80 rounded-full bg-pink-500/18 blur-3xl"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute left-1/3 top-1/4 h-72 w-72 rounded-full bg-blue-500/14 blur-3xl"
+      />
 
-      <aside className="glass-card relative overflow-hidden rounded-[28px] p-6 sm:p-7">
-        <div className="mb-5 flex items-start justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-muted">
-              {tHome('overview.title')}
-            </p>
-            <p className="mt-1 text-lg font-semibold text-foreground">{tHome('overview.subtitle')}</p>
-          </div>
-          <span className="shrink-0 rounded-full bg-status-live/20 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-accent-purple">
-            {tHome('overview.live')}
-          </span>
+      <div className="relative z-10 grid gap-10 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.08fr)] lg:items-center lg:gap-12 lg:p-10">
+        <div className="flex flex-col justify-center">
+          <h1 className="mb-4 max-w-xl text-3xl font-bold leading-tight tracking-tight text-white sm:text-4xl lg:text-[2.35rem] lg:leading-[1.12]">
+            {tHome('toolsPage.heroTitle')}
+          </h1>
+          <p className="max-w-lg text-base leading-relaxed text-white/60 sm:text-lg">
+            {tHome('toolsPage.heroDescription')}
+          </p>
         </div>
-        <WorkspaceLiveRanking items={rankingItems} />
-      </aside>
+
+        <HeroToolsWorkflow />
+      </div>
     </section>
   );
 }

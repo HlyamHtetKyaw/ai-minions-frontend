@@ -182,8 +182,17 @@ declare const messages: {
     "toolsPage": {
       "metaTitle": "Workspace tools — Monetization Myanmar",
       "metaDescription": "Your dashboard for transcription, captions, voice-over, translation, and the rest of your AI media workflow.",
-      "heroTitle": "Your AI media workspace",
-      "heroDescription": "Transcribe, caption, generate, and polish from one dashboard — pick a tool below or open Caption Studio to start."
+      "heroBadge": "AI media workspace",
+      "heroTitle": "Your creator toolkit",
+      "heroDescription": "Transcribe, translate, subtitle, and publish — all from one place.",
+      "workflow": {
+        "step1Title": "Transcribe your video",
+        "step1Description": "Convert speech to accurate text in seconds",
+        "step2Title": "Translate or add subtitles",
+        "step2Description": "Reach global audiences with multi-language subtitles",
+        "step3Title": "Export and publish",
+        "step3Description": "Download or publish with one click to any platform"
+      }
     },
     "overview": {
       "title": "Overview",
