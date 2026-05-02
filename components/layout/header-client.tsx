@@ -1,7 +1,7 @@
 'use client';
 
 import { Link as NavLink, usePathname } from '@/i18n/navigation';
-import { Menu, X } from 'lucide-react';
+import { LogOut, Menu, X } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { useEffect, useState } from 'react';
 import { useAuthSession } from '@/components/layout/auth-session-context';
@@ -52,16 +52,18 @@ export function HeaderMobileNav({
 }: HeaderNavLabels) {
   const pathname = usePathname();
   const tHeader = useTranslations('header');
-  const { user, loading } = useAuthSession();
+  const { user, loading, signOut } = useAuthSession();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuPathname, setMenuPathname] = useState(pathname);
 
   const isHome = pathname === '/';
   const isWorkspace = pathname === '/tools';
   const isPricing = pathname === '/pricing';
 
-  useEffect(() => {
+  if (pathname !== menuPathname) {
+    setMenuPathname(pathname);
     setMobileOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -99,7 +101,7 @@ export function HeaderMobileNav({
         <>
           <button
             type="button"
-            className="fixed inset-0 z-[110] bg-black/45 backdrop-blur-[2px] lg:hidden"
+            className="fixed inset-0 z-110 bg-black/45 backdrop-blur-[2px] lg:hidden"
             aria-label={tHeader('closeMenu')}
             onClick={() => setMobileOpen(false)}
           />
@@ -109,7 +111,7 @@ export function HeaderMobileNav({
             role="dialog"
             aria-modal="true"
             aria-labelledby="mobile-nav-title"
-            className="fixed left-3 right-3 top-[4.5rem] z-[120] max-h-[min(72vh,calc(100dvh-6rem))] overflow-y-auto rounded-2xl border border-card-border bg-elevated/95 p-2 shadow-[0_24px_64px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:bg-[rgba(10,15,30,0.92)] lg:hidden"
+            className="fixed left-3 right-3 top-18 z-120 max-h-[min(72vh,calc(100dvh-6rem))] overflow-y-auto rounded-2xl border border-card-border bg-elevated/95 p-2 shadow-[0_24px_64px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:bg-[rgba(10,15,30,0.92)] lg:hidden"
           >
             <div className="flex items-center justify-between border-b border-card-border px-2 py-2">
               <span
@@ -163,6 +165,22 @@ export function HeaderMobileNav({
                   >
                     {tHeader('signUp')}
                   </NavLink>
+                </div>
+              ) : null}
+
+              {!loading && user ? (
+                <div className="mt-2 border-t border-card-border pt-3">
+                  <button
+                    type="button"
+                    className="flex w-full items-center gap-2 rounded-xl px-4 py-3 text-left text-base font-medium text-red-500 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                    onClick={() => {
+                      setMobileOpen(false);
+                      void signOut();
+                    }}
+                  >
+                    <LogOut className="h-5 w-5 shrink-0" aria-hidden />
+                    {tHeader('logout')}
+                  </button>
                 </div>
               ) : null}
             </nav>

@@ -22,12 +22,7 @@ import {
   extractTranscriptTextFromOutputData,
   parseGenerationSseProgressPayload,
 } from '@/lib/generation-job-sse';
-import {
-  detectCurrentLocale,
-  getDefaultErrorMessage,
-  getNetworkErrorMessage,
-  getStatusErrorMessage,
-} from '@/lib/api-error-message';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 
 export default function TranscribePage() {
   const t = useTranslations('transcribe');
@@ -96,19 +91,7 @@ export default function TranscribePage() {
   const useMediaSplitColumn = Boolean(uploadedFile && (isVideoFile || isAudioFile));
   const splitLayoutActive = useMediaSplitColumn && Boolean(splitPreviewUrl);
 
-  const toUserSafeError = (raw: string): string => {
-    const msg = (raw ?? '').trim();
-    if (!msg) return getDefaultErrorMessage(detectCurrentLocale());
-    const lower = msg.toLowerCase();
-    const statusMatch = msg.match(/\((\d{3})\)/);
-    if (statusMatch) {
-      return getStatusErrorMessage(Number(statusMatch[1]), detectCurrentLocale());
-    }
-    if (lower.includes('network') || lower.includes('failed to fetch')) {
-      return getNetworkErrorMessage(detectCurrentLocale());
-    }
-    return getDefaultErrorMessage(detectCurrentLocale());
-  };
+  const toUserSafeError = (raw: string): string => normalizeClientErrorMessage(raw);
 
   const withTimeout = async <T,>(
     p: Promise<T>,
@@ -279,7 +262,7 @@ export default function TranscribePage() {
               {splitLayoutActive ? (
                 <>
                   {isVideoFile ? (
-                    <div className="flex max-h-[min(70vh,520px)] w-full justify-center overflow-hidden rounded-xl border border-card-border bg-black/5">
+                    <div className="flex max-h-[min(70vh,520px)] w-full justify-center overflow-hidden rounded-xl border border-[color:var(--color-border-subtle)] bg-[color:var(--color-bg-panel)]">
                       <video
                         src={splitPreviewUrl ?? undefined}
                         controls
@@ -289,15 +272,15 @@ export default function TranscribePage() {
                     </div>
                   ) : null}
                   {isAudioFile ? (
-                    <div className="rounded-xl border border-card-border bg-card p-4">
+                    <div className="rounded-xl border border-[color:var(--color-border-medium)] bg-[color:var(--color-bg-card)] p-4">
                       <audio src={splitPreviewUrl ?? undefined} controls className="w-full" />
                     </div>
                   ) : null}
                 </>
               ) : (
-                <div className="flex min-h-[min(36vh,280px)] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-card-border bg-card/40 px-4 py-10 text-center">
-                  <Mic className="h-10 w-10 text-muted" strokeWidth={1.75} />
-                  <p className="max-w-56 text-sm leading-relaxed text-muted-foreground">
+                <div className="flex min-h-[min(36vh,280px)] flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-[color:var(--color-border-strong)] bg-[color:var(--color-bg-card)] px-4 py-10 text-center">
+                  <Mic className="h-10 w-10 text-[color:var(--color-text-secondary)]" strokeWidth={1.75} />
+                  <p className="max-w-56 text-sm leading-relaxed text-[color:var(--color-text-secondary)]">
                     {t('layout.previewPlaceholder')}
                   </p>
                 </div>
@@ -347,9 +330,7 @@ export default function TranscribePage() {
               />
 
               <div className="space-y-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                  Result
-                </p>
+                <p className="tool-section-label font-semibold uppercase">Result</p>
 
                 {progress ? (
                   <div

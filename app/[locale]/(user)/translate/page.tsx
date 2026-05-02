@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { ArrowLeftRight } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
@@ -10,6 +10,7 @@ import TextPanels from '@/features/translate/components/text-panels';
 import TranslateButton from '@/features/translate/components/translate-button';
 import { LANGUAGES } from '@/lib/constants';
 import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
+import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 import { translateEstimatePoints, translateText, type PointsEstimate } from '@/lib/translate-api';
 
 function languageLabel(code: string): string {
@@ -43,18 +44,21 @@ export default function TranslatePage() {
     return () => window.removeEventListener(AUTH_CHANGED_EVENT, resolve);
   }, []);
 
-  const toUserSafeError = (raw: string): string => {
-    const msg = (raw ?? '').trim();
-    if (!msg) return t('errors.generic');
-    const lower = msg.toLowerCase();
-    if (lower.includes('full authentication is required') || lower.includes('401')) {
-      return t('errors.unauthorized');
-    }
-    if (lower.includes('email verification required') || lower.includes('verification required')) {
-      return t('errors.verificationRequired');
-    }
-    return msg;
-  };
+  const toUserSafeError = useCallback(
+    (raw: string): string => {
+      const msg = (raw ?? '').trim();
+      if (!msg) return t('errors.generic');
+      const lower = msg.toLowerCase();
+      if (lower.includes('full authentication is required') || lower.includes('401')) {
+        return t('errors.unauthorized');
+      }
+      if (lower.includes('email verification required') || lower.includes('verification required')) {
+        return t('errors.verificationRequired');
+      }
+      return normalizeClientErrorMessage(raw);
+    },
+    [t],
+  );
 
   const handleSwap = () => {
     setSourceLang(targetLang);
@@ -87,7 +91,7 @@ export default function TranslatePage() {
         });
     }, 450);
     return () => clearTimeout(tmr);
-  }, [sourceText]);
+  }, [sourceText, toUserSafeError]);
 
   const handleTranslate = async () => {
     setError(null);

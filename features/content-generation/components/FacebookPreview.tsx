@@ -70,7 +70,7 @@ export default function FacebookPreview({
   const hasImage =
     !!imageUrl && (contentType === 'imageAndText' || contentType === 'imageOnly');
   const showDownload = hasImage;
-  const showCopy = contentType === 'textOnly' && !!textContent.trim();
+  const showCopy = !!textContent.trim();
 
   const actionBtnClass =
     'inline-flex items-center justify-center gap-2 rounded-md bg-[#e7f3ff] px-4 py-2 text-sm font-semibold text-[#1877f2] transition-colors hover:bg-[#d8ebfc] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#1877f2]';
@@ -108,7 +108,7 @@ export default function FacebookPreview({
       ) : null}
 
       {(showDownload || showCopy) && (
-        <div className="flex items-center justify-end border-t border-[#ced0d4] bg-[#f0f2f5] px-3 py-2">
+        <div className="flex items-center justify-end gap-2 border-t border-[#ced0d4] bg-[#f0f2f5] px-3 py-2">
           {showDownload ? (
             <button
               type="button"
