@@ -3,7 +3,10 @@
 import { forwardRef, useMemo } from 'react';
 import { VideoCanvas } from '@/components/editor/VideoCanvas';
 import type { WorkspaceAspectId } from './workspace-top-bar';
-import { getWorkspacePreviewFrameStyle } from './workspace-preview-frame-style';
+import {
+  getWorkspacePreviewFrameStyle,
+  type WorkspacePreviewFrameFill,
+} from './workspace-preview-frame-style';
 
 export const WORKSPACE_VIDEO_FILE_INPUT_ID = 'workspace-video-file-input';
 
@@ -14,41 +17,52 @@ type WorkspacePreviewCanvasProps = {
   skipInitialCanvasSizeStep?: boolean;
   /** True while the preview wrapper is the fullscreen element. */
   isFullscreen?: boolean;
+  /** Measured preview pane; when set with positive size, frame uses container fit instead of dvh. */
+  previewFill?: WorkspacePreviewFrameFill | null;
 };
 
 /** `ref` targets the framed preview (used for fullscreen from the timeline). */
 export const WorkspacePreviewCanvas = forwardRef<HTMLDivElement, WorkspacePreviewCanvasProps>(
   function WorkspacePreviewCanvas(
-    { canvasLabel, aspect, skipInitialCanvasSizeStep = false, isFullscreen = false },
+    {
+      canvasLabel,
+      aspect,
+      skipInitialCanvasSizeStep = false,
+      isFullscreen = false,
+      previewFill = null,
+    },
     ref,
   ) {
     const frameStyle = useMemo(
       () =>
-        getWorkspacePreviewFrameStyle(
-          aspect,
-          isFullscreen ? { maxHeight: 'min(92dvh, 920px)' } : undefined,
-        ),
-      [aspect, isFullscreen],
+        getWorkspacePreviewFrameStyle(aspect, {
+          maxHeight: isFullscreen ? 'min(92dvh, 920px)' : undefined,
+          fillContainer: isFullscreen ? null : previewFill,
+        }),
+      [aspect, isFullscreen, previewFill],
     );
 
     return (
       <div
-        className={`relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden ${
-          isFullscreen ? 'h-full w-full bg-black p-0' : 'bg-zinc-950/80 p-2 sm:p-4'
+        className={`relative flex min-w-0 flex-col ${
+          isFullscreen
+            ? 'h-full min-h-0 flex-1 overflow-hidden bg-black p-0'
+            : 'flex h-full min-h-0 w-full flex-1 flex-col overflow-x-hidden bg-zinc-950/80'
         }`}
       >
+        {/* Artboard: fills preview pane and shrinks when the timeline is tall; video stays letterboxed inside. */}
         <div
           ref={ref}
-          className={`relative mx-auto flex justify-center ${
-            isFullscreen ? 'h-full w-full max-w-none items-center' : 'w-full max-w-5xl'
+          className={`relative box-border flex min-h-0 min-w-0 w-full max-w-full flex-1 items-center justify-center ${
+            isFullscreen ? 'h-full' : 'h-full px-1 py-2 sm:px-2 sm:py-3'
           }`}
           aria-label={canvasLabel}
         >
           <div
-            className="relative mx-auto min-h-0 overflow-hidden rounded-lg border border-white/10 bg-black ring-1 ring-white/5 transition-[width,height,aspect-ratio] duration-300 ease-out"
+            className="relative max-h-full max-w-full min-h-0 min-w-0 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black ring-1 ring-white/5 transition-[width,height,aspect-ratio] duration-300 ease-out"
             style={frameStyle}
           >
-            <div className="absolute inset-0 flex min-h-0 flex-col overflow-hidden">
+            <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">
               <VideoCanvas
                 fileInputId={WORKSPACE_VIDEO_FILE_INPUT_ID}
                 objectFit="contain"
