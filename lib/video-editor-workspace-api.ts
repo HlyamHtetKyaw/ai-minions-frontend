@@ -1,4 +1,5 @@
 import { getPublicApiBaseUrl } from '@/lib/api-base';
+import { videoEditorPrepareUploadUrl, uploadFileToPresignedUrl } from '@/lib/video-editor-api';
 import {
   authHeaders,
   errorMessageFromBody,
@@ -104,49 +105,28 @@ export async function resetVideoEditorWorkspace(): Promise<VideoEditorWorkspaceS
   return json.data;
 }
 
-export async function prepareVideoEditorUploadUrl(
-  fileName: string,
-  contentType: string,
-): Promise<VideoEditorUploadUrlResult> {
-  const base = getPublicApiBaseUrl();
-  if (!base) throw new Error('API base URL is not set');
-  const res = await fetchWithAuthRetry(`${base}/api/v1/video-editor/workspace/upload-url`, {
-    ...fetchInit,
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      ...authHeaders(),
-    },
-    body: JSON.stringify({ fileName, contentType }),
-  });
-  const json = (await res.json().catch(() => ({}))) as ApiEnvelope<VideoEditorUploadUrlResult>;
-  if (!res.ok || !json.success || json.data == null) {
-    throw new Error(errorMessageFromBody(json, `Failed to prepare upload (${res.status})`));
-  }
-  return json.data;
-}
-
+/**
+ * Same presign + PUT sequence as viral shorts (`videoEditorPrepareUploadUrl` + `uploadFileToPresignedUrl`),
+ * with one extra presign when the first PUT fails with an expired-signature style error.
+ */
 export async function uploadVideoEditorFile(file: File): Promise<VideoEditorUploadUrlResult> {
-  const contentType = file.type || 'application/octet-stream';
-  let prep = await prepareVideoEditorUploadUrl(file.name, contentType);
+  const contentType = file.type || 'video/mp4';
+  let prep = await videoEditorPrepareUploadUrl(file.name, contentType);
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const putRes = await fetch(prep.uploadUrl, {
-      method: 'PUT',
-      headers: { 'Content-Type': contentType },
-      body: file,
-    });
-    if (putRes.ok) {
-      return prep;
+    try {
+      await uploadFileToPresignedUrl(prep.uploadUrl, file, { contentType });
+      return { uploadUrl: prep.uploadUrl, s3Key: prep.s3Key, storageUrl: prep.storageUrl };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const statusMatch = /^Storage upload failed: (\d+)/.exec(msg);
+      const status = statusMatch ? Number(statusMatch[1]) : 0;
+      const shouldRefreshPresign = attempt === 0 && looksLikeExpiredPresignedUpload(status, msg);
+      if (shouldRefreshPresign) {
+        prep = await videoEditorPrepareUploadUrl(file.name, contentType);
+        continue;
+      }
+      throw err instanceof Error ? err : new Error(msg);
     }
-    const responseText = await putRes.text().catch(() => '');
-    const shouldRefreshPresign = attempt === 0 && looksLikeExpiredPresignedUpload(putRes.status, responseText);
-    if (shouldRefreshPresign) {
-      prep = await prepareVideoEditorUploadUrl(file.name, contentType);
-      continue;
-    }
-    const detail = responseText.trim();
-    throw new Error(detail ? `Upload failed (${putRes.status}): ${detail}` : `Upload failed (${putRes.status})`);
   }
   throw new Error('Upload failed after retry');
 }

@@ -1,4 +1,4 @@
-import { applyVideoFileToEditor, isAllowedVideoFile } from '@/components/editor/video-file';
+import { isAllowedVideoFile } from '@/components/editor/video-file';
 import { uploadVideoEditorFile } from '@/lib/video-editor-workspace-api';
 import { useEditorStore } from '@/store/editorStore';
 import type { EditorState } from '@/store/editorStore';
@@ -9,12 +9,11 @@ export function isHttpWorkspaceReadUrl(url: string): boolean {
 }
 
 /**
- * Loads a local file for immediate preview (blob), uploads to workspace storage, then sets
- * `videoSrc` to the cloud read URL + `#wk=` key. Use for every path that imports a main video
- * (dropzone and "replace video" file input), otherwise export stays disabled on `blob:` URLs.
+ * Same flow as viral shorts: presign → PUT to storage → set `videoSrc` to read URL + `#wk=` key
+ * (no `blob:` intermediate). Preview uses the HTTPS URL directly like CreationStudio.
  *
  * `setVideoSrc` resets `cropSettings` to defaults (16:9). Pass `easyAspectToKeep` so the chosen
- * canvas ratio (e.g. 9:16) survives upload and the preview frame stays correct.
+ * canvas ratio (e.g. 9:16) survives upload.
  */
 export async function applyLocalVideoFileWithWorkspaceUpload(
   file: File,
@@ -26,9 +25,6 @@ export async function applyLocalVideoFileWithWorkspaceUpload(
   }
   const restoreEasyAspect =
     easyAspectToKeep ?? useEditorStore.getState().cropSettings.easyAspect;
-  applyVideoFileToEditor(file, setVideoSrc);
-  // `setVideoSrc` resets crop to 16:9; restore before/after upload so the preview frame never flips.
-  useEditorStore.getState().setCropSettings({ easyAspect: restoreEasyAspect });
   const uploaded = await uploadVideoEditorFile(file);
   if (!isHttpWorkspaceReadUrl(uploaded.storageUrl)) {
     return;
@@ -38,5 +34,6 @@ export async function applyLocalVideoFileWithWorkspaceUpload(
     URL.revokeObjectURL(current);
   }
   const withWorkspaceKey = `${uploaded.storageUrl}#wk=${encodeURIComponent(uploaded.s3Key)}`;
-  useEditorStore.setState({ videoSrc: withWorkspaceKey });
+  setVideoSrc(withWorkspaceKey);
+  useEditorStore.getState().setCropSettings({ easyAspect: restoreEasyAspect });
 }
