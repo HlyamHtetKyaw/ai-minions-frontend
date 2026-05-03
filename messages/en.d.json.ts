@@ -582,7 +582,6 @@ declare const messages: {
       },
       "uploadRoute": {
         "title": "Video workspace",
-        "historyLink": "Project history",
         "gateSubtitle": "Choose canvas size first — that frame is what you'll edit and export.",
         "uploadStepSubtitle": "Upload your video to workspace storage. When the upload succeeds, we open the editor with your cloud URL — MP4, MOV, or WebM.",
         "dropHeading": "Video file",

@@ -71,17 +71,18 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
   const isLandscapeFamily = pending === '16:9' || pending === '4:3';
 
   const previewFrameStyle = useMemo(() => {
+    // Prefer svh on phones (address bar) and cap dvh so the form stays reachable without excessive scroll.
     const maxHeight =
       pending === '9:16'
-        ? 'clamp(220px, min(58dvh, 76vh), min(78dvh, 640px))'
+        ? 'clamp(120px, min(38svh, 46dvh), min(62svh, 520px))'
         : pending === '1:1'
-          ? 'clamp(200px, min(44dvh, 58vh), min(62dvh, 520px))'
-          : 'clamp(160px, 36dvh, min(52dvh, 440px))';
+          ? 'clamp(120px, min(32svh, 40dvh), min(52svh, 460px))'
+          : 'clamp(100px, min(26svh, 34dvh), min(44svh, 400px))';
     return getWorkspacePreviewFrameStyle(pending, { maxHeight });
   }, [pending]);
 
   return (
-    <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#050508]">
+    <div className="relative flex min-h-full w-full min-w-0 flex-col overflow-x-hidden bg-[#050508] pb-[max(1.25rem,env(safe-area-inset-bottom,0px))]">
       <div
         className="pointer-events-none absolute inset-0 opacity-90"
         aria-hidden
@@ -91,49 +92,55 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_0%,rgba(99,102,241,0.14),transparent_55%)]" />
       </div>
 
-      <div className="relative z-10 flex min-h-min w-full flex-col items-center justify-start px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-8 sm:py-8 lg:min-h-0 lg:flex-1 lg:justify-center lg:py-10">
-        <div className="grid w-full max-w-5xl gap-6 sm:gap-8 lg:grid-cols-[1fr_minmax(0,26rem)] lg:items-center lg:gap-14">
+      <div className="relative z-10 flex min-h-min w-full min-w-0 max-w-full flex-col items-center justify-start px-[max(1rem,env(safe-area-inset-left,0px))] pb-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pr-[max(1rem,env(safe-area-inset-right,0px))] sm:px-8 sm:pb-8 sm:pt-8 lg:min-h-0 lg:flex-1 lg:justify-center lg:py-10">
+        <div className="grid w-full min-w-0 max-w-5xl gap-5 sm:gap-8 lg:grid-cols-[1fr_minmax(0,26rem)] lg:items-center lg:gap-14">
           <div
-            className={`flex min-h-0 items-center justify-center py-1 sm:min-h-[160px] lg:min-h-[320px] ${
+            className={`flex min-h-0 min-w-0 items-center justify-center py-1 sm:min-h-[140px] lg:min-h-[320px] ${
               pending === '9:16' ? 'lg:min-h-[min(72dvh,720px)]' : pending === '1:1' ? 'lg:min-h-[420px]' : ''
             }`}
           >
             <div
-              className={`relative flex justify-center ${
-                pending === '9:16' || pending === '1:1' ? 'w-full' : 'w-full max-w-[min(92vw,520px)]'
+              className={`relative flex w-full min-w-0 max-w-full justify-center ${
+                pending === '9:16' || pending === '1:1' ? '' : 'max-w-[min(100%,520px)]'
               }`}
             >
               <div
-                className="relative mx-auto overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-black shadow-[0_0_0_1px_rgba(139,92,246,0.15),0_32px_64px_-16px_rgba(0,0,0,0.85)] ring-1 ring-violet-500/20 transition-[width,height,aspect-ratio,box-shadow] duration-500 ease-out"
+                className="relative mx-auto max-h-[min(62svh,560px)] max-w-full overflow-hidden rounded-2xl border border-white/[0.08] bg-gradient-to-b from-zinc-900/90 to-black shadow-[0_0_0_1px_rgba(139,92,246,0.15),0_32px_64px_-16px_rgba(0,0,0,0.85)] ring-1 ring-violet-500/20 transition-[width,height,aspect-ratio,box-shadow] duration-500 ease-out lg:max-h-none"
                 style={previewFrameStyle}
               >
                 <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.04)_0%,transparent_45%)]" />
-                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">{t('previewKicker')}</p>
-                  <p className="text-2xl font-semibold tracking-tight text-white tabular-nums">{pending}</p>
-                  <p className="max-w-[14rem] text-xs leading-relaxed text-zinc-500">{t('previewHint')}</p>
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-1.5 p-4 text-center sm:gap-2 sm:p-6">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500 sm:tracking-[0.22em]">
+                    {t('previewKicker')}
+                  </p>
+                  <p className="text-xl font-semibold tracking-tight text-white tabular-nums sm:text-2xl">{pending}</p>
+                  <p className="max-w-[min(14rem,85%)] text-[11px] leading-relaxed text-zinc-500 sm:text-xs">
+                    {t('previewHint')}
+                  </p>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex flex-col justify-center">
-            <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-5 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.75)] backdrop-blur-xl sm:p-8">
+          <div className="flex min-w-0 flex-col justify-center">
+            <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-4 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.75)] backdrop-blur-xl sm:p-8">
               <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-[11px] font-medium text-violet-200/95">
                 <Sparkles className="size-3.5 shrink-0 text-violet-300" strokeWidth={2} />
                 {t('badge')}
               </div>
-              <h1 className="mt-4 text-xl font-semibold tracking-tight text-white sm:text-2xl">{t('title')}</h1>
-              <p className="mt-2 text-sm leading-relaxed text-zinc-400">{t('subtitle')}</p>
+              <h1 className="mt-3 break-words text-lg font-semibold tracking-tight text-white text-pretty sm:mt-4 sm:text-xl md:text-2xl">
+                {t('title')}
+              </h1>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400 text-pretty sm:text-sm">{t('subtitle')}</p>
 
               <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:mt-8">
                 {t('orientationLabel')}
               </p>
-              <div className="mt-2.5 flex w-full max-w-full rounded-xl border border-white/[0.06] bg-black/30 p-1 sm:inline-flex sm:w-auto">
+              <div className="mt-2.5 flex w-full min-w-0 max-w-full flex-col gap-1 rounded-xl border border-white/[0.06] bg-black/30 p-1 min-[400px]:flex-row min-[400px]:gap-0 sm:inline-flex sm:w-auto">
                 <button
                   type="button"
                   onClick={() => setPending('16:9')}
-                  className={`inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5 ${
+                  className={`inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all min-[400px]:min-h-0 sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                     isLandscapeFamily
                       ? 'bg-gradient-to-b from-violet-500/90 to-violet-600 text-white shadow-lg shadow-violet-900/40'
                       : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
@@ -145,7 +152,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                 <button
                   type="button"
                   onClick={() => setPending('9:16')}
-                  className={`inline-flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium transition-all sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5 ${
+                  className={`inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-xs font-medium transition-all min-[400px]:min-h-0 sm:flex-initial sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                     pending === '9:16'
                       ? 'bg-gradient-to-b from-violet-500/90 to-violet-600 text-white shadow-lg shadow-violet-900/40'
                       : 'text-zinc-400 hover:bg-white/[0.04] hover:text-zinc-200'
@@ -159,7 +166,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
               <p className="mt-5 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-500 sm:mt-8">
                 {t('aspectRatioLabel')}
               </p>
-              <div className="mt-3 grid grid-cols-2 gap-2 sm:gap-3">
+              <div className="mt-3 grid min-w-0 grid-cols-2 gap-2 sm:gap-3">
                 {ASPECT_ORDER.map((id) => {
                   const active = pending === id;
                   const labelKey = ASPECT_LABEL_KEY[id];
@@ -170,15 +177,21 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                       key={id}
                       type="button"
                       onClick={() => setPending(id)}
-                      className={`group rounded-xl border p-3 text-left transition sm:p-4 ${
+                      className={`group min-w-0 overflow-hidden rounded-xl border p-2.5 text-left transition sm:p-4 ${
                         active
                           ? 'border-violet-400/50 bg-violet-500/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-violet-400/30'
                           : 'border-white/[0.06] bg-white/[0.02] hover:border-white/12 hover:bg-white/[0.04]'
                       }`}
                     >
                       <MiniFramePreview aspect={id} />
-                      <p className={`text-sm font-semibold ${active ? 'text-white' : 'text-zinc-200'}`}>{label}</p>
-                      <p className="mt-0.5 text-[11px] text-zinc-500">{hint}</p>
+                      <p
+                        className={`break-words text-xs font-semibold leading-snug sm:text-sm ${active ? 'text-white' : 'text-zinc-200'}`}
+                      >
+                        {label}
+                      </p>
+                      <p className="mt-0.5 line-clamp-3 break-words text-[10px] leading-snug text-zinc-500 sm:text-[11px]">
+                        {hint}
+                      </p>
                     </button>
                   );
                 })}
@@ -187,7 +200,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
               <button
                 type="button"
                 onClick={() => onContinue(pending)}
-                className="mt-6 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-violet-950/50 transition hover:from-violet-500 hover:to-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 active:scale-[0.99] sm:mt-8"
+                className="mt-6 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-violet-950/50 transition hover:from-violet-500 hover:to-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400 active:scale-[0.99] sm:mt-8 sm:min-h-0 sm:py-3.5"
               >
                 {t('continue')}
                 <ArrowRight className="size-4" strokeWidth={2.25} />
