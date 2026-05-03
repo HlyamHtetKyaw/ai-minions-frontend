@@ -78,22 +78,22 @@ export function WorkspaceSubsPanel({ onImported }: WorkspaceSubsPanelProps) {
         onDrop={onDrop}
         className={`flex w-full flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed px-4 py-10 transition-colors ${
           isDragging
-            ? 'border-violet-400/60 bg-violet-500/10'
-            : 'border-zinc-600 bg-zinc-950/40 hover:border-zinc-500 hover:bg-zinc-900/50'
+            ? 'border-violet-500/55 bg-violet-500/15 dark:border-violet-400/60 dark:bg-violet-500/10'
+            : 'border-zinc-400 bg-zinc-100/90 hover:border-zinc-500 hover:bg-zinc-200/80 dark:border-zinc-600 dark:bg-zinc-950/40 dark:hover:border-zinc-500 dark:hover:bg-zinc-900/50'
         }`}
       >
         <Captions
-          className="h-10 w-10 text-zinc-400"
+          className="h-10 w-10 text-zinc-500 dark:text-zinc-400"
           strokeWidth={1.5}
           aria-hidden
         />
-        <span className="text-center text-[11px] font-bold uppercase tracking-wide text-zinc-400">
+        <span className="text-center text-[11px] font-bold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">
           {t('uploadTitle')}
         </span>
       </button>
-      <p className="text-center text-xs leading-relaxed text-zinc-500">{t('uploadHint')}</p>
+      <p className="text-center text-xs leading-relaxed text-zinc-600 dark:text-zinc-500">{t('uploadHint')}</p>
       {error != null ? (
-        <p className="text-center text-xs text-red-400/90" role="alert">
+        <p className="text-center text-xs text-red-600 dark:text-red-400/90" role="alert">
           {error}
         </p>
       ) : null}

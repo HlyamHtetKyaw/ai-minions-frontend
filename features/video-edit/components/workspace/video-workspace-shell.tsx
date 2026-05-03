@@ -10,6 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
 } from 'react';
 import { useTranslations } from 'next-intl';
+import { useRouter } from '@/i18n/navigation';
 import { AudioProperties } from '@/components/editor/panels/AudioProperties';
 import { BlurProperties } from '@/components/editor/panels/BlurProperties';
 import { SpeedProperties } from '@/components/editor/panels/SpeedProperties';
@@ -41,13 +42,18 @@ import {
 } from '@/store/editorStore';
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { formatWorkspaceTime } from '@/features/video-edit/lib/format-workspace-time';
+import {
+  createWorkspaceHistorySnapshot,
+  extractWorkspaceKeyFromVideoSrc,
+  parseWorkspaceFromPersistence,
+  serializeWorkspaceForPersistence,
+  snapshotSignature,
+  withWorkspaceObjectKey,
+  type WorkspaceHistorySnapshot,
+} from '@/features/video-edit/lib/workspace-editor-persistence';
 import { WorkspacePreviewCanvas, WORKSPACE_VIDEO_FILE_INPUT_ID } from './workspace-preview-canvas';
 import type { WorkspacePreviewFrameFill } from './workspace-preview-frame-style';
-import {
-  WorkspaceCanvasSizeGate,
-  canvasAspectIdToEasyRatio,
-  workspaceJsonHasPersistedVideo,
-} from './workspace-canvas-size-gate';
+import { workspaceJsonHasPersistedVideo } from './workspace-canvas-size-gate';
 import { WorkspacePropertiesPanel } from './workspace-properties-panel';
 import { WorkspaceSubsPanel } from './workspace-subs-panel';
 import { WorkspaceTimelineDock, type WorkspaceTimelinePhase } from './workspace-timeline-dock';
@@ -82,192 +88,6 @@ function getPreviewPanelMinHeightPx(): number {
   return window.matchMedia('(max-width: 639px)').matches
     ? PREVIEW_PANEL_MIN_HEIGHT_MOBILE_PX
     : PREVIEW_PANEL_MIN_HEIGHT_PX;
-}
-
-type WorkspaceHistorySnapshot = {
-  videoSrc: string | null;
-  duration: number;
-  currentTime: number;
-  trimStart: number;
-  trimEnd: number;
-  trimApplyNonce: number;
-  isPlaying: boolean;
-  textLayers: ReturnType<typeof useEditorStore.getState>['textLayers'];
-  blurLayers: ReturnType<typeof useEditorStore.getState>['blurLayers'];
-  galleryImages: ReturnType<typeof useEditorStore.getState>['galleryImages'];
-  imageLayers: ReturnType<typeof useEditorStore.getState>['imageLayers'];
-  cropSettings: ReturnType<typeof useEditorStore.getState>['cropSettings'];
-  isCropActive: boolean;
-  playbackSpeed: number;
-  selectedLayerId: string | null;
-  selectedSegmentId: string | null;
-  activeTool: EditorTool;
-  audioTracks: ReturnType<typeof useEditorStore.getState>['audioTracks'];
-  originalAudioMuted: boolean;
-  originalAudioVolume: number;
-  selectedAudioTrackId: string | null;
-  videoTimelineSegments: ReturnType<typeof useEditorStore.getState>['videoTimelineSegments'];
-  splitPoints: number[];
-  videoSegments: ReturnType<typeof useEditorStore.getState>['videoSegments'];
-};
-
-function createWorkspaceHistorySnapshot(
-  state: ReturnType<typeof useEditorStore.getState>,
-): WorkspaceHistorySnapshot {
-  return {
-    videoSrc: state.videoSrc,
-    duration: state.duration,
-    currentTime: state.currentTime,
-    trimStart: state.trimStart,
-    trimEnd: state.trimEnd,
-    trimApplyNonce: state.trimApplyNonce,
-    isPlaying: state.isPlaying,
-    textLayers: state.textLayers.map((item) => ({ ...item })),
-    blurLayers: state.blurLayers.map((item) => ({ ...item })),
-    galleryImages: state.galleryImages.map((item) => ({ ...item })),
-    imageLayers: state.imageLayers.map((item) => ({ ...item })),
-    cropSettings: {
-      ...state.cropSettings,
-      easyCrop: { ...state.cropSettings.easyCrop },
-      croppedAreaPixels: state.cropSettings.croppedAreaPixels
-        ? { ...state.cropSettings.croppedAreaPixels }
-        : null,
-      croppedAreaPercentages: state.cropSettings.croppedAreaPercentages
-        ? { ...state.cropSettings.croppedAreaPercentages }
-        : null,
-    },
-    isCropActive: state.isCropActive,
-    playbackSpeed: state.playbackSpeed,
-    selectedLayerId: state.selectedLayerId,
-    selectedSegmentId: state.selectedSegmentId,
-    activeTool: state.activeTool,
-    audioTracks: state.audioTracks.map((item) => ({ ...item })),
-    originalAudioMuted: state.originalAudioMuted,
-    originalAudioVolume: state.originalAudioVolume,
-    selectedAudioTrackId: state.selectedAudioTrackId,
-    videoTimelineSegments: state.videoTimelineSegments.map((item) => ({ ...item })),
-    splitPoints: [...state.splitPoints],
-    videoSegments: state.videoSegments.map((item) => ({ ...item })),
-  };
-}
-
-function snapshotSignature(snapshot: WorkspaceHistorySnapshot) {
-  return JSON.stringify({
-    ...snapshot,
-    audioTracks: snapshot.audioTracks.map(({ audioBuffer, ...rest }) => ({
-      ...rest,
-      hasAudioBuffer: audioBuffer != null,
-    })),
-  });
-}
-
-function isBlobUrl(value: unknown): value is string {
-  return typeof value === 'string' && value.startsWith('blob:');
-}
-
-function withWorkspaceObjectKey(url: string, key: string): string {
-  const safeUrl = typeof url === 'string' ? url.trim() : '';
-  const safeKey = typeof key === 'string' ? key.trim() : '';
-  if (safeUrl === '' || safeKey === '') return safeUrl;
-  return `${safeUrl}#wk=${encodeURIComponent(safeKey)}`;
-}
-
-function extractWorkspaceKeyFromVideoSrc(value: string | null): string | null {
-  if (value == null || value.trim() === '') return null;
-  try {
-    const u = new URL(value);
-    const frag = u.hash.startsWith('#') ? u.hash.slice(1) : u.hash;
-    for (const token of frag.split('&')) {
-      const [k, v] = token.split('=');
-      if (k === 'wk' && v != null && v.trim() !== '') {
-        return decodeURIComponent(v);
-      }
-    }
-  } catch {
-    // ignore malformed URLs
-  }
-  return null;
-}
-
-function serializeWorkspaceForPersistence(state: ReturnType<typeof useEditorStore.getState>): string {
-  const snapshot = createWorkspaceHistorySnapshot(state);
-  const safeVideoSrc = isBlobUrl(snapshot.videoSrc) ? null : snapshot.videoSrc;
-  const videoSrcKey = extractWorkspaceKeyFromVideoSrc(safeVideoSrc);
-  const persistedVideoSrc = videoSrcKey != null ? null : safeVideoSrc;
-  const safeGalleryImages = snapshot.galleryImages.filter((img) => !isBlobUrl(img.src));
-  const safeGalleryIds = new Set(safeGalleryImages.map((img) => img.id));
-  const safeImageLayers = snapshot.imageLayers.filter(
-    (layer) => !isBlobUrl(layer.src) && safeGalleryIds.has(layer.galleryImageId),
-  );
-  const audioTracks = snapshot.audioTracks
-    .filter((track) => !isBlobUrl(track.src))
-    .map((track) => Object.fromEntries(Object.entries(track).filter(([key]) => key !== 'audioBuffer')));
-
-  const hasVideo = persistedVideoSrc != null || videoSrcKey != null;
-  const core = {
-    ...snapshot,
-    videoSrc: persistedVideoSrc,
-    videoSrcKey: videoSrcKey ?? undefined,
-    duration: hasVideo ? snapshot.duration : 0,
-    currentTime: hasVideo ? snapshot.currentTime : 0,
-    trimStart: hasVideo ? snapshot.trimStart : 0,
-    trimEnd: hasVideo ? snapshot.trimEnd : 0,
-    videoTimelineSegments: hasVideo ? snapshot.videoTimelineSegments : [],
-    splitPoints: hasVideo ? snapshot.splitPoints : [],
-    videoSegments: hasVideo ? snapshot.videoSegments : [],
-    galleryImages: safeGalleryImages,
-    imageLayers: safeImageLayers,
-    audioTracks,
-  } as Record<string, unknown>;
-  return JSON.stringify(core);
-}
-
-function parseWorkspaceFromPersistence(rawJson: string): WorkspaceHistorySnapshot | null {
-  try {
-    const root = JSON.parse(rawJson) as Record<string, unknown>;
-    // Legacy: viral lived nested in the same document; never hydrate the editor from it.
-    delete root.viralShortsWorkspace;
-    const raw = root as WorkspaceHistorySnapshot & {
-      audioTracks?: Array<Omit<WorkspaceHistorySnapshot['audioTracks'][number], 'audioBuffer'>>;
-      videoSrcKey?: string;
-    };
-    if (raw == null || typeof raw !== 'object') return null;
-    const base = createWorkspaceHistorySnapshot(useEditorStore.getState());
-    const safeVideoSrc = isBlobUrl(raw.videoSrc) ? null : (raw.videoSrc ?? null);
-    const safeGalleryImages = Array.isArray(raw.galleryImages)
-      ? raw.galleryImages.filter((img) => !isBlobUrl(img.src))
-      : base.galleryImages;
-    const safeGalleryIds = new Set(safeGalleryImages.map((img) => img.id));
-    const safeImageLayers = Array.isArray(raw.imageLayers)
-      ? raw.imageLayers.filter((layer) => !isBlobUrl(layer.src) && safeGalleryIds.has(layer.galleryImageId))
-      : base.imageLayers;
-    const safeAudioTracks = Array.isArray(raw.audioTracks)
-      ? raw.audioTracks
-          .filter((track) => !isBlobUrl(track.src))
-          .map((track) => ({ ...track, audioBuffer: null }))
-      : base.audioTracks;
-    const hasVideo =
-      safeVideoSrc != null ||
-      (typeof raw.videoSrcKey === 'string' && raw.videoSrcKey.trim().length > 0);
-    return {
-      ...base,
-      ...raw,
-      videoSrc: safeVideoSrc,
-      duration: hasVideo ? raw.duration : 0,
-      currentTime: hasVideo ? raw.currentTime : 0,
-      trimStart: hasVideo ? raw.trimStart : 0,
-      trimEnd: hasVideo ? raw.trimEnd : 0,
-      videoTimelineSegments: hasVideo ? raw.videoTimelineSegments : [],
-      splitPoints: hasVideo ? raw.splitPoints : [],
-      videoSegments: hasVideo ? raw.videoSegments : [],
-      galleryImages: safeGalleryImages,
-      imageLayers: safeImageLayers,
-      isPlaying: false,
-      audioTracks: safeAudioTracks,
-    };
-  } catch {
-    return null;
-  }
 }
 
 function isEditableTarget(target: EventTarget | null) {
@@ -360,6 +180,7 @@ export function VideoWorkspaceShell() {
   useAudioExtractor();
   useAudioPlayback();
 
+  const router = useRouter();
   const t = useTranslations('video-edit.workspace');
 
   const videoSrc = useEditorStore((s) => s.videoSrc);
@@ -400,7 +221,6 @@ export function VideoWorkspaceShell() {
   const setOriginalAudioMuted = useEditorStore((s) => s.setOriginalAudioMuted);
   const setOriginalAudioVolume = useEditorStore((s) => s.setOriginalAudioVolume);
   const cropEasyAspect = useEditorStore((s) => s.cropSettings.easyAspect);
-  const setCropSettings = useEditorStore((s) => s.setCropSettings);
 
   useEffect(() => {
     return () => {
@@ -416,7 +236,7 @@ export function VideoWorkspaceShell() {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [workspaceSyncStatus, setWorkspaceSyncStatus] = useState('Connecting workspace stream...');
-  const [workspaceUiPhase, setWorkspaceUiPhase] = useState<'loading' | 'canvas-only' | 'editor'>('loading');
+  const [workspaceUiPhase, setWorkspaceUiPhase] = useState<'loading' | 'editor'>('loading');
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [exportOverlayPhase, setExportOverlayPhase] = useState<'idle' | 'exporting' | 'downloading'>('idle');
@@ -655,19 +475,23 @@ export function VideoWorkspaceShell() {
         if (cancelled) return;
         setWorkspaceSyncStatus('Workspace loaded');
         const hasPersistedVideo = workspaceJsonHasPersistedVideo(rawWorkspaceJson);
-        setWorkspaceUiPhase(hasPersistedVideo ? 'editor' : 'canvas-only');
+        if (!hasPersistedVideo) {
+          router.replace('/video-edit/upload');
+          return;
+        }
+        setWorkspaceUiPhase('editor');
       } catch (error) {
         if (cancelled) return;
         setWorkspaceSyncStatus(
           error instanceof Error ? `Workspace load failed: ${error.message}` : 'Workspace load failed',
         );
-        setWorkspaceUiPhase('canvas-only');
+        router.replace('/video-edit/upload');
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [applyHistorySnapshot]);
+  }, [applyHistorySnapshot, router]);
 
   useEffect(() => {
     const flushPending = async () => {
@@ -1315,13 +1139,17 @@ export function VideoWorkspaceShell() {
                 output && typeof output.result === 'object' && output.result != null
                   ? (output.result as Record<string, unknown>)
                   : undefined;
+              const pick = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+              /** Worker `WorkspaceExportPipeline` publishes `result.readUrl` / `storageUrl` / `s3Key` (not always `downloadUrl`). */
               const downloadUrl =
-                (typeof resultNode?.readUrl === 'string' && resultNode.readUrl) ||
-                (typeof resultNode?.downloadUrl === 'string' && resultNode.downloadUrl) ||
-                result.downloadUrl ||
+                pick(resultNode?.readUrl) ||
+                pick(resultNode?.downloadUrl) ||
+                pick(resultNode?.storageUrl) ||
+                (output ? pick(output.readUrl) || pick(output.downloadUrl) || pick(output.storageUrl) : '') ||
+                pick(result.downloadUrl) ||
                 '';
               const s3Key =
-                (typeof resultNode?.s3Key === 'string' && resultNode.s3Key) || result.s3Key || '';
+                pick(resultNode?.s3Key) || pick(result.s3Key) || '';
               if (!downloadUrl) {
                 reject(new Error('Export completed but missing download URL'));
                 return;
@@ -1420,8 +1248,8 @@ export function VideoWorkspaceShell() {
       setCanUndo(false);
       setCanRedo(false);
       setWorkspaceSyncStatus('Workspace reset');
-      setWorkspaceUiPhase('canvas-only');
       setResetDialogOpen(false);
+      router.replace('/video-edit/upload');
     } catch (error) {
       setWorkspaceSyncStatus(
         error instanceof Error ? `Workspace reset failed: ${error.message}` : 'Workspace reset failed',
@@ -1429,7 +1257,7 @@ export function VideoWorkspaceShell() {
     } finally {
       setResetBusy(false);
     }
-  }, [setActiveToolStore, setSelectedAudioTrackId, setSelectedLayerId, setSelectedSegmentId, setVideoSrc]);
+  }, [router, setActiveToolStore, setSelectedAudioTrackId, setSelectedLayerId, setSelectedSegmentId, setVideoSrc]);
 
   useEffect(() => {
     if (!resetDialogOpen) return;
@@ -1445,32 +1273,18 @@ export function VideoWorkspaceShell() {
 
   if (workspaceUiPhase === 'loading') {
     return (
-      <div className="flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-black text-foreground">
+      <div className="video-workspace-root flex h-full min-h-0 flex-1 flex-col items-center justify-center bg-zinc-100 text-foreground dark:bg-black">
         <div
           className="h-8 w-8 animate-spin rounded-full border-2 border-violet-400/30 border-t-violet-400"
           aria-hidden
         />
-        <p className="mt-4 text-xs text-zinc-500">Loading workspace…</p>
-      </div>
-    );
-  }
-
-  if (workspaceUiPhase === 'canvas-only') {
-    return (
-      <div className="flex h-full min-h-0 flex-1 flex-col bg-black text-foreground">
-        <WorkspaceCanvasSizeGate
-          initialEasyAspect={cropEasyAspect}
-          onContinue={(aspect) => {
-            setCropSettings({ easyAspect: canvasAspectIdToEasyRatio(aspect) });
-            setWorkspaceUiPhase('editor');
-          }}
-        />
+        <p className="mt-4 text-xs text-zinc-600 dark:text-zinc-500">Loading workspace…</p>
       </div>
     );
   }
 
   return (
-    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-foreground">
+    <div className="video-workspace-root relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-zinc-100 text-foreground dark:bg-black">
       <WorkspaceTopBar
         exportLabel={t('exportVideo')}
         exportDisabled={resolveExportVideoUrl(videoSrc) == null}
@@ -1529,10 +1343,10 @@ export function VideoWorkspaceShell() {
             aria-label={t('timeline.resizeHandleAria')}
             title={t('timeline.resizeHandleTitle')}
             onPointerDown={onTimelineDockResizePointerDown}
-            className="group relative z-10 flex min-h-8 shrink-0 cursor-row-resize touch-none items-center justify-center border-y border-transparent bg-transparent py-1 hover:border-white/10 hover:bg-white/5 [@media(pointer:coarse)]:min-h-11"
+            className="group relative z-10 flex min-h-8 shrink-0 cursor-row-resize touch-none items-center justify-center border-y border-transparent bg-transparent py-1 hover:border-zinc-300/80 hover:bg-zinc-200/60 dark:hover:border-white/10 dark:hover:bg-white/5 [@media(pointer:coarse)]:min-h-11"
           >
             <span
-              className="h-1 w-12 rounded-full bg-white/20 transition-colors group-hover:bg-violet-400/70"
+              className="h-1 w-12 rounded-full bg-zinc-400/50 transition-colors group-hover:bg-violet-500/70 dark:bg-white/20 dark:group-hover:bg-violet-400/70"
               aria-hidden
             />
           </div>
@@ -1617,8 +1431,8 @@ export function VideoWorkspaceShell() {
         </div>
         {activeTool !== 'media' && activeTool !== 'trim' || selectedSegmentId != null ? (
           showStoreToolPanel ? (
-            <aside className="flex max-h-[55vh] min-h-0 w-full shrink-0 flex-col border-t border-white/10 bg-black/70 xl:h-full xl:max-h-none xl:w-72 xl:min-w-72 xl:max-w-72 xl:border-l xl:border-t-0">
-              <div className="shrink-0 border-b border-white/10 px-4 py-3">
+            <aside className="flex max-h-[55vh] min-h-0 w-full shrink-0 flex-col border-t border-zinc-200/90 bg-white/95 xl:h-full xl:max-h-none xl:w-72 xl:min-w-72 xl:max-w-72 xl:border-l xl:border-t-0 dark:border-white/10 dark:bg-black/70">
+              <div className="shrink-0 border-b border-zinc-200/90 px-4 py-3 dark:border-white/10">
                 <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                   {panelMode === 'segment'
                     ? t('audio.segmentAudio')
@@ -1705,7 +1519,7 @@ export function VideoWorkspaceShell() {
         >
           <button
             type="button"
-            className="absolute inset-0 bg-black/70 backdrop-blur-[2px]"
+            className="absolute inset-0 bg-black/45 backdrop-blur-[2px] dark:bg-black/70"
             aria-label={t('resetDialog.cancel')}
             onClick={() => !resetBusy && setResetDialogOpen(false)}
           />
@@ -1714,12 +1528,12 @@ export function VideoWorkspaceShell() {
             aria-modal="true"
             aria-labelledby="workspace-reset-title"
             aria-describedby="workspace-reset-desc"
-            className="relative z-[101] w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black/60 sm:p-6"
+            className="relative z-[101] w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl shadow-zinc-400/40 sm:p-6 dark:border-white/10 dark:bg-zinc-950 dark:shadow-black/60"
           >
-            <h2 id="workspace-reset-title" className="text-lg font-semibold tracking-tight text-white">
+            <h2 id="workspace-reset-title" className="text-lg font-semibold tracking-tight text-zinc-900 dark:text-white">
               {t('resetDialog.title')}
             </h2>
-            <p id="workspace-reset-desc" className="mt-2 text-sm leading-relaxed text-zinc-400">
+            <p id="workspace-reset-desc" className="mt-2 text-sm leading-relaxed text-zinc-600 dark:text-zinc-400">
               {t('resetDialog.description')}
             </p>
             <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -1727,7 +1541,7 @@ export function VideoWorkspaceShell() {
                 type="button"
                 disabled={resetBusy}
                 onClick={() => setResetDialogOpen(false)}
-                className="rounded-xl border border-white/15 bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-200 transition hover:bg-white/5 disabled:opacity-50"
+                className="rounded-xl border border-zinc-300 bg-transparent px-4 py-2.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-100 disabled:opacity-50 dark:border-white/15 dark:text-zinc-200 dark:hover:bg-white/5"
               >
                 {t('resetDialog.cancel')}
               </button>
@@ -1746,13 +1560,13 @@ export function VideoWorkspaceShell() {
 
       {exportOverlayPhase !== 'idle' ? (
         <div
-          className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black text-foreground"
+          className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/85 text-foreground backdrop-blur-sm dark:bg-black"
           aria-busy={true}
           aria-live="polite"
           role="status"
         >
-          <div className="w-[min(88vw,380px)] rounded-xl border border-white/10 bg-zinc-950/80 p-4">
-            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-800">
+          <div className="w-[min(88vw,380px)] rounded-xl border border-zinc-200 bg-white/95 p-4 dark:border-white/10 dark:bg-zinc-950/80">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-800">
               <div
                 className="h-full rounded-full bg-violet-400 transition-[width] duration-500 ease-out"
                 style={{
@@ -1768,7 +1582,7 @@ export function VideoWorkspaceShell() {
                 }}
               />
             </div>
-            <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-400">
+            <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-600 dark:text-zinc-400">
               <span>
                 {exportProgressMessage.trim() !== ''
                   ? exportProgressMessage
@@ -1783,7 +1597,7 @@ export function VideoWorkspaceShell() {
               </span>
             </div>
           </div>
-          <p className="mt-4 text-xs text-zinc-500">
+          <p className="mt-4 text-xs text-zinc-600 dark:text-zinc-500">
             {exportOverlayPhase === 'exporting'
               ? t('exportOverlay.exporting')
               : t('exportOverlay.downloading')}
@@ -1793,37 +1607,37 @@ export function VideoWorkspaceShell() {
 
       {exportConfirmOpen ? (
         <div
-          className="fixed inset-0 z-[180] flex items-end justify-center bg-black/70 p-4 sm:items-center"
+          className="fixed inset-0 z-[180] flex items-end justify-center bg-black/45 p-4 backdrop-blur-[1px] sm:items-center dark:bg-black/70"
           role="dialog"
           aria-modal="true"
           aria-label={t('exportConfirm.ariaLabel')}
           onMouseDown={() => setExportConfirmOpen(false)}
         >
           <div
-            className="w-full max-w-md rounded-2xl border border-white/10 bg-zinc-950 p-5 shadow-2xl shadow-black/60"
+            className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-5 shadow-2xl shadow-zinc-400/35 dark:border-white/10 dark:bg-zinc-950 dark:shadow-black/60"
             onMouseDown={(e) => e.stopPropagation()}
           >
-            <p className="text-sm font-semibold text-white">{t('exportConfirm.title')}</p>
-            <p className="mt-2 text-sm text-zinc-300">
+            <p className="text-sm font-semibold text-zinc-900 dark:text-white">{t('exportConfirm.title')}</p>
+            <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-300">
               {t('exportConfirm.estimatedCost')}{' '}
-              <span className="font-semibold text-white">
+              <span className="font-semibold text-zinc-900 dark:text-white">
                 {exportEstimateLoading ? '…' : exportEstimatedPoints}
               </span>{' '}
               {t('exportConfirm.pointsUnit')}
             </p>
             <p className="mt-1 text-xs text-zinc-500">{t('exportConfirm.balance', { points: creditBalance ?? 0 })}</p>
             {exportEstimateError ? (
-              <p className="mt-2 text-sm text-rose-300">{exportEstimateError}</p>
+              <p className="mt-2 text-sm text-rose-600 dark:text-rose-300">{exportEstimateError}</p>
             ) : null}
             {creditBalance != null && creditBalance < exportEstimatedPoints && !exportEstimateLoading ? (
-              <p className="mt-2 text-sm text-amber-300">
+              <p className="mt-2 text-sm text-amber-700 dark:text-amber-300">
                 {t('exportConfirm.notEnoughPoints')}
               </p>
             ) : null}
             <div className="mt-4 flex items-center justify-end gap-2">
               <button
                 type="button"
-                className="rounded-lg border border-white/15 px-3 py-2 text-sm font-medium text-zinc-200 transition hover:bg-white/5"
+                className="rounded-lg border border-zinc-300 px-3 py-2 text-sm font-medium text-zinc-800 transition hover:bg-zinc-100 dark:border-white/15 dark:text-zinc-200 dark:hover:bg-white/5"
                 onClick={() => setExportConfirmOpen(false)}
               >
                 {t('exportConfirm.cancel')}

@@ -1,13 +1,6 @@
 'use client';
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-} from 'react';
+import { createContext, useCallback, useContext, useRef, useState } from 'react';
 import {
   Maximize2,
   Minimize2,
@@ -969,7 +962,8 @@ export function WorkspaceTimelineDock({
   addAudioLabel = 'Add audio',
   onAddAudio,
 }: WorkspaceTimelineDockProps) {
-  const timelineRef = useRef<HTMLDivElement>(null);
+  const timelineSeekRef = useRef<HTMLDivElement>(null);
+  const scrubPointerIdRef = useRef<number | null>(null);
   const videoTrackLaneRef = useRef<HTMLDivElement>(null);
   const textTrackLaneRef = useRef<HTMLDivElement>(null);
   const blurTrackLaneRef = useRef<HTMLDivElement>(null);
@@ -1000,7 +994,7 @@ export function WorkspaceTimelineDock({
 
   const seekFromClientX = useCallback(
     (clientX: number) => {
-      const el = timelineRef.current;
+      const el = timelineSeekRef.current;
       if (!el || phase !== 'ready' || !onSeekRatio || durationSec <= 0) return;
       const rect = el.getBoundingClientRect();
       const w = rect.width;
@@ -1011,35 +1005,38 @@ export function WorkspaceTimelineDock({
     [durationSec, onSeekRatio, phase],
   );
 
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!draggingRef.current) return;
-      seekFromClientX(e.clientX);
-    };
-    const onUp = () => {
-      draggingRef.current = false;
-    };
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
-    return () => {
-      window.removeEventListener('mousemove', onMove);
-      window.removeEventListener('mouseup', onUp);
-    };
-  }, [seekFromClientX]);
-
-  const onRulerMouseDown = (e: React.MouseEvent) => {
-    if (phase !== 'ready' || !onSeekRatio) return;
+  const onScrubPointerDown = (e: React.PointerEvent<HTMLElement>) => {
+    if (phase !== 'ready' || !onSeekRatio || durationSec <= 0) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     e.preventDefault();
     e.stopPropagation();
     draggingRef.current = true;
+    scrubPointerIdRef.current = e.pointerId;
+    e.currentTarget.setPointerCapture(e.pointerId);
     seekFromClientX(e.clientX);
+  };
+
+  const onScrubPointerMove = (e: React.PointerEvent<HTMLElement>) => {
+    if (!draggingRef.current || scrubPointerIdRef.current !== e.pointerId) return;
+    seekFromClientX(e.clientX);
+  };
+
+  const onScrubPointerUpOrCancel = (e: React.PointerEvent<HTMLElement>) => {
+    if (scrubPointerIdRef.current !== e.pointerId) return;
+    draggingRef.current = false;
+    scrubPointerIdRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* already released */
+    }
   };
 
   const transportDisabled = phase !== 'ready';
 
   return (
-    <div className="flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-t border-white/10 bg-black/90">
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/5 px-2 py-2 sm:gap-3 sm:px-3">
+    <div className="flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-t border-zinc-200/90 bg-zinc-100/98 dark:border-white/10 dark:bg-black/90">
+      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200/80 px-2 py-2 dark:border-white/5 sm:gap-3 sm:px-3">
         <div
           className={`flex items-center gap-1 ${transportDisabled ? 'pointer-events-none opacity-40' : ''}`}
         >
@@ -1075,7 +1072,7 @@ export function WorkspaceTimelineDock({
                   e.stopPropagation();
                   onTrimHeadAtPlayhead();
                 }}
-                className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100 transition-colors hover:bg-sky-500/20"
+                className="rounded-md border border-sky-600/35 bg-sky-500/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-900 transition-colors hover:bg-sky-500/20 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-100"
               >
                 {trimHeadLabel}
               </button>
@@ -1088,7 +1085,7 @@ export function WorkspaceTimelineDock({
                   e.stopPropagation();
                   onTrimTailAtPlayhead();
                 }}
-                className="rounded-md border border-sky-500/40 bg-sky-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-100 transition-colors hover:bg-sky-500/20"
+                className="rounded-md border border-sky-600/35 bg-sky-500/12 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-sky-900 transition-colors hover:bg-sky-500/20 dark:border-sky-500/40 dark:bg-sky-500/10 dark:text-sky-100"
               >
                 {trimTailLabel}
               </button>
@@ -1103,7 +1100,7 @@ export function WorkspaceTimelineDock({
                   e.stopPropagation();
                   if (trimMiddleEnabled) onTrimMiddleAtPlayhead();
                 }}
-                className="rounded-md border border-violet-500/40 bg-violet-500/10 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-100 transition-colors hover:bg-violet-500/20 disabled:pointer-events-none disabled:opacity-35"
+                className="rounded-md border border-violet-600/40 bg-violet-100/90 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-900 transition-colors hover:bg-violet-200/90 disabled:pointer-events-none disabled:opacity-35 dark:border-violet-500/40 dark:bg-violet-500/10 dark:text-violet-100 dark:hover:bg-violet-500/20"
               >
                 {trimMiddleLabel}
               </button>
@@ -1118,7 +1115,7 @@ export function WorkspaceTimelineDock({
                   e.stopPropagation();
                   if (deleteSegmentEnabled) onDeleteVideoSegment();
                 }}
-                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-rose-500/40 bg-rose-500/10 text-rose-100 transition-colors hover:bg-rose-500/20 disabled:pointer-events-none disabled:opacity-35"
+                className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-rose-500/45 bg-rose-50 text-rose-700 transition-colors hover:bg-rose-100 disabled:pointer-events-none disabled:opacity-35 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-100 dark:hover:bg-rose-500/20"
               >
                 <Trash2 strokeWidth={1.75} className="h-3.5 w-3.5" aria-hidden />
               </button>
@@ -1133,7 +1130,7 @@ export function WorkspaceTimelineDock({
             aria-label={speedAriaLabel}
             value={speedValue}
             onChange={(e) => onSpeedChange(e.target.value)}
-            className="rounded-md border border-white/10 bg-black/50 py-1.5 pl-2 pr-7 text-xs text-foreground outline-none focus:border-violet-400/40 focus:ring-1 focus:ring-violet-400/30"
+            className="rounded-md border border-zinc-300 bg-white py-1.5 pl-2 pr-7 text-xs text-foreground outline-none focus:border-violet-500/45 focus:ring-1 focus:ring-violet-400/30 dark:border-white/10 dark:bg-black/50"
           >
             <option value="0.25">0.25×</option>
             <option value="0.5">0.5×</option>
@@ -1148,7 +1145,7 @@ export function WorkspaceTimelineDock({
             <button
               type="button"
               onClick={onAddAudio}
-              className="rounded-md bg-[#0a1612] px-2.5 py-1.5 text-[11px] font-medium text-[#1D9E75] ring-1 ring-[#1D9E75]/60 transition-colors hover:bg-[#0f2218]"
+              className="rounded-md border border-emerald-600/30 bg-emerald-50 px-2.5 py-1.5 text-[11px] font-medium text-emerald-800 transition-colors hover:bg-emerald-100/90 dark:border-transparent dark:bg-[#0a1612] dark:text-[#1D9E75] dark:ring-1 dark:ring-[#1D9E75]/60 dark:hover:bg-[#0f2218]"
             >
               {addAudioLabel}
             </button>
@@ -1176,7 +1173,7 @@ export function WorkspaceTimelineDock({
             value={volumeValue}
             onChange={(e) => onVolumeChange(Number(e.target.value))}
             aria-label={volumeLabel}
-            className="h-1 w-full max-w-[120px] min-w-[72px] cursor-pointer appearance-none rounded-full bg-white/10 accent-violet-400 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-violet-300 [&::-webkit-slider-thumb]:bg-zinc-900"
+            className="h-1 w-full max-w-[120px] min-w-[72px] cursor-pointer appearance-none rounded-full bg-zinc-200 accent-violet-600 dark:bg-white/10 dark:accent-violet-400 [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-violet-400 [&::-webkit-slider-thumb]:bg-white dark:[&::-webkit-slider-thumb]:border-violet-300 dark:[&::-webkit-slider-thumb]:bg-zinc-900"
           />
           {onToggleFullscreen != null ? (
             <WorkspaceIconButton
@@ -1207,15 +1204,22 @@ export function WorkspaceTimelineDock({
 
       {phase === 'ready' && (
         <WorkspaceTimelineDragGuideContext.Provider value={setClipDragGuideRatios}>
-          <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-zinc-950">
+          <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
             <div
-              ref={timelineRef}
-              className="relative flex min-w-[720px] flex-col bg-black/25"
+              className="relative flex min-w-[720px] flex-col bg-zinc-100/95 dark:bg-black/25"
               role="presentation"
             >
               <div
-                className="relative h-7 shrink-0 cursor-pointer border-b border-white/10 bg-black/40"
-                onMouseDown={onRulerMouseDown}
+                ref={timelineSeekRef}
+                className="relative ml-0 mr-0 flex min-h-0 w-full flex-col max-sm:ml-[max(14px,env(safe-area-inset-left))] max-sm:mr-[max(14px,env(safe-area-inset-right))]"
+                role="presentation"
+              >
+              <div
+                className="relative h-9 shrink-0 cursor-grab touch-none border-b border-zinc-300/90 bg-zinc-200/80 active:cursor-grabbing dark:border-white/10 dark:bg-black/40 sm:h-7"
+                onPointerDown={onScrubPointerDown}
+                onPointerMove={onScrubPointerMove}
+                onPointerUp={onScrubPointerUpOrCancel}
+                onPointerCancel={onScrubPointerUpOrCancel}
               >
                 {ticks.map((t) => (
                   <span
@@ -1254,8 +1258,8 @@ export function WorkspaceTimelineDock({
                   }
                   className={
                     row.id === 'video'
-                      ? 'relative h-12 min-h-12 shrink-0 border-b border-white/5 bg-black/20'
-                      : 'relative h-8 shrink-0 border-b border-white/5 bg-black/20'
+                      ? 'relative h-12 min-h-12 shrink-0 border-b border-zinc-200/80 bg-white/80 dark:border-white/5 dark:bg-black/20'
+                      : 'relative h-8 shrink-0 border-b border-zinc-200/80 bg-white/80 dark:border-white/5 dark:bg-black/20'
                   }
                   onMouseDown={
                     row.id === 'text' ||
@@ -1382,12 +1386,6 @@ export function WorkspaceTimelineDock({
               </div>
 
               <div className="pointer-events-none absolute inset-0 z-10" aria-hidden>
-                <div
-                  className="pointer-events-none absolute bottom-0 top-0 w-px bg-violet-400"
-                  style={{ left: `${playheadPosition * 100}%` }}
-                >
-                  <div className="absolute -left-1.5 top-0 h-2.5 w-3.5 rounded-sm bg-violet-400 shadow-sm ring-1 ring-violet-200/40" />
-                </div>
                 {clipDragGuideRatios?.map((ratio, i) => (
                   <div
                     key={`guide-${i}-${ratio}`}
@@ -1395,6 +1393,27 @@ export function WorkspaceTimelineDock({
                     style={{ left: `${ratio * 100}%` }}
                   />
                 ))}
+              </div>
+
+              <div
+                className="pointer-events-none absolute bottom-0 top-0 z-[11] w-px max-sm:-translate-x-1/2 sm:translate-x-0 bg-violet-400"
+                style={{ left: `${playheadPosition * 100}%` }}
+              >
+                <div className="absolute -left-2 top-0 h-3 w-4 rounded-sm bg-violet-400 shadow-sm ring-1 ring-violet-200/40 max-sm:h-3.5 max-sm:w-[18px] sm:-left-1.5 sm:h-2.5 sm:w-3.5" />
+              </div>
+
+              {/* Tall touch strip only on small screens; pointer capture keeps scrubbing smooth past this box */}
+              <div
+                className="absolute top-0 z-[15] hidden h-36 w-11 max-sm:block max-sm:touch-none"
+                style={{
+                  left: `${playheadPosition * 100}%`,
+                  transform: 'translateX(-50%)',
+                }}
+                onPointerDown={onScrubPointerDown}
+                onPointerMove={onScrubPointerMove}
+                onPointerUp={onScrubPointerUpOrCancel}
+                onPointerCancel={onScrubPointerUpOrCancel}
+              />
               </div>
             </div>
           </div>

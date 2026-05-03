@@ -36,13 +36,6 @@ const ASPECT_LABEL_KEY: Record<CanvasGateAspectId, 'ratio16_9' | 'ratio9_16' | '
   '4:3': 'ratio4_3',
 };
 
-function aspectToRatioKey(id: CanvasGateAspectId): 'ratio16_9' | 'ratio9_16' | 'ratio1_1' | 'ratio4_3' {
-  if (id === '16:9') return 'ratio16_9';
-  if (id === '9:16') return 'ratio9_16';
-  if (id === '1:1') return 'ratio1_1';
-  return 'ratio4_3';
-}
-
 function MiniFramePreview({ aspect }: { aspect: CanvasGateAspectId }) {
   const inner =
     aspect === '9:16' ? (
@@ -78,8 +71,6 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
   const isLandscapeFamily = pending === '16:9' || pending === '4:3';
 
   const previewFrameStyle = useMemo(() => {
-    // Portrait aspects need a taller max than landscape so the left preview reads as a real phone frame,
-    // not a tiny chip in a wide column (36dvh was too small on desktop).
     const maxHeight =
       pending === '9:16'
         ? 'clamp(220px, min(58dvh, 76vh), min(78dvh, 640px))'
@@ -91,7 +82,6 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
 
   return (
     <div className="relative flex h-full min-h-0 w-full flex-1 flex-col overflow-y-auto overflow-x-hidden overscroll-y-contain bg-[#050508]">
-      {/* Ambient */}
       <div
         className="pointer-events-none absolute inset-0 opacity-90"
         aria-hidden
@@ -103,7 +93,6 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
 
       <div className="relative z-10 flex min-h-min w-full flex-col items-center justify-start px-4 py-5 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-8 sm:py-8 lg:min-h-0 lg:flex-1 lg:justify-center lg:py-10">
         <div className="grid w-full max-w-5xl gap-6 sm:gap-8 lg:grid-cols-[1fr_minmax(0,26rem)] lg:items-center lg:gap-14">
-          {/* Live canvas preview */}
           <div
             className={`flex min-h-0 items-center justify-center py-1 sm:min-h-[160px] lg:min-h-[320px] ${
               pending === '9:16' ? 'lg:min-h-[min(72dvh,720px)]' : pending === '1:1' ? 'lg:min-h-[420px]' : ''
@@ -120,9 +109,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
               >
                 <div className="absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.04)_0%,transparent_45%)]" />
                 <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 p-6 text-center">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">
-                    {t('previewKicker')}
-                  </p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-zinc-500">{t('previewKicker')}</p>
                   <p className="text-2xl font-semibold tracking-tight text-white tabular-nums">{pending}</p>
                   <p className="max-w-[14rem] text-xs leading-relaxed text-zinc-500">{t('previewHint')}</p>
                 </div>
@@ -130,7 +117,6 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
             </div>
           </div>
 
-          {/* Control panel */}
           <div className="flex flex-col justify-center">
             <div className="rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-5 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.75)] backdrop-blur-xl sm:p-8">
               <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1 text-[11px] font-medium text-violet-200/95">
@@ -184,7 +170,7 @@ export function WorkspaceCanvasSizeGate({ initialEasyAspect, onContinue }: Works
                       key={id}
                       type="button"
                       onClick={() => setPending(id)}
-                      className={`group rounded-xl border p-3 text-left transition-all sm:p-4 ${
+                      className={`group rounded-xl border p-3 text-left transition sm:p-4 ${
                         active
                           ? 'border-violet-400/50 bg-violet-500/[0.12] shadow-[inset_0_1px_0_rgba(255,255,255,0.06)] ring-1 ring-violet-400/30'
                           : 'border-white/[0.06] bg-white/[0.02] hover:border-white/12 hover:bg-white/[0.04]'

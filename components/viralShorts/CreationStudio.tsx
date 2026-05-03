@@ -1759,12 +1759,15 @@ export default function CreationStudio({
                 output && typeof output.result === 'object' && output.result != null
                   ? (output.result as Record<string, unknown>)
                   : undefined;
+              const pick = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
               const downloadUrl =
-                (typeof resultNode?.readUrl === 'string' && resultNode.readUrl) ||
-                (typeof resultNode?.downloadUrl === 'string' && resultNode.downloadUrl) ||
-                res.downloadUrl ||
+                pick(resultNode?.readUrl) ||
+                pick(resultNode?.downloadUrl) ||
+                pick(resultNode?.storageUrl) ||
+                (output ? pick(output.readUrl) || pick(output.downloadUrl) || pick(output.storageUrl) : '') ||
+                pick(res.downloadUrl) ||
                 '';
-              const s3Key = (typeof resultNode?.s3Key === 'string' && resultNode.s3Key) || res.s3Key || '';
+              const s3Key = pick(resultNode?.s3Key) || pick(res.s3Key) || '';
               if (!downloadUrl) {
                 reject(new Error('Export completed but missing download URL'));
                 return;

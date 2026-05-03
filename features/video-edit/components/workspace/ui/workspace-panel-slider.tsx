@@ -22,7 +22,7 @@ export function WorkspacePanelSlider({
       <input
         id={id}
         type="range"
-        className={`h-1.5 w-full cursor-pointer appearance-none rounded-full bg-white/10 accent-violet-400 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-violet-300 [&::-webkit-slider-thumb]:bg-zinc-900 ${className}`}
+        className={`h-1.5 w-full cursor-pointer appearance-none rounded-full bg-zinc-200 accent-violet-600 dark:bg-white/10 dark:accent-violet-400 [&::-webkit-slider-thumb]:h-3.5 [&::-webkit-slider-thumb]:w-3.5 [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:border-2 [&::-webkit-slider-thumb]:border-violet-400 [&::-webkit-slider-thumb]:bg-white dark:[&::-webkit-slider-thumb]:border-violet-300 dark:[&::-webkit-slider-thumb]:bg-zinc-900 ${className}`}
         {...rest}
       />
     </div>

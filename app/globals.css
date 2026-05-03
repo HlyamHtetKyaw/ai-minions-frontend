@@ -584,6 +584,15 @@ body {
 .light .transcribe-shell,
 .light .content-creator-shell,
 .light .voice-over-shell,
+/* Video workspace (full-screen editor): sensible native control rendering in each theme */
+.light .video-workspace-root select {
+  color-scheme: light;
+}
+
+.dark .video-workspace-root select {
+  color-scheme: dark;
+}
+
 .light .video-edit-shell {
   background: rgba(248, 246, 255, 0.94);
   box-shadow: 0 20px 44px rgba(77, 55, 170, 0.12);

@@ -141,7 +141,7 @@ export function WorkspaceVideoWaveform({ className }: WorkspaceVideoWaveformProp
   return (
     <div
       ref={containerRef}
-      className={`timeline-waveform-host min-h-[40px] w-full min-w-[40px] bg-[#1e1033] ${className ?? ''}`}
+      className={`timeline-waveform-host min-h-[40px] w-full min-w-[40px] bg-violet-100 dark:bg-[#1e1033] ${className ?? ''}`}
       aria-hidden
     />
   );

@@ -19,7 +19,7 @@ export function WorkspacePanelNumberField({
       <input
         id={id}
         type="number"
-        className={`w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 font-mono text-xs text-foreground outline-none transition-colors focus:border-violet-400/40 focus:ring-1 focus:ring-violet-400/25 ${className}`}
+        className={`w-full rounded-md border border-zinc-300 bg-white px-2 py-1.5 font-mono text-xs text-foreground outline-none transition-colors focus:border-violet-500/50 focus:ring-1 focus:ring-violet-400/25 dark:border-white/10 dark:bg-black/40 ${className}`}
         {...rest}
       />
     </div>
