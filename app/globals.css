@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f4f3ff;
+  --background: #fcf8f8;
   --foreground: #171239;
   --card: #f8f7ff;
   --elevated: #ffffff;
@@ -29,6 +29,8 @@
   --scrollbar-track: #ebe8ff;
   --scrollbar-thumb: #8f81ff;
   --scrollbar-thumb-hover: #6f5fff;
+  /* Landing FAQ <details open>: tied to theme class, not `prefers-color-scheme` */
+  --landing-faq-open-bg: #f1efff;
 }
 
 .dark {
@@ -58,6 +60,26 @@
   --scrollbar-track: rgba(150, 127, 255, 0.12);
   --scrollbar-thumb: rgba(159, 134, 255, 0.5);
   --scrollbar-thumb-hover: rgba(185, 167, 255, 0.78);
+  --landing-faq-open-bg: #131b2e;
+
+  /* Dark tool surfaces — canonical tokens (reference via var(); header/footer keep semantic vars above) */
+  --color-bg-page: #12101e;
+  --color-bg-panel: #1e1b30;
+  --color-bg-card: #2a2740;
+  --color-bg-hover: #332f50;
+  --color-border-subtle: rgba(255, 255, 255, 0.07);
+  --color-border-medium: rgba(255, 255, 255, 0.13);
+  --color-border-strong: rgba(255, 255, 255, 0.22);
+  --color-text-primary: #f0effe;
+  --color-text-secondary: #a89ec9;
+  --color-text-tertiary: #6b6290;
+  --color-brand-primary: #7b5dd6;
+  --color-brand-hover: #6a4dc4;
+  --color-brand-tint: #2a2060;
+  --color-accent-blue: #4a5fd5;
+  --color-success: #16a05e;
+  --color-error: #dc2626;
+  --color-warning: #d97706;
 }
 
 .dark select {
@@ -72,6 +94,321 @@
 .dark select optgroup {
   background-color: #0f172a;
   color: #f8fafc;
+}
+
+/*
+ * Authenticated tool routes (.tool-page-root): surface hierarchy without changing site header/footer tokens.
+ */
+.dark main:has(.tool-page-root) {
+  background-color: var(--color-bg-page);
+}
+
+.dark .tool-page-root {
+  --background: var(--color-bg-page);
+  --foreground: var(--color-text-primary);
+  --muted: var(--color-text-secondary);
+  --hint: var(--color-text-secondary);
+  --elevated: var(--color-bg-panel);
+  --card: var(--color-bg-card);
+  --subtle: var(--color-bg-card);
+  --surface: var(--color-bg-hover);
+  --glass: var(--color-bg-panel);
+  --glass-border: var(--color-border-subtle);
+  --card-border: var(--color-border-medium);
+  --border-emphasis: var(--color-border-strong);
+  --primary: var(--color-brand-primary);
+  --primary-fg: var(--color-text-primary);
+  --primary-hover: var(--color-brand-hover);
+  --accent-gold: var(--color-brand-primary);
+  --accent-purple: var(--color-accent-blue);
+  --accent-gold-muted: rgba(123, 93, 214, 0.28);
+  --status-available: var(--color-success);
+}
+
+.dark .tool-page-root .tool-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-tertiary);
+}
+
+.dark .tool-page-root .text-muted-foreground {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root ::placeholder {
+  color: var(--color-text-secondary);
+  opacity: 1;
+}
+
+.dark .tool-page-root .transcribe-shell,
+.dark .tool-page-root .content-creator-shell,
+.dark .tool-page-root .voice-over-shell,
+.dark .tool-page-root .video-edit-shell {
+  background: var(--color-bg-panel);
+  border-color: var(--color-border-subtle);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.35);
+}
+
+.dark .tool-page-root .video-edit-studio-kicker {
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-tertiary);
+}
+
+.dark .tool-page-root .transcribe-dropzone,
+.dark .tool-page-root .video-edit-dropzone {
+  border-style: dashed;
+  border-width: 2px;
+  border-color: var(--color-border-strong);
+  background-color: var(--color-bg-card);
+}
+
+.dark .tool-page-root .transcribe-dropzone:hover,
+.dark .tool-page-root .transcribe-dropzone:focus-visible,
+.dark .tool-page-root .video-edit-dropzone:hover,
+.dark .tool-page-root .video-edit-dropzone:focus-visible {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-bg-hover);
+}
+
+.dark .tool-page-root .transcribe-dropzone-active,
+.dark .tool-page-root .video-edit-dropzone-active {
+  border-color: var(--color-brand-primary) !important;
+  background: rgba(123, 93, 214, 0.12) !important;
+}
+
+.dark .tool-page-root .transcribe-dropzone svg.text-muted,
+.dark .tool-page-root .video-edit-dropzone svg.text-muted {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root .transcribe-dropzone .text-foreground,
+.dark .tool-page-root .video-edit-dropzone .text-foreground {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root .transcribe-dropzone .text-xs.text-muted {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root .tool-default-dropzone {
+  border-style: dashed;
+  border-width: 2px;
+  border-color: var(--color-border-strong);
+  background-color: var(--color-bg-card);
+}
+
+.dark .tool-page-root .tool-default-dropzone svg.text-muted {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root .tool-default-dropzone .text-foreground {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root .tool-default-dropzone .text-muted {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root .btn-transcribe,
+.dark .tool-page-root .btn-content-generate,
+.dark .tool-page-root .btn-voice-generate {
+  background: var(--color-brand-primary);
+  color: var(--color-text-primary);
+  box-shadow: 0 6px 22px rgba(123, 93, 214, 0.35);
+}
+
+.dark .tool-page-root .btn-transcribe:hover:not(:disabled),
+.dark .tool-page-root .btn-content-generate:hover:not(:disabled),
+.dark .tool-page-root .btn-voice-generate:hover:not(:disabled) {
+  background: var(--color-brand-hover);
+  filter: none;
+  transform: translateY(-1px);
+}
+
+.dark .tool-page-root .transcribe-result-panel,
+.dark .tool-page-root .content-creator-result-panel {
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-card);
+}
+
+.dark .tool-page-root .video-edit-studio-section,
+.dark .tool-page-root .video-edit-tool-panel {
+  border-color: var(--color-border-subtle);
+  background-color: var(--color-bg-panel);
+}
+
+.dark .tool-page-root button.video-edit-tool-card {
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.dark .tool-page-root button.video-edit-tool-card:hover {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-bg-hover);
+}
+
+.dark .tool-page-root button.video-edit-tool-card-active {
+  border-color: var(--color-brand-primary) !important;
+  background: var(--color-brand-tint) !important;
+  box-shadow: 0 0 0 1px rgba(123, 93, 214, 0.35), 0 6px 24px rgba(123, 93, 214, 0.22);
+}
+
+.dark .tool-page-root button.video-edit-tool-card svg {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root button.video-edit-tool-card-active svg {
+  color: var(--color-accent-blue);
+}
+
+.dark .tool-page-root button.video-edit-speed-pill {
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-card);
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root button.video-edit-speed-pill:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text-primary);
+}
+
+.dark .tool-page-root button.video-edit-speed-pill-active {
+  border-color: var(--color-brand-primary) !important;
+  background: var(--color-brand-tint) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.dark .tool-page-root button.video-edit-filter-chip {
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.dark .tool-page-root button.video-edit-filter-chip-active {
+  border-color: var(--color-brand-primary) !important;
+  box-shadow: 0 0 0 1px rgba(123, 93, 214, 0.25), 0 4px 14px rgba(123, 93, 214, 0.15);
+}
+
+.dark .tool-page-root button.video-edit-export-card {
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-card);
+}
+
+.dark .tool-page-root button.video-edit-export-card-active {
+  border-color: var(--color-brand-primary) !important;
+  background: var(--color-brand-tint) !important;
+  box-shadow: 0 0 0 1px rgba(123, 93, 214, 0.28), 0 6px 20px rgba(123, 93, 214, 0.2);
+}
+
+.dark .tool-page-root .video-edit-export-card-title {
+  color: var(--color-text-primary);
+}
+
+.dark .tool-page-root .video-edit-export-card-desc {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root .textarea-content-creator {
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.dark .tool-page-root .textarea-content-creator:focus {
+  outline: none;
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 3px rgba(123, 93, 214, 0.25);
+}
+
+.dark .tool-page-root textarea:focus {
+  outline: none;
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 3px rgba(123, 93, 214, 0.25);
+}
+
+.dark .tool-page-root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="hidden"]):focus {
+  outline: none;
+  border-color: var(--color-border-strong);
+  box-shadow: 0 0 0 3px rgba(123, 93, 214, 0.25);
+}
+
+.dark .tool-page-root .voice-script-panel {
+  border-color: var(--color-border-medium);
+  background-color: var(--color-bg-card);
+}
+
+.dark .tool-page-root select option,
+.dark .tool-page-root select optgroup {
+  background-color: var(--color-bg-card);
+  color: var(--color-text-primary);
+}
+
+.dark .tool-page-root .viral-modal-panel {
+  background-color: var(--color-bg-panel);
+  color: var(--color-text-primary);
+  border-color: var(--color-border-medium);
+}
+
+.dark .tool-page-root .viral-modal-divider {
+  border-color: var(--color-border-medium);
+}
+
+.dark .tool-page-root .viral-shorts-upload-panel {
+  background-color: var(--color-bg-panel);
+  border-color: var(--color-border-subtle);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.42);
+}
+
+.dark .tool-page-root .viral-shorts-upload-panel .viral-shorts-dropzone {
+  border-color: var(--color-border-strong);
+  border-style: dashed;
+  background-color: var(--color-bg-card);
+}
+
+.dark .tool-page-root .viral-shorts-upload-panel .viral-shorts-dropzone:hover,
+.dark .tool-page-root .viral-shorts-upload-panel .viral-shorts-dropzone:focus-visible {
+  border-color: var(--color-border-strong);
+  background-color: var(--color-bg-hover);
+}
+
+.dark .tool-page-root .viral-shorts-upload-panel .viral-shorts-dropzone .text-center .text-foreground {
+  color: var(--color-text-secondary);
+}
+
+.dark .tool-page-root button.btn-viral-shorts,
+.dark .tool-page-root button.btn-viral-shorts-analyze {
+  background: var(--color-brand-primary);
+  color: var(--color-text-primary);
+  box-shadow: 0 8px 28px rgba(123, 93, 214, 0.35);
+}
+
+.dark .tool-page-root button.btn-viral-shorts:hover:not(:disabled),
+.dark .tool-page-root button.btn-viral-shorts-analyze:hover:not(:disabled) {
+  filter: none;
+  background: var(--color-brand-hover);
+}
+
+.dark .tool-page-root .scrollbar-themed {
+  scrollbar-color: rgba(123, 93, 214, 0.45) var(--color-bg-card);
+}
+
+.dark .tool-page-root .scrollbar-themed::-webkit-scrollbar-track {
+  background: var(--color-bg-card);
+}
+
+.dark .tool-page-root .scrollbar-themed::-webkit-scrollbar-thumb {
+  background: rgba(123, 93, 214, 0.45);
+  border-color: var(--color-bg-card);
+}
+
+.dark .tool-page-root .scrollbar-themed::-webkit-scrollbar-thumb:hover {
+  background: rgba(123, 93, 214, 0.65);
 }
 
 @theme inline {
@@ -157,6 +494,7 @@ body {
 
 .app-gradient {
   min-height: 100vh;
+  background-color: var(--background);
 }
 
 .dark .app-gradient {

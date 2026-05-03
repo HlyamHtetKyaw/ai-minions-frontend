@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useTranslations } from 'next-intl';
 import { AudioProperties } from '@/components/editor/panels/AudioProperties';
 import { BlurProperties } from '@/components/editor/panels/BlurProperties';
@@ -34,6 +42,7 @@ import {
 import { useKeyboardShortcuts } from '@/hooks/useKeyboardShortcuts';
 import { formatWorkspaceTime } from '@/features/video-edit/lib/format-workspace-time';
 import { WorkspacePreviewCanvas, WORKSPACE_VIDEO_FILE_INPUT_ID } from './workspace-preview-canvas';
+import type { WorkspacePreviewFrameFill } from './workspace-preview-frame-style';
 import {
   WorkspaceCanvasSizeGate,
   canvasAspectIdToEasyRatio,
@@ -49,19 +58,30 @@ const TIMELINE_DOCK_HEIGHT_STORAGE_KEY = 'ai-minions.video-workspace.timelineDoc
 const TIMELINE_DOCK_HEIGHT_DEFAULT = 268;
 const TIMELINE_DOCK_MIN_PX = 140;
 const PREVIEW_PANEL_MIN_HEIGHT_PX = 260;
+const PREVIEW_PANEL_MIN_HEIGHT_MOBILE_PX = 180;
+/** Must match center column `gap-8` (2rem); two gaps between preview, separator, and timeline. */
+const WORKSPACE_CENTER_COLUMN_GAP_PX = 32;
 const EXPORT_AUDIO_ESTIMATE_BITRATE_BPS = 160_000;
 const EXPORT_VIDEO_LENGTH_POINT_PER_MIN = 1;
 
 function readStoredTimelineDockHeightPx(): number {
   if (typeof window === 'undefined') return TIMELINE_DOCK_HEIGHT_DEFAULT;
+  const storedMax = Math.min(900, Math.max(240, Math.floor(window.innerHeight * 0.62)));
   try {
     const raw = localStorage.getItem(TIMELINE_DOCK_HEIGHT_STORAGE_KEY);
     const n = raw != null ? Number.parseInt(raw, 10) : NaN;
-    if (Number.isFinite(n) && n >= TIMELINE_DOCK_MIN_PX && n <= 900) return n;
+    if (Number.isFinite(n) && n >= TIMELINE_DOCK_MIN_PX && n <= storedMax) return n;
   } catch {
     /* ignore */
   }
   return TIMELINE_DOCK_HEIGHT_DEFAULT;
+}
+
+function getPreviewPanelMinHeightPx(): number {
+  if (typeof window === 'undefined') return PREVIEW_PANEL_MIN_HEIGHT_PX;
+  return window.matchMedia('(max-width: 639px)').matches
+    ? PREVIEW_PANEL_MIN_HEIGHT_MOBILE_PX
+    : PREVIEW_PANEL_MIN_HEIGHT_PX;
 }
 
 type WorkspaceHistorySnapshot = {
@@ -397,9 +417,6 @@ export function VideoWorkspaceShell() {
   const [canRedo, setCanRedo] = useState(false);
   const [workspaceSyncStatus, setWorkspaceSyncStatus] = useState('Connecting workspace stream...');
   const [workspaceUiPhase, setWorkspaceUiPhase] = useState<'loading' | 'canvas-only' | 'editor'>('loading');
-  const [workspaceHydratedWithVideo, setWorkspaceHydratedWithVideo] = useState(false);
-  const [workspaceCachedVideoReady, setWorkspaceCachedVideoReady] = useState(false);
-  const [workspaceCachedVideoLoadPercent, setWorkspaceCachedVideoLoadPercent] = useState(0);
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetBusy, setResetBusy] = useState(false);
   const [exportOverlayPhase, setExportOverlayPhase] = useState<'idle' | 'exporting' | 'downloading'>('idle');
@@ -432,6 +449,9 @@ export function VideoWorkspaceShell() {
   const lastSyncedWorkspaceJsonRef = useRef<string>('');
   const workspaceSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const centerColumnRef = useRef<HTMLDivElement>(null);
+  const previewPaneRef = useRef<HTMLDivElement>(null);
+  const timelineSeparatorRef = useRef<HTMLDivElement>(null);
+  const [previewPaneSize, setPreviewPaneSize] = useState<WorkspacePreviewFrameFill>({ widthPx: 0, heightPx: 0 });
   const [timelineDockHeightPx, setTimelineDockHeightPx] = useState(readStoredTimelineDockHeightPx);
   const timelineDockHeightPxRef = useRef(timelineDockHeightPx);
   timelineDockHeightPxRef.current = timelineDockHeightPx;
@@ -439,54 +459,68 @@ export function VideoWorkspaceShell() {
     exportOverlayPhaseRef.current = exportOverlayPhase;
   }, [exportOverlayPhase]);
 
-  const onTimelineDockResizeStart = useCallback((e: ReactMouseEvent) => {
-    e.preventDefault();
-    const startY = e.clientY;
-    const startH = timelineDockHeightPxRef.current;
-    const getBounds = () => {
-      const col = centerColumnRef.current;
-      if (!col) {
-        return { min: TIMELINE_DOCK_MIN_PX, max: 560 };
-      }
-      const ch = col.clientHeight;
-      const byColumnRatio = Math.floor(ch * 0.82);
-      const keepPreviewVisible = Math.floor(ch - PREVIEW_PANEL_MIN_HEIGHT_PX - 8);
-      const max = Math.min(byColumnRatio, keepPreviewVisible);
-      const min = TIMELINE_DOCK_MIN_PX;
-      return { min, max: Math.max(min + 40, max) };
-    };
-    const onMove = (ev: MouseEvent) => {
-      const { min, max } = getBounds();
-      const delta = startY - ev.clientY;
-      const next = Math.min(max, Math.max(min, startH + delta));
-      timelineDockHeightPxRef.current = next;
-      setTimelineDockHeightPx(next);
-    };
-    const onUp = () => {
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', onUp);
-      try {
-        localStorage.setItem(TIMELINE_DOCK_HEIGHT_STORAGE_KEY, String(timelineDockHeightPxRef.current));
-      } catch {
-        /* ignore quota / private mode */
-      }
-    };
-    document.addEventListener('mousemove', onMove);
-    document.addEventListener('mouseup', onUp);
+  const readTimelineResizeBounds = useCallback(() => {
+    const col = centerColumnRef.current;
+    const sepH = timelineSeparatorRef.current?.offsetHeight ?? 12;
+    const gapTotal = WORKSPACE_CENTER_COLUMN_GAP_PX * 2;
+    const previewMin = getPreviewPanelMinHeightPx();
+    if (!col) {
+      return { min: TIMELINE_DOCK_MIN_PX, max: 560 };
+    }
+    const ch = col.clientHeight;
+    const rawMax = Math.floor(ch - sepH - gapTotal - previewMin);
+    const min = TIMELINE_DOCK_MIN_PX;
+    return { min, max: Math.max(min, rawMax) };
   }, []);
+
+  const onTimelineDockResizePointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (e.pointerType === 'mouse' && e.button !== 0) return;
+      e.preventDefault();
+      const target = e.currentTarget;
+      target.setPointerCapture(e.pointerId);
+      const startY = e.clientY;
+      const startH = timelineDockHeightPxRef.current;
+      const pointerId = e.pointerId;
+
+      const onMove = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        const { min, max } = readTimelineResizeBounds();
+        const delta = startY - ev.clientY;
+        const next = Math.min(max, Math.max(min, startH + delta));
+        timelineDockHeightPxRef.current = next;
+        setTimelineDockHeightPx(next);
+      };
+
+      const finish = (ev: PointerEvent) => {
+        if (ev.pointerId !== pointerId) return;
+        window.removeEventListener('pointermove', onMove);
+        window.removeEventListener('pointerup', finish);
+        window.removeEventListener('pointercancel', finish);
+        try {
+          target.releasePointerCapture(pointerId);
+        } catch {
+          /* ignore */
+        }
+        try {
+          localStorage.setItem(TIMELINE_DOCK_HEIGHT_STORAGE_KEY, String(timelineDockHeightPxRef.current));
+        } catch {
+          /* ignore quota / private mode */
+        }
+      };
+
+      window.addEventListener('pointermove', onMove);
+      window.addEventListener('pointerup', finish);
+      window.addEventListener('pointercancel', finish);
+    },
+    [readTimelineResizeBounds],
+  );
 
   useEffect(() => {
     const clampToColumn = () => {
-      const col = centerColumnRef.current;
-      if (!col) return;
-      const byColumnRatio = Math.floor(col.clientHeight * 0.82);
-      const keepPreviewVisible = Math.floor(col.clientHeight - PREVIEW_PANEL_MIN_HEIGHT_PX - 8);
-      const max = Math.max(
-        TIMELINE_DOCK_MIN_PX + 40,
-        Math.min(byColumnRatio, keepPreviewVisible),
-      );
+      const { min, max } = readTimelineResizeBounds();
       setTimelineDockHeightPx((h) => {
-        const next = Math.min(Math.max(TIMELINE_DOCK_MIN_PX, h), max);
+        const next = Math.min(Math.max(min, h), max);
         if (next !== h) {
           try {
             localStorage.setItem(TIMELINE_DOCK_HEIGHT_STORAGE_KEY, String(next));
@@ -498,12 +532,36 @@ export function VideoWorkspaceShell() {
       });
     };
     window.addEventListener('resize', clampToColumn);
+    window.addEventListener('orientationchange', clampToColumn);
+    const vv = typeof window !== 'undefined' ? window.visualViewport : null;
+    vv?.addEventListener('resize', clampToColumn);
+    vv?.addEventListener('scroll', clampToColumn);
     const raf = requestAnimationFrame(() => clampToColumn());
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener('resize', clampToColumn);
+      window.removeEventListener('orientationchange', clampToColumn);
+      vv?.removeEventListener('resize', clampToColumn);
+      vv?.removeEventListener('scroll', clampToColumn);
     };
-  }, []);
+  }, [readTimelineResizeBounds]);
+
+  useLayoutEffect(() => {
+    if (previewFullscreen) return;
+    const el = previewPaneRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    const ro = new ResizeObserver((entries) => {
+      const cr = entries[0]?.contentRect;
+      if (!cr) return;
+      const widthPx = Math.max(0, Math.floor(cr.width));
+      const heightPx = Math.max(0, Math.floor(cr.height));
+      setPreviewPaneSize((prev) =>
+        prev.widthPx === widthPx && prev.heightPx === heightPx ? prev : { widthPx, heightPx },
+      );
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [previewFullscreen]);
 
   useEffect(() => {
     const initial = createWorkspaceHistorySnapshot(useEditorStore.getState());
@@ -597,7 +655,6 @@ export function VideoWorkspaceShell() {
         if (cancelled) return;
         setWorkspaceSyncStatus('Workspace loaded');
         const hasPersistedVideo = workspaceJsonHasPersistedVideo(rawWorkspaceJson);
-        setWorkspaceHydratedWithVideo(hasPersistedVideo);
         setWorkspaceUiPhase(hasPersistedVideo ? 'editor' : 'canvas-only');
       } catch (error) {
         if (cancelled) return;
@@ -611,67 +668,6 @@ export function VideoWorkspaceShell() {
       cancelled = true;
     };
   }, [applyHistorySnapshot]);
-
-  useEffect(() => {
-    const shouldGateByMediaReadiness =
-      workspaceHydratedWithVideo && workspaceUiPhase === 'editor' && videoSrc != null;
-    if (!shouldGateByMediaReadiness) {
-      setWorkspaceCachedVideoReady(true);
-      setWorkspaceCachedVideoLoadPercent(100);
-      return;
-    }
-    const v = videoElement;
-    if (!v) {
-      setWorkspaceCachedVideoReady(false);
-      setWorkspaceCachedVideoLoadPercent(8);
-      return;
-    }
-    const estimateLoadPercent = () => {
-      // Prefer buffered progress; fall back to readyState tiers when buffering info is unavailable.
-      const durationSec = Number.isFinite(v.duration) && v.duration > 0 ? v.duration : 0;
-      const bufferedEndSec =
-        durationSec > 0 && v.buffered.length > 0 ? Math.max(0, v.buffered.end(v.buffered.length - 1)) : 0;
-      const bufferedRatio =
-        durationSec > 0 && bufferedEndSec > 0 ? Math.max(0, Math.min(1, bufferedEndSec / durationSec)) : 0;
-      if (bufferedRatio > 0) {
-        return Math.max(8, Math.min(100, Math.round(bufferedRatio * 100)));
-      }
-      const readyStateRatioByTier = [0.08, 0.18, 0.42, 0.72, 1];
-      const tier = Math.max(0, Math.min(4, v.readyState));
-      return Math.max(8, Math.min(100, Math.round(readyStateRatioByTier[tier]! * 100)));
-    };
-    const evaluateReady = () => {
-      const hasMeta =
-        v.readyState >= 1 &&
-        Number.isFinite(v.duration) &&
-        v.duration > 0 &&
-        v.error == null;
-      setWorkspaceCachedVideoReady(hasMeta);
-      setWorkspaceCachedVideoLoadPercent((prev) => {
-        const next = hasMeta ? 100 : estimateLoadPercent();
-        return next > prev ? next : prev;
-      });
-    };
-    evaluateReady();
-    v.addEventListener('loadedmetadata', evaluateReady);
-    v.addEventListener('loadeddata', evaluateReady);
-    v.addEventListener('canplay', evaluateReady);
-    v.addEventListener('progress', evaluateReady);
-    v.addEventListener('canplaythrough', evaluateReady);
-    v.addEventListener('durationchange', evaluateReady);
-    v.addEventListener('emptied', evaluateReady);
-    v.addEventListener('error', evaluateReady);
-    return () => {
-      v.removeEventListener('loadedmetadata', evaluateReady);
-      v.removeEventListener('loadeddata', evaluateReady);
-      v.removeEventListener('canplay', evaluateReady);
-      v.removeEventListener('progress', evaluateReady);
-      v.removeEventListener('canplaythrough', evaluateReady);
-      v.removeEventListener('durationchange', evaluateReady);
-      v.removeEventListener('emptied', evaluateReady);
-      v.removeEventListener('error', evaluateReady);
-    };
-  }, [videoElement, videoSrc, workspaceHydratedWithVideo, workspaceUiPhase]);
 
   useEffect(() => {
     const flushPending = async () => {
@@ -1404,12 +1400,6 @@ export function VideoWorkspaceShell() {
     }
   }, [estimateAudioMbForExport, estimateEffectiveVideoLengthSec]);
 
-  const controlsDisabledWhileCacheVideoLoading =
-    workspaceHydratedWithVideo &&
-    workspaceUiPhase === 'editor' &&
-    videoSrc != null &&
-    !workspaceCachedVideoReady;
-
   const performResetWorkspace = useCallback(async () => {
     setResetBusy(true);
     try {
@@ -1480,10 +1470,7 @@ export function VideoWorkspaceShell() {
   }
 
   return (
-    <div
-      className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-foreground"
-      aria-busy={controlsDisabledWhileCacheVideoLoading}
-    >
+    <div className="relative flex h-full min-h-0 flex-1 flex-col overflow-hidden bg-black text-foreground">
       <WorkspaceTopBar
         exportLabel={t('exportVideo')}
         exportDisabled={resolveExportVideoUrl(videoSrc) == null}
@@ -1502,17 +1489,11 @@ export function VideoWorkspaceShell() {
         canUndo={canUndo}
         canRedo={canRedo}
         syncStatusLabel={workspaceSyncStatus}
-        controlsDisabled={controlsDisabledWhileCacheVideoLoading}
       />
 
       <div className="flex min-h-0 flex-1 flex-col xl:flex-row">
-        <WorkspaceToolRail
-          tools={tools}
-          activeTool={activeTool}
-          onToolChange={handleToolChange}
-          disabled={controlsDisabledWhileCacheVideoLoading}
-        />
-        <div ref={centerColumnRef} className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <WorkspaceToolRail tools={tools} activeTool={activeTool} onToolChange={handleToolChange} />
+        <div ref={centerColumnRef} className="flex min-h-0 min-w-0 flex-1 flex-col gap-8 overflow-hidden">
           <input
             ref={audioInputRef}
             type="file"
@@ -1522,7 +1503,11 @@ export function VideoWorkspaceShell() {
             onChange={onAudioFile}
           />
           <div
-            className={`${previewFullscreen ? 'min-h-0 flex-1' : 'h-[min(56dvh,560px)] shrink-0'} overflow-hidden`}
+            ref={previewPaneRef}
+            className={`flex min-h-0 flex-1 flex-col ${
+              previewFullscreen ? 'overflow-hidden' : 'overflow-x-hidden overflow-y-auto overscroll-y-contain'
+            } ${previewFullscreen ? '' : 'box-border px-4 pb-5 pt-4 sm:px-6 sm:pb-7 sm:pt-5'}`}
+            style={previewFullscreen ? undefined : { minHeight: getPreviewPanelMinHeightPx() }}
           >
             <WorkspacePreviewCanvas
               ref={previewFrameRef}
@@ -1530,15 +1515,21 @@ export function VideoWorkspaceShell() {
               aspect={aspect}
               skipInitialCanvasSizeStep
               isFullscreen={previewFullscreen}
+              previewFill={
+                previewFullscreen || previewPaneSize.widthPx < 32 || previewPaneSize.heightPx < 32
+                  ? null
+                  : previewPaneSize
+              }
             />
           </div>
           <div
+            ref={timelineSeparatorRef}
             role="separator"
             aria-orientation="horizontal"
             aria-label={t('timeline.resizeHandleAria')}
             title={t('timeline.resizeHandleTitle')}
-            onMouseDown={onTimelineDockResizeStart}
-            className="group relative z-10 flex h-2 shrink-0 cursor-row-resize items-center justify-center border-y border-transparent bg-transparent hover:border-white/10 hover:bg-white/[0.04]"
+            onPointerDown={onTimelineDockResizePointerDown}
+            className="group relative z-10 flex min-h-8 shrink-0 cursor-row-resize touch-none items-center justify-center border-y border-transparent bg-transparent py-1 hover:border-white/10 hover:bg-white/5 [@media(pointer:coarse)]:min-h-11"
           >
             <span
               className="h-1 w-12 rounded-full bg-white/20 transition-colors group-hover:bg-violet-400/70"
@@ -1706,29 +1697,6 @@ export function VideoWorkspaceShell() {
           )
         ) : null}
       </div>
-
-      {controlsDisabledWhileCacheVideoLoading ? (
-        <div
-          className="absolute inset-0 z-[150] flex items-center justify-center bg-black/45 backdrop-blur-[1px]"
-          role="status"
-          aria-live="polite"
-        >
-          <div className="w-[min(86vw,480px)] rounded-lg border border-white/15 bg-zinc-950/90 px-3 py-3 text-xs text-zinc-200 shadow-xl">
-            <div className="flex items-center justify-between gap-3">
-              <span>Loading workspace video... controls will enable automatically.</span>
-              <span className="tabular-nums text-zinc-300">
-                {Math.max(0, Math.min(100, workspaceCachedVideoLoadPercent))}%
-              </span>
-            </div>
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800">
-              <div
-                className="h-full rounded-full bg-violet-400 transition-[width] duration-300 ease-out"
-                style={{ width: `${Math.max(8, Math.min(100, workspaceCachedVideoLoadPercent))}%` }}
-              />
-            </div>
-          </div>
-        </div>
-      ) : null}
 
       {resetDialogOpen ? (
         <div

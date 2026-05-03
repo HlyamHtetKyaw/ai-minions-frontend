@@ -25,7 +25,7 @@ export default async function LandingFaq() {
           {FAQ_KEYS.map((key) => (
             <details
               key={key}
-              className="group border-b border-card-border px-7 transition-[background-color] duration-300 ease-out open:bg-surface/70 sm:px-12 lg:px-16 dark:open:bg-[#131b2e]"
+              className="group border-b border-card-border px-7 transition-[background-color] duration-300 ease-out open:bg-[color:var(--landing-faq-open-bg)] sm:px-12 lg:px-16"
             >
               <summary className="grid cursor-pointer list-none grid-cols-[2.25rem_1fr_auto] items-center gap-x-4 py-7 marker:hidden outline-none transition-colors duration-300 ease-out focus-visible:ring-2 focus-visible:ring-accent-purple/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background [&::-webkit-details-marker]:hidden">
                 <span

@@ -27,6 +27,7 @@ import {
   subtitlesFromExisting,
   type PointsEstimate as SubtitlesPointsEstimate,
 } from '@/lib/subtitles-api';
+import { STUDIO_PREVIEW_MAX_VIDEO_HEIGHT_PX } from '@/lib/studio-preview-dimensions';
 import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
 import { previewSubtitleFontPxToFfmpegFontPx } from '@/lib/subtitle-export-font-map';
 import {
@@ -63,8 +64,6 @@ function formatVoiceIdDisplay(id: string): string {
 
 const MIN_SYNC_RATE = 0.8;
 const MAX_SYNC_RATE = 1.25;
-/** Max height for the preview video inside the editor row (keeps UI stable on tall viewports). */
-const PREVIEW_MAX_VIDEO_HEIGHT_PX = 420;
 // Testing: allow up to 5x so it's obvious (production should likely be <= 1.4x).
 const MAX_SYNC_RATE_STRONG = 5;
 
@@ -543,7 +542,7 @@ export default function CreationStudio({
   const [voiceMetadataReady, setVoiceMetadataReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const previewSlotRef = useRef<HTMLDivElement | null>(null);
-  const [previewSlotPx, setPreviewSlotPx] = useState({ w: 800, h: PREVIEW_MAX_VIDEO_HEIGHT_PX });
+  const [previewSlotPx, setPreviewSlotPx] = useState({ w: 800, h: STUDIO_PREVIEW_MAX_VIDEO_HEIGHT_PX });
   const [previewIntrinsicPx, setPreviewIntrinsicPx] = useState<{ w: number; h: number } | null>(null);
   const voiceRef = useRef<HTMLAudioElement | null>(null);
   const voiceObjectUrlRef = useRef<string | null>(null);
@@ -742,7 +741,7 @@ export default function CreationStudio({
 
   const previewFramePx = useMemo(() => {
     const maxW = Math.max(1, previewSlotPx.w);
-    const maxH = Math.max(1, Math.min(previewSlotPx.h, PREVIEW_MAX_VIDEO_HEIGHT_PX));
+    const maxH = Math.max(1, Math.min(previewSlotPx.h, STUDIO_PREVIEW_MAX_VIDEO_HEIGHT_PX));
     if (!previewIntrinsicPx || previewIntrinsicPx.w <= 0 || previewIntrinsicPx.h <= 0) {
       return fitVideoDisplayRect(16, 9, maxW, maxH);
     }
