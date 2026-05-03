@@ -23,7 +23,6 @@ const pathnames = {
   '/content-generation': '/content-generation',
   '/voice-over': '/voice-over',
   '/video-edit': '/video-edit',
-  '/video-edit/history': '/video-edit/history',
   '/video-edit/work-space': '/video-edit/work-space',
   '/video-edit/upload': '/video-edit/upload',
   '/editor': '/editor',

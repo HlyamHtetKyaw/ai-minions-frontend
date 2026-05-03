@@ -10,7 +10,7 @@ import {
   saveVideoEditorWorkspaceSnapshot,
   uploadVideoEditorFile,
 } from '@/lib/video-editor-workspace-api';
-import { Link, useRouter } from '@/i18n/navigation';
+import { useRouter } from '@/i18n/navigation';
 import { serializeWorkspaceForPersistence } from '@/features/video-edit/lib/workspace-editor-persistence';
 import { useEditorStore } from '@/store/editorStore';
 import { isHttpWorkspaceReadUrl } from '@/lib/workspace-video-source';
@@ -74,28 +74,24 @@ export default function VideoEditWorkspaceUploadPage() {
   const canContinue = Boolean(file) && !uploading;
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-[#050508] text-foreground">
-      <header className="shrink-0 border-b border-white/[0.06] bg-black/40 px-4 py-3 sm:px-6">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+    <div className="flex h-dvh max-h-dvh min-w-0 flex-col overflow-hidden bg-[#050508] text-foreground">
+      <header className="shrink-0 border-b border-white/[0.06] bg-black/40 px-[max(1rem,env(safe-area-inset-left,0px))] py-3 pr-[max(1rem,env(safe-area-inset-right,0px))] pt-[max(0.75rem,env(safe-area-inset-top,0px))] sm:px-6">
+        <div className="mx-auto max-w-3xl">
           <p className="text-sm font-semibold text-white">{t('title')}</p>
-          <Link
-            href="/video-edit/history"
-            className="text-xs font-medium text-zinc-400 transition hover:text-white"
-          >
-            {t('historyLink')}
-          </Link>
         </div>
       </header>
 
       {phase === 'frame' ? (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <p className="shrink-0 border-b border-white/[0.05] px-4 py-3 text-sm leading-relaxed text-zinc-400 sm:px-6">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          <p className="shrink-0 border-b border-white/[0.05] px-[max(1rem,env(safe-area-inset-left,0px))] py-2.5 pr-[max(1rem,env(safe-area-inset-right,0px))] text-xs leading-relaxed text-zinc-400 text-pretty sm:px-6 sm:py-3 sm:text-sm">
             {t('gateSubtitle')}
           </p>
-          <WorkspaceCanvasSizeGate initialEasyAspect={cropEasyAspect} onContinue={handleGateContinue} />
+          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
+            <WorkspaceCanvasSizeGate initialEasyAspect={cropEasyAspect} onContinue={handleGateContinue} />
+          </div>
         </div>
       ) : (
-        <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-4 py-8 sm:px-6 sm:py-10">
+        <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 py-8 sm:px-6 sm:py-10">
           <p className="text-sm leading-relaxed text-zinc-400">{t('uploadStepSubtitle')}</p>
 
           <div className="mt-6 rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-5 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.75)] sm:p-8">
