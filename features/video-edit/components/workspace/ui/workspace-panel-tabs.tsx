@@ -9,7 +9,7 @@ type WorkspacePanelTabsProps = {
 
 export function WorkspacePanelTabs({ tabs, activeId, onChange, ariaLabel }: WorkspacePanelTabsProps) {
   return (
-    <div role="tablist" aria-label={ariaLabel} className="flex gap-6 border-b border-white/10">
+    <div role="tablist" aria-label={ariaLabel} className="flex gap-6 border-b border-zinc-200 dark:border-white/10">
       {tabs.map((tab) => {
         const active = tab.id === activeId;
         return (

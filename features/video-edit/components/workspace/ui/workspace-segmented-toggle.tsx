@@ -17,7 +17,7 @@ export function WorkspaceSegmentedToggle<T extends string>({
     <div
       role="group"
       aria-label={ariaLabel}
-      className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-white/10 bg-black/40 p-1"
+      className="inline-flex flex-wrap items-center gap-1 rounded-lg border border-zinc-300 bg-zinc-100/90 p-1 dark:border-white/10 dark:bg-black/40"
     >
       {options.map((opt) => {
         const selected = value === opt.id;
@@ -28,8 +28,8 @@ export function WorkspaceSegmentedToggle<T extends string>({
             onClick={() => onChange(opt.id)}
             className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
               selected
-                ? 'bg-white/10 text-foreground ring-1 ring-white/15'
-                : 'text-muted hover:bg-white/5 hover:text-foreground'
+                ? 'bg-white text-foreground shadow-sm ring-1 ring-zinc-300 dark:bg-white/10 dark:ring-white/15'
+                : 'text-muted hover:bg-white/70 hover:text-foreground dark:hover:bg-white/5'
             }`}
           >
             {opt.label}

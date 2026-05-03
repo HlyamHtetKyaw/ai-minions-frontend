@@ -14,7 +14,7 @@ export function WorkspacePanelSelect({ label, id, className = '', children, ...r
       <div className="relative">
         <select
           id={id}
-          className={`w-full appearance-none rounded-lg border border-white/10 bg-black/50 py-2 pl-3 pr-9 text-sm text-foreground outline-none transition-colors focus:border-violet-400/40 focus:ring-1 focus:ring-violet-400/30 ${className}`}
+          className={`w-full appearance-none rounded-lg border border-zinc-300 bg-white py-2 pl-3 pr-9 text-sm text-foreground outline-none transition-colors focus:border-violet-500/45 focus:ring-1 focus:ring-violet-400/30 dark:border-white/10 dark:bg-black/50 ${className}`}
           {...rest}
         >
           {children}

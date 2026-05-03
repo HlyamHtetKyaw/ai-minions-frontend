@@ -25,6 +25,7 @@ const pathnames = {
   '/video-edit': '/video-edit',
   '/video-edit/history': '/video-edit/history',
   '/video-edit/work-space': '/video-edit/work-space',
+  '/video-edit/upload': '/video-edit/upload',
   '/editor': '/editor',
   '/translate': '/translate',
   '/admin': '/admin',

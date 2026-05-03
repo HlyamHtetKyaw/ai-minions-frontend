@@ -572,10 +572,21 @@
       },
       "resetDialog": {
         "title": "Reset workspace?",
-        "description": "This will clear all current edits and send you back to choose canvas size.",
+        "description": "This will clear all current edits and send you back to upload a new video.",
         "cancel": "Cancel",
         "confirm": "Reset",
         "resetting": "Resetting…"
+      },
+      "uploadRoute": {
+        "title": "Video workspace",
+        "historyLink": "Project history",
+        "gateSubtitle": "Choose canvas size first — that frame is what you'll edit and export.",
+        "uploadStepSubtitle": "Upload your video to workspace storage. When the upload succeeds, we open the editor with your cloud URL — MP4, MOV, or WebM.",
+        "dropHeading": "Video file",
+        "instructionPrimary": "Choose or drop a video file",
+        "continue": "Upload and open editor",
+        "uploading": "Uploading…",
+        "uploadingHint": "Sending your file to storage — keep this tab open."
       },
       "canvasGate": {
         "previewKicker": "Canvas preview",

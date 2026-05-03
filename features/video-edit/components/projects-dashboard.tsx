@@ -93,7 +93,7 @@ export function ProjectsDashboard() {
   const workspace = (projectId?: string) =>
     projectId
       ? `/${locale}/video-edit/work-space?project=${encodeURIComponent(projectId)}`
-      : `/${locale}/video-edit/work-space`;
+      : `/${locale}/video-edit/upload`;
 
   const filterOptions = useMemo(
     (): DashboardFilterOption<ProjectFilter>[] => [

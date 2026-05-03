@@ -21,7 +21,7 @@ export default function Header() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  if (pathname === '/video-edit/work-space') {
+  if (pathname === '/video-edit/work-space' || pathname === '/video-edit/upload') {
     return null;
   }
 

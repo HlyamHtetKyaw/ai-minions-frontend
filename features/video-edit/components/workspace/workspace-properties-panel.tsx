@@ -49,13 +49,13 @@ export function WorkspacePropertiesPanel({
   onDelete,
 }: WorkspacePropertiesPanelProps) {
   return (
-    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-l border-white/10 bg-black/70 md:w-72 md:min-w-72 md:max-w-72">
+    <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-l border-zinc-200/90 bg-white/95 md:w-72 md:min-w-72 md:max-w-72 dark:border-white/10 dark:bg-black/70">
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">{titleLabel}</h2>
 
         <div>
           <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">{fontLabel}</p>
-          <div className="rounded-md border border-white/10 bg-white/[0.03] px-3 py-2 text-sm text-foreground">
+          <div className="rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-foreground dark:border-white/10 dark:bg-white/[0.03]">
             Pyidaungsu (default)
           </div>
         </div>
@@ -65,7 +65,7 @@ export function WorkspacePropertiesPanel({
             <button
               key={c}
               type="button"
-              className="h-7 w-7 rounded-md border border-white/10 ring-offset-2 ring-offset-black transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-violet-400/50"
+              className="h-7 w-7 rounded-md border border-zinc-300 ring-offset-2 ring-offset-white transition-transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-violet-400/50 dark:border-white/10 dark:ring-offset-black"
               style={{ backgroundColor: c }}
               aria-label={c}
             />
@@ -139,7 +139,7 @@ export function WorkspacePropertiesPanel({
         <button
           type="button"
           onClick={onDelete}
-          className="mt-auto w-full rounded-lg border border-white/15 bg-white/5 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500/40 hover:bg-red-500/10 hover:text-red-200"
+          className="mt-auto w-full rounded-lg border border-zinc-300 bg-zinc-100/80 py-2.5 text-sm font-medium text-foreground transition-colors hover:border-red-500/45 hover:bg-red-500/10 hover:text-red-700 dark:border-white/15 dark:bg-white/5 dark:hover:text-red-200"
         >
           {deleteLabel}
         </button>

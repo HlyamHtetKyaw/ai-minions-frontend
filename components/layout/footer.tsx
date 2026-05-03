@@ -10,7 +10,7 @@ export default function Footer() {
   const t = useTranslations('header');
   const year = new Date().getFullYear();
 
-  if (pathname === '/video-edit/work-space') {
+  if (pathname === '/video-edit/work-space' || pathname === '/video-edit/upload') {
     return null;
   }
 

@@ -47,7 +47,7 @@ export const WorkspacePreviewCanvas = forwardRef<HTMLDivElement, WorkspacePrevie
         className={`relative flex min-w-0 flex-col ${
           isFullscreen
             ? 'h-full min-h-0 flex-1 overflow-hidden bg-black p-0'
-            : 'flex h-full min-h-0 w-full flex-1 flex-col overflow-x-hidden bg-zinc-950/80'
+            : 'flex h-full min-h-0 w-full flex-1 flex-col overflow-x-hidden bg-zinc-200/70 dark:bg-zinc-950/80'
         }`}
       >
         {/* Artboard: fills preview pane and shrinks when the timeline is tall; video stays letterboxed inside. */}
@@ -59,7 +59,7 @@ export const WorkspacePreviewCanvas = forwardRef<HTMLDivElement, WorkspacePrevie
           aria-label={canvasLabel}
         >
           <div
-            className="relative max-h-full max-w-full min-h-0 min-w-0 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-black ring-1 ring-white/5 transition-[width,height,aspect-ratio] duration-300 ease-out"
+            className="relative max-h-full max-w-full min-h-0 min-w-0 shrink-0 overflow-hidden rounded-lg border border-zinc-400/35 bg-black ring-1 ring-zinc-500/25 transition-[width,height,aspect-ratio] duration-300 ease-out dark:border-white/10 dark:ring-white/5"
             style={frameStyle}
           >
             <div className="absolute inset-0 flex min-h-0 min-w-0 flex-col overflow-hidden">

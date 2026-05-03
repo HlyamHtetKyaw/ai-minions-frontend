@@ -160,8 +160,11 @@ export async function triggerWorkspaceExportDownload(downloadUrl: string, object
     a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
-    a.remove();
-    URL.revokeObjectURL(objectUrl);
+    // Revoking immediately can cancel the download — the browser may not have consumed the blob URL yet.
+    requestAnimationFrame(() => {
+      a.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 120_000);
+    });
     return;
   } catch {
     const a = document.createElement('a');
@@ -171,7 +174,7 @@ export async function triggerWorkspaceExportDownload(downloadUrl: string, object
     a.style.display = 'none';
     document.body.appendChild(a);
     a.click();
-    a.remove();
+    requestAnimationFrame(() => a.remove());
   }
 }
 
