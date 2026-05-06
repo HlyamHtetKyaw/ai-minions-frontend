@@ -85,13 +85,13 @@ const BALANCED_SYNC_SSE_FOR_UI: GenerationSseProgressLabelOverrides = {
   subscribedLabel: 'You’re in—we’re warming up the backstage.',
   subscribedPercent: 8,
   stages: {
-    download: { percent: 18, label: 'Rounding up footage and soundtrack from the ether…' },
-    gen_original_srt: { percent: 36, label: 'Focus pass one—squinting at the details so you don’t have to.' },
-    gen_voice_srt: { percent: 54, label: 'Focus pass two—same mystery, fresher vibes.' },
-    parse_srt: { percent: 66, label: 'Connecting invisible dots behind the curtain…' },
-    ffmpeg_segments: { percent: 82, label: 'Finalizing—marrying picture to voice frame by frame.' },
-    upload: { percent: 94, label: 'Final touches—moving your shiny cut onto the marquee.' },
-  },
+    download: { percent: 18, label: 'Initializing your video and audio files...' },
+    gen_original_srt: { percent: 36, label: 'Generating the initial subtitles...' },
+    gen_voice_srt: { percent: 54, label: 'Refining the text for the voiceover...' },
+    parse_srt: { percent: 66, label: 'Aligning the subtitles with the timing...' },
+    ffmpeg_segments: { percent: 82, label: 'Stitching your video and audio together...' },
+    upload: { percent: 94, label: 'Uploading your finished video...' },
+}
 };
 
 type EditableSrtCue = SrtCue & { id: string };
@@ -1924,7 +1924,10 @@ export default function CreationStudio({
     setBalancedSyncError(null);
     if (!balancedSyncPreviewS3Key) return;
     try {
-      await balancedSyncReject({ balancedVideoS3Key: balancedSyncPreviewS3Key });
+      await balancedSyncReject({
+        balancedVideoS3Key: balancedSyncPreviewS3Key,
+        generationId: balancedSyncGenerationId ?? undefined,
+      });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setBalancedSyncError(msg || 'Failed to discard balanced preview');
