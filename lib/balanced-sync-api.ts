@@ -77,14 +77,37 @@ export async function balancedSyncAccept(params: {
   notifyUserCreditBalanceRefresh();
 }
 
-export async function balancedSyncReject(params: { balancedVideoS3Key: string }): Promise<void> {
+/** Worker stores balanced previews as `…/balanced-sync/{jobId}.mp4`. Prefer this id on reject so auth matches the key. */
+export function extractBalancedSyncGenerationIdFromPreviewKey(key: string): number | undefined {
+  const t = (key ?? '').trim();
+  const m = t.match(/\/balanced-sync\/(\d+)\.mp4$/);
+  if (!m) return undefined;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
+export async function balancedSyncReject(params: {
+  balancedVideoS3Key: string;
+  /** Same as balanced sync start response; server authorizes reject when userId is missing from stored key path. */
+  generationId?: number | null;
+}): Promise<void> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set');
+  const fromKey = extractBalancedSyncGenerationIdFromPreviewKey(params.balancedVideoS3Key);
+  const generationId =
+    fromKey ??
+    (params.generationId != null && Number.isFinite(params.generationId) ? Number(params.generationId) : undefined);
+  const body: { balancedVideoS3Key: string; generationId?: number } = {
+    balancedVideoS3Key: params.balancedVideoS3Key,
+  };
+  if (generationId !== undefined) {
+    body.generationId = generationId;
+  }
   const res = await fetchWithAuthRetry(`${base}/api/v1/viral-shorts/balanced-sync/reject`, {
     ...fetchInit,
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeaders() },
-    body: JSON.stringify(params),
+    body: JSON.stringify(body),
   });
   const json = (await res.json().catch(() => ({}))) as ApiEnvelope<string>;
   if (!res.ok || !json.success) {

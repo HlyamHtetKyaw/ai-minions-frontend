@@ -117,6 +117,13 @@ export function resolveHttpErrorMessage(status: number, body: unknown, locale?: 
     }
     return getStatusErrorMessage(status, key);
   }
+  /** Auth/forbidden payloads from Spring or {@code ApiResponse} often include a useful {@code message}. */
+  if (status === 401 || status === 403) {
+    if (body && typeof body === "object") {
+      const msg = (body as Record<string, unknown>).message;
+      if (typeof msg === "string" && msg.trim()) return msg.trim();
+    }
+  }
   return getStatusErrorMessage(status, key);
 }
 
