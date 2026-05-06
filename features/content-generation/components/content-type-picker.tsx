@@ -53,7 +53,7 @@ export default function ContentTypePicker({ value, onChange }: Props) {
       <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
         {t('contentTypeLabel')}
       </p>
-      <div className="-mx-1 overflow-x-auto pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
+      <div className="scrollbar-themed -mx-1 overflow-x-auto pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
         <div
           className="content-type-row min-w-130 sm:min-w-0"
           role="radiogroup"

@@ -50,7 +50,7 @@ export function WorkspacePropertiesPanel({
 }: WorkspacePropertiesPanelProps) {
   return (
     <aside className="flex h-full min-h-0 w-full shrink-0 flex-col border-l border-zinc-200/90 bg-white/95 md:w-72 md:min-w-72 md:max-w-72 dark:border-white/10 dark:bg-black/70">
-      <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
+      <div className="scrollbar-themed flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4">
         <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">{titleLabel}</h2>
 
         <div>

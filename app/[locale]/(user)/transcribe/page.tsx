@@ -7,6 +7,7 @@ import LoginGate from '@/components/shared/components/login-gate';
 import UploadZone from '@/components/shared/components/upload-zone';
 import ProgressBar from '@/components/shared/components/progress-bar';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
+import EstimatedCost from '@/components/common/estimated-cost';
 import TranscribeButton from '@/features/transcribe/components/transcribe-button';
 import TranscriptResult from '@/features/transcribe/components/transcript-result';
 import { AUTH_CHANGED_EVENT, clearClientAuth, getStoredAccessToken } from '@/lib/auth-token';
@@ -73,6 +74,7 @@ export default function TranscribePage() {
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
+  const estimatedPoints = estimate?.reserveCostPoints ?? 0;
 
   /** Blob URL for the side preview column on md+ (UploadZone keeps its own URL below md). */
   const [splitPreviewUrl, setSplitPreviewUrl] = useState<string | null>(null);
@@ -311,17 +313,8 @@ export default function TranscribePage() {
                 }}
               />
 
-              <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-                <p className={`text-sm ${estimateError ? 'text-red-400' : 'text-muted-foreground'}`}>
-                  {estimateLoading
-                    ? 'Estimating points…'
-                    : estimate
-                      ? `Estimated cost: ~${estimate.reserveCostPoints} points`
-                      : estimateError
-                        ? `Estimate unavailable: ${estimateError}`
-                        : 'Select a file to estimate points.'}
-                </p>
-              </div>
+              <EstimatedCost points={estimatedPoints} isLoading={estimateLoading} variant="card" size="lg" />
+              {estimateError ? <p className="text-sm text-red-400">Estimate unavailable: {estimateError}</p> : null}
 
               <TranscribeButton
                 onClick={handleTranscribe}

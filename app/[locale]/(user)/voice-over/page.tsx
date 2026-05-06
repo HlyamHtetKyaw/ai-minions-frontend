@@ -9,6 +9,7 @@ import AudioPlayer from '@/components/shared/components/audio-player';
 import ProgressBar from '@/components/shared/components/progress-bar';
 import PageHeader from '@/components/layout/page-header';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
+import EstimatedCost from '@/components/common/estimated-cost';
 import GenerateButton from '@/features/voice-over/components/generate-button';
 import VoiceToneVoicePicker from '@/features/voice-over/components/voice-tone-voice-picker';
 import {
@@ -184,6 +185,15 @@ export default function VoiceOverPage() {
               <div className="grid gap-8 lg:grid-cols-2 lg:items-start lg:gap-x-10 lg:gap-y-0">
                 {/* Left: script + estimate (wide screens) */}
                 <div className="flex min-w-0 flex-col gap-6">
+                  <EstimatedCost
+                    points={estimateCost ?? 0}
+                    isLoading={estimateLoading}
+                    variant="card"
+                    size="lg"
+                  />
+                  {estimateUnavailable && estimateError ? (
+                    <p className="text-sm text-red-400">{estimateError}</p>
+                  ) : null}
                   <ScriptInput
                     value={scriptText}
                     onChange={setScriptText}
@@ -195,33 +205,6 @@ export default function VoiceOverPage() {
                     disabled={isGenerating}
                   />
 
-                  <div className="rounded-xl border border-violet-500/25 bg-violet-500/6 px-4 py-4 sm:px-5">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
-                      {t('estimate.kicker')}
-                    </p>
-                    {estimateLoading ? (
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('estimate.loading')}</p>
-                    ) : estimateCost != null ? (
-                      <>
-                        <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                          <span className="text-3xl font-semibold tabular-nums tracking-tight text-foreground sm:text-4xl">
-                            {estimateCost.toLocaleString()}
-                          </span>
-                          <span className="text-sm font-semibold text-muted-foreground">{t('estimate.unit')}</span>
-                        </div>
-                        <p className="mt-3 text-xs leading-relaxed text-muted-foreground">{t('estimate.caption')}</p>
-                      </>
-                    ) : estimateUnavailable ? (
-                      <div className="mt-2 space-y-1">
-                        <p className="text-sm leading-relaxed text-red-400">{t('estimate.unavailable')}</p>
-                        {estimateError ? (
-                          <p className="text-xs leading-relaxed text-red-400">{estimateError}</p>
-                        ) : null}
-                      </div>
-                    ) : (
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{t('estimate.hint')}</p>
-                    )}
-                  </div>
                 </div>
 
                 {/* Right: voice, generate, progress, output (sticky on wide screens) */}

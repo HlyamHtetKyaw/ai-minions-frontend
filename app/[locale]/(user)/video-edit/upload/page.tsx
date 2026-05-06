@@ -86,12 +86,12 @@ export default function VideoEditWorkspaceUploadPage() {
           <p className="shrink-0 border-b border-white/[0.05] px-[max(1rem,env(safe-area-inset-left,0px))] py-2.5 pr-[max(1rem,env(safe-area-inset-right,0px))] text-xs leading-relaxed text-zinc-400 text-pretty sm:px-6 sm:py-3 sm:text-sm">
             {t('gateSubtitle')}
           </p>
-          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
+          <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-y-contain">
             <WorkspaceCanvasSizeGate initialEasyAspect={cropEasyAspect} onContinue={handleGateContinue} />
           </div>
         </div>
       ) : (
-        <main className="mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 py-8 sm:px-6 sm:py-10">
+        <main className="scrollbar-themed mx-auto flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-y-auto overscroll-y-contain px-4 py-8 sm:px-6 sm:py-10">
           <p className="text-sm leading-relaxed text-zinc-400">{t('uploadStepSubtitle')}</p>
 
           <div className="mt-6 rounded-2xl border border-white/[0.08] bg-zinc-950/70 p-5 shadow-[0_24px_80px_-20px_rgba(0,0,0,0.75)] sm:p-8">

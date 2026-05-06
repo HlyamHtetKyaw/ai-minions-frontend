@@ -14,7 +14,7 @@ export default function ResultDisplay({ result, outputType }: ResultDisplayProps
       <h2 className="text-sm font-semibold uppercase tracking-wide text-muted">{t('title')}</h2>
 
       {outputType === 'json' && (
-        <pre className="overflow-x-auto rounded-lg bg-gray-950 dark:bg-black p-4 text-xs text-green-400 leading-relaxed">
+        <pre className="scrollbar-themed overflow-x-auto rounded-lg bg-gray-950 dark:bg-black p-4 text-xs text-green-400 leading-relaxed">
           {JSON.stringify(result, null, 2)}
         </pre>
       )}

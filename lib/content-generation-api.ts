@@ -36,10 +36,31 @@ export type ContentGenerateV2Result = {
 
 /** Normalizes SSE/REST payload (camelCase or snake_case) for content v2 results. */
 export function normalizeContentGenerateV2Result(raw: unknown): ContentGenerateV2Result {
+  if (typeof raw === 'string') {
+    const trimmed = raw.trim();
+    if (!trimmed) {
+      return { generatedText: '', shortTextOnImage: '', imageBase64: '', storageUrl: '', s3Key: '' };
+    }
+    try {
+      return normalizeContentGenerateV2Result(JSON.parse(trimmed) as unknown);
+    } catch {
+      return { generatedText: trimmed, shortTextOnImage: '', imageBase64: '', storageUrl: '', s3Key: '' };
+    }
+  }
   if (!raw || typeof raw !== 'object') {
     return { generatedText: '', shortTextOnImage: '', imageBase64: '', storageUrl: '', s3Key: '' };
   }
   const r = raw as Record<string, unknown>;
+  // Some terminal payloads wrap the actual result under outputData/result/data.
+  if (r.outputData != null) {
+    return normalizeContentGenerateV2Result(r.outputData);
+  }
+  if (r.result != null) {
+    return normalizeContentGenerateV2Result(r.result);
+  }
+  if (r.data != null) {
+    return normalizeContentGenerateV2Result(r.data);
+  }
   const pick = (camel: string, snake: string): string => {
     const a = r[camel];
     const b = r[snake];
@@ -219,10 +240,11 @@ export function openContentGenerationSse(jobId: string, handlers: ContentGenerat
       const status = String(payload.status ?? '').toLowerCase();
       if (status === 'completed' || status === 'failed' || status === 'error' || status === 'timeout') {
         sawTerminal = true;
+        const terminalData = payload.data ?? payload.outputData ?? payload.result;
         handlers.onTerminal?.({
           status: status as 'completed' | 'failed' | 'error' | 'timeout',
-          data: (payload.data ?? undefined) as ContentGenerateV2Result | undefined,
-          message: undefined,
+          data: terminalData as ContentGenerateV2Result | undefined,
+          message: typeof payload.message === 'string' ? payload.message : undefined,
         });
         if (status === 'completed') {
           notifyUserCreditBalanceRefresh();
