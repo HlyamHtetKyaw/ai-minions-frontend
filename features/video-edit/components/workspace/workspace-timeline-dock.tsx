@@ -1204,7 +1204,7 @@ export function WorkspaceTimelineDock({
 
       {phase === 'ready' && (
         <WorkspaceTimelineDragGuideContext.Provider value={setClipDragGuideRatios}>
-          <div className="flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
+          <div className="scrollbar-themed flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-zinc-50 dark:bg-zinc-950">
             <div
               className="relative flex min-w-[720px] flex-col bg-zinc-100/95 dark:bg-black/25"
               role="presentation"

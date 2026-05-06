@@ -62,11 +62,31 @@ export default function VoiceToneVoicePicker({
   }, [selectedVoiceId, voicesInTone]);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const prefetchedPreviewRef = useRef<Map<string, HTMLAudioElement>>(new Map());
   const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const loadingWatchdogRef = useRef<number | null>(null);
+
+  const prefetchPreview = (voiceId: string) => {
+    const want = (voiceId ?? '').trim();
+    if (!want) return;
+    const src = voicePreviewSrcForId(want);
+    if (prefetchedPreviewRef.current.has(src)) return;
+
+    const prefetchAudio = new Audio();
+    prefetchAudio.preload = 'auto';
+    prefetchAudio.src = src;
+    prefetchAudio.load();
+    prefetchedPreviewRef.current.set(src, prefetchAudio);
+  };
+
+  useEffect(() => {
+    for (const voice of voicesInTone.slice(0, 6)) {
+      prefetchPreview(voice.id);
+    }
+  }, [voicesInTone]);
 
   useEffect(() => {
     const a = audioRef.current;
@@ -146,6 +166,11 @@ export default function VoiceToneVoicePicker({
         window.clearTimeout(loadingWatchdogRef.current);
         loadingWatchdogRef.current = null;
       }
+      for (const prefetchAudio of prefetchedPreviewRef.current.values()) {
+        prefetchAudio.pause();
+        prefetchAudio.src = '';
+      }
+      prefetchedPreviewRef.current.clear();
     };
   }, [t]);
 
@@ -211,6 +236,8 @@ export default function VoiceToneVoicePicker({
       return;
     }
 
+    // Keep selected voice in sync with the voice user is previewing.
+    onVoiceIdChange(want);
     setPreviewError(null);
     setPreviewLoading(true);
     setPreviewingVoiceId(want);
@@ -273,7 +300,7 @@ export default function VoiceToneVoicePicker({
           {t('step2')}
         </p>
 
-        <audio ref={audioRef} preload="none" className="hidden" />
+        <audio ref={audioRef} preload="auto" className="hidden" />
 
         <div className="space-y-3">
           {previewError ? (
@@ -319,6 +346,7 @@ export default function VoiceToneVoicePicker({
                     type="button"
                     disabled={disabled || isRowLoading}
                     onClick={() => void togglePreview(m.id)}
+                    onMouseEnter={() => prefetchPreview(m.id)}
                     className="inline-flex h-9 w-10 items-center justify-center rounded-md border border-card-border bg-card text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     aria-label={isPlaying ? t('pausePreview') : t('playPreview')}
                     title={isPlaying ? t('pausePreview') : t('playPreview')}

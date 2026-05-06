@@ -8,6 +8,7 @@ import UploadZone from '@/components/shared/components/upload-zone';
 import ActionButton from '@/components/shared/components/action-button';
 import ProgressBar from '@/components/shared/components/progress-bar';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
+import EstimatedCost from '@/components/common/estimated-cost';
 import { AUTH_CHANGED_EVENT, clearClientAuth, getStoredAccessToken } from '@/lib/auth-token';
 import { openGenerationJobSseStream } from '@/lib/generation-job-sse';
 import { parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
@@ -56,6 +57,7 @@ export default function SubtitlesPage() {
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
+  const estimatedPoints = estimate?.reserveCostPoints ?? 0;
   const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
   const [previewCues, setPreviewCues] = useState<SrtCue[]>([]);
   const [previewTruncated, setPreviewTruncated] = useState(false);
@@ -285,17 +287,10 @@ export default function SubtitlesPage() {
               }}
             />
 
-            <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-              <p className={`text-sm ${estimateError ? 'text-red-400' : 'text-muted-foreground'}`}>
-                {estimateLoading
-                  ? t('estimate.loading')
-                  : estimate
-                    ? t('estimate.cost', { points: estimate.reserveCostPoints })
-                    : estimateError
-                      ? t('estimate.unavailable', { message: estimateError })
-                      : t('estimate.prompt')}
-              </p>
-            </div>
+            <EstimatedCost points={estimatedPoints} isLoading={estimateLoading} variant="card" size="lg" />
+            {estimateError ? (
+              <p className="text-sm text-red-400">{t('estimate.unavailable', { message: estimateError })}</p>
+            ) : null}
 
             <div className="rounded-xl border border-card-border bg-card px-4 py-3">
               <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted">{t('mode.kicker')}</p>
@@ -396,7 +391,7 @@ export default function SubtitlesPage() {
                     ) : null}
 
                     {!previewLoading && previewCues.length > 0 ? (
-                      <div className="mt-3 max-h-[min(50vh,420px)] overflow-auto rounded-lg border border-card-border bg-black/10 p-3">
+                      <div className="scrollbar-themed mt-3 max-h-[min(50vh,420px)] overflow-auto rounded-lg border border-card-border bg-black/10 p-3">
                         <div className="space-y-3">
                           {previewCues.map((c, idx) => (
                             <div key={`${c.startTime}-${c.endTime}-${idx}`} className="text-sm leading-relaxed">

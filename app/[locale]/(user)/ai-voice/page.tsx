@@ -8,6 +8,7 @@ import VoiceSelector from '@/components/shared/components/voice-selector';
 import AudioPlayer from '@/components/shared/components/audio-player';
 import GenerateButton from '@/features/ai-voice/components/generate-button';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
+import EstimatedCost from '@/components/common/estimated-cost';
 import type { VoiceStyle } from '@/components/shared/types';
 
 // TODO: replace with real auth state
@@ -20,6 +21,7 @@ export default function AiVoicePage() {
   const [selectedVoice, setSelectedVoice] = useState<VoiceStyle | ''>('');
   const [audioSrc, setAudioSrc] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const estimatedPoints = Math.max(0, Math.ceil(scriptText.trim().length / 120));
 
   const handleGenerate = async () => {
     setIsLoading(true);
@@ -36,6 +38,8 @@ export default function AiVoicePage() {
             <h1 className="text-2xl font-bold text-foreground">{t('page.title')}</h1>
             <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
           </div>
+
+          <EstimatedCost points={estimatedPoints} variant="card" size="lg" />
 
           <ScriptInput
             value={scriptText}

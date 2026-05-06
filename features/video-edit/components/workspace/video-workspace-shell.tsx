@@ -1106,7 +1106,7 @@ export function VideoWorkspaceShell() {
     if (panelMode === 'image') {
       if (selectedIsImage) {
         return (
-          <div className="min-h-0 shrink-0 overflow-y-auto p-4">
+          <div className="scrollbar-themed min-h-0 shrink-0 overflow-y-auto p-4">
             <ImageProperties />
           </div>
         );
@@ -1450,7 +1450,7 @@ export function VideoWorkspaceShell() {
           />
           <div
             ref={previewPaneRef}
-            className={`flex min-h-0 flex-1 flex-col ${
+            className={`scrollbar-themed flex min-h-0 flex-1 flex-col ${
               previewFullscreen ? 'overflow-hidden' : 'overflow-x-hidden overflow-y-auto overscroll-y-contain'
             } ${previewFullscreen ? '' : 'box-border px-4 pb-5 pt-4 sm:px-6 sm:pb-7 sm:pt-5'}`}
             style={previewFullscreen ? undefined : { minHeight: getPreviewPanelMinHeightPx() }}
@@ -1592,7 +1592,7 @@ export function VideoWorkspaceShell() {
                               Close
                             </button>
                           </div>
-                          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
+                          <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
                             {renderStoreToolPanelContent()}
                           </div>
                         </section>
@@ -1601,13 +1601,13 @@ export function VideoWorkspaceShell() {
                     )
                   : null
               ) : (
-                <aside className="flex max-h-[55vh] min-h-0 w-full shrink-0 flex-col border-t border-zinc-200/90 bg-white/95 xl:h-full xl:max-h-none xl:w-72 xl:min-w-72 xl:max-w-72 xl:border-l xl:border-t-0 dark:border-white/10 dark:bg-black/70">
+                <aside className="scrollbar-themed flex max-h-[55vh] min-h-0 w-full shrink-0 flex-col border-t border-zinc-200/90 bg-white/95 xl:h-full xl:max-h-none xl:w-72 xl:min-w-72 xl:max-w-72 xl:border-l xl:border-t-0 dark:border-white/10 dark:bg-black/70">
                   <div className="shrink-0 border-b border-zinc-200/90 px-4 py-3 dark:border-white/10">
                     <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
                       {panelTitle}
                     </h2>
                   </div>
-                  <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
+                  <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
                     {renderStoreToolPanelContent()}
                   </div>
                 </aside>
