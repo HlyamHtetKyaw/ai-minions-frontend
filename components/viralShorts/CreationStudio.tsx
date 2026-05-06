@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
@@ -338,6 +338,7 @@ export default function CreationStudio({
   const [balancedSyncPreviewS3Key, setBalancedSyncPreviewS3Key] = useState(() =>
     typeof initialBalancedSyncPreviewS3Key === 'string' ? initialBalancedSyncPreviewS3Key : '',
   );
+  const balancedSyncStreamRef = useRef<number | null>(null);
   const [showBalancedPreview, setShowBalancedPreview] = useState(false);
   const prevAudioModeRef = useRef<{
     voiceOverEnabled: boolean;
@@ -778,6 +779,111 @@ export default function CreationStudio({
     }
   }, [isBalancedPreviewMode]);
 
+  const applyBalancedSyncTerminalPayload = useCallback(
+    (payload: import('@/lib/generation-job-sse').GenerationJobTerminalPayload) => {
+      if (payload.status !== 'completed') {
+        const msg = (payload.message || 'Balanced sync failed').trim();
+        setBalancedSyncError(msg);
+        setBalancedSyncProgress(null);
+        return;
+      }
+      const out = payload.outputData;
+      let o: any = out;
+      if (typeof out === 'string') {
+        try {
+          o = JSON.parse(out);
+        } catch {
+          o = null;
+        }
+      }
+      const readUrl = o?.result?.readUrl ?? o?.result?.audioUrl ?? null;
+      const s3Key = o?.result?.s3Key ?? null;
+      if (typeof readUrl !== 'string' || !readUrl.trim() || typeof s3Key !== 'string' || !s3Key.trim()) {
+        setBalancedSyncError('Balanced sync finished but no video URL was returned.');
+        setBalancedSyncProgress(null);
+        return;
+      }
+
+      // Stop any playing voice-over audio and ensure combined video audio is used.
+      try {
+        voiceRef.current?.pause();
+        if (voiceRef.current) voiceRef.current.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
+      try {
+        if (videoRef.current) videoRef.current.muted = false;
+      } catch {
+        /* ignore */
+      }
+
+      // Temporarily force preview mode to use the combined MP4 audio (rollback on Reject).
+      prevAudioModeRef.current = {
+        voiceOverEnabled,
+        originalAudioEnabled,
+        voiceOverPlaybackRate,
+      };
+      setVoiceOverEnabled(false);
+      setOriginalAudioEnabled(true);
+      setVoiceOverPlaybackRate(1);
+
+      setBalancedSyncPreviewUrl(String(readUrl));
+      setBalancedSyncPreviewS3Key(String(s3Key));
+      setBalancedSyncProgress({ percent: 100, label: 'Balanced preview ready' });
+      setShowBalancedPreview(true);
+    },
+    [originalAudioEnabled, voiceOverEnabled, voiceOverPlaybackRate],
+  );
+
+  // Resume balanced sync after refresh / navigation:
+  // - If the job is still running, reconnect to SSE and keep showing progress.
+  // - If the job already finished, the SSE stream returns a terminal chunk immediately.
+  useEffect(() => {
+    if (!balancedSyncGenerationId) return;
+    if (isBalancedPreviewMode) return;
+    if (balancedSyncStreamRef.current === balancedSyncGenerationId) return;
+    if (balancedSyncProgress && balancedSyncProgress.percent >= 100) return;
+
+    balancedSyncStreamRef.current = balancedSyncGenerationId;
+    setBalancedSyncError(null);
+    if (!balancedSyncProgress) {
+      setBalancedSyncProgress({ percent: 10, label: 'Resuming balanced sync…' });
+    }
+
+    openGenerationJobSseStream(balancedSyncGenerationId, {
+      onOpen: () => {
+        setBalancedSyncProgress((prev) => prev ?? { percent: 12, label: 'Connected…' });
+      },
+      onStatus: (raw) => {
+        const p = parseGenerationSseProgressPayload(raw, {
+          stages: {
+            parse_srt: { percent: 44, label: 'Reading subtitles' },
+            gen_original_srt: { percent: 28, label: 'Generating original SRT' },
+            gen_voice_srt: { percent: 34, label: 'Generating voice SRT' },
+            ffmpeg_segments: { percent: 78, label: 'Syncing video segments' },
+            upload: { percent: 92, label: 'Uploading' },
+          },
+          subscribedLabel: 'Connected — resuming…',
+          subscribedPercent: 12,
+        });
+        if (p) setBalancedSyncProgress(p);
+      },
+      onTerminal: (payload) => {
+        applyBalancedSyncTerminalPayload(payload);
+      },
+      onError: (message) => {
+        setBalancedSyncError(message || 'Balanced sync stream error');
+        setBalancedSyncProgress(null);
+      },
+      onDone: () => {
+        // allow retry/resume if needed
+        if (balancedSyncStreamRef.current === balancedSyncGenerationId) {
+          balancedSyncStreamRef.current = null;
+        }
+      },
+    });
+  }, [applyBalancedSyncTerminalPayload, balancedSyncGenerationId, balancedSyncProgress, isBalancedPreviewMode]);
+
   useEffect(() => {
     if (typeof onBalancedSyncGenerationIdChange === 'function') {
       onBalancedSyncGenerationIdChange(balancedSyncGenerationId);
@@ -1073,7 +1179,22 @@ export default function CreationStudio({
     }
 
     const wantVoice = Boolean(voiceOverAudioUrl) && voiceOverEnabled && !originalAudioEnabled;
-    v.muted = wantVoice;
+    try {
+      if (wantVoice) {
+        v.muted = true;
+      } else {
+        // Allow the user to hear the video's original audio track.
+        // Some browsers can keep a "stuck muted" state unless we explicitly unmute + restore volume.
+        v.muted = false;
+        if (!Number.isFinite(v.volume) || v.volume <= 0) v.volume = 1;
+        // Prevent default-muted behaviors from fighting the controls icon.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyV = v as any;
+        if (typeof anyV.defaultMuted === 'boolean') anyV.defaultMuted = false;
+      }
+    } catch {
+      /* ignore */
+    }
     if (!a) return;
 
     if (!wantVoice) {
@@ -1432,11 +1553,27 @@ export default function CreationStudio({
     const urlWithKey = `${balancedSyncPreviewUrl}#wk=${encodeURIComponent(balancedSyncPreviewS3Key)}`;
     onVideoUrlChange?.(urlWithKey);
     onVideoNameChange?.('balanced-sync.mp4');
+    // Switch preview to use the combined MP4's audio track.
+    setVoiceOverAudioUrl('');
+    setVoiceOverPlayableUrl('');
+    setVoiceOverS3Key('');
+    setVoiceOverEnabled(false);
+    setOriginalAudioEnabled(true);
+    setVoiceOverPlaybackRate(1);
     onVoiceOverAudioUrlChange?.('');
     onVoiceOverS3KeyChange?.('');
     onVoiceOverEnabledChange?.(false);
     onOriginalAudioEnabledChange?.(true);
     onVoiceOverPlaybackRateChange?.(1);
+    try {
+      // Some browsers can keep the muted flag from the prior voice-over mode; force audio back on.
+      if (videoRef.current) {
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1;
+      }
+    } catch {
+      /* ignore */
+    }
 
     setBalancedSyncGenerationId(null);
     setBalancedSyncPreviewUrl('');
@@ -2498,7 +2635,7 @@ export default function CreationStudio({
             </div>
           </div>
 
-          {voiceOverAudioUrl && !isBalancedPreviewMode ? (
+          {!isBalancedPreviewMode ? (
             <div className="border-b border-card-border px-3 py-3 text-[11px] text-muted">
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2">
@@ -2510,6 +2647,16 @@ export default function CreationStudio({
                     onChange={() => {
                       setOriginalAudioEnabled(true);
                       setVoiceOverEnabled(false);
+                      try {
+                        if (videoRef.current) {
+                          videoRef.current.muted = false;
+                          if (!Number.isFinite(videoRef.current.volume) || videoRef.current.volume <= 0) {
+                            videoRef.current.volume = 1;
+                          }
+                        }
+                      } catch {
+                        /* ignore */
+                      }
                     }}
                   />
                   Original sound
@@ -2532,27 +2679,29 @@ export default function CreationStudio({
                 ) : null}
               </div>
               {/* Single source of truth: this audio element is BOTH the visible player and the synced track. */}
-              <audio
-                ref={voiceRef}
-                src={voiceOverPlayableUrl || voiceOverAudioUrl}
-                preload="auto"
-                controls
-                className="mt-3 w-full"
-                onError={async () => {
-                  // If the presigned URL expired while user stays on page, refresh it using the stable s3Key.
-                  if (!voiceOverS3Key) return;
-                  try {
-                    const fresh = await voiceOverPresignRead(voiceOverS3Key);
-                    if (fresh && fresh !== voiceOverAudioUrl) {
-                      setVoiceOverAudioUrl(fresh);
-                      setVoiceOverError(null);
+              {voiceOverAudioUrl ? (
+                <audio
+                  ref={voiceRef}
+                  src={voiceOverPlayableUrl || voiceOverAudioUrl}
+                  preload="auto"
+                  controls
+                  className="mt-3 w-full"
+                  onError={async () => {
+                    // If the presigned URL expired while user stays on page, refresh it using the stable s3Key.
+                    if (!voiceOverS3Key) return;
+                    try {
+                      const fresh = await voiceOverPresignRead(voiceOverS3Key);
+                      if (fresh && fresh !== voiceOverAudioUrl) {
+                        setVoiceOverAudioUrl(fresh);
+                        setVoiceOverError(null);
+                      }
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      setVoiceOverError(msg || 'Failed to refresh voice over URL');
                     }
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : String(e);
-                    setVoiceOverError(msg || 'Failed to refresh voice over URL');
-                  }
-                }}
-              />
+                  }}
+                />
+              ) : null}
             </div>
           ) : null}
 
@@ -2773,7 +2922,37 @@ export default function CreationStudio({
                       type="button"
                       className="flex min-h-10 w-full items-center justify-center rounded-lg bg-[#7c5cff] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
                       disabled={isAnyTaskRunning}
-                      onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        void (async () => {
+                          let nextUrl = subtitlesDownloadUrl;
+                          try {
+                            if (subtitlesGenerationId) {
+                              const d = await fetchSubtitleDownloadUrl(subtitlesGenerationId);
+                              if (d?.downloadUrl) {
+                                nextUrl = d.downloadUrl;
+                                setSubtitlesDownloadUrl(d.downloadUrl);
+                                setSubtitlesSrtKey(d.srtKey || '');
+                              }
+                            }
+                          } catch {
+                            // Signed URL refresh failed; fall back to existing cached URL.
+                          }
+
+                          try {
+                            // Match subtitles page behavior (download attribute) and avoid popup blockers.
+                            const a = document.createElement('a');
+                            a.href = nextUrl;
+                            a.download = '';
+                            a.rel = 'noreferrer';
+                            a.target = '_blank';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                          } catch {
+                            // Last-resort: do nothing (no user-facing "expiry" messaging).
+                          }
+                        })();
+                      }}
                     >
                       {tEditor('buttons.downloadSrt')}
                     </button>
