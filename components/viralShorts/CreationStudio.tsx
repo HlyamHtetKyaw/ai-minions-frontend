@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
@@ -338,6 +338,7 @@ export default function CreationStudio({
   const [balancedSyncPreviewS3Key, setBalancedSyncPreviewS3Key] = useState(() =>
     typeof initialBalancedSyncPreviewS3Key === 'string' ? initialBalancedSyncPreviewS3Key : '',
   );
+  const balancedSyncStreamRef = useRef<number | null>(null);
   const [showBalancedPreview, setShowBalancedPreview] = useState(false);
   const prevAudioModeRef = useRef<{
     voiceOverEnabled: boolean;
@@ -777,6 +778,111 @@ export default function CreationStudio({
       /* ignore */
     }
   }, [isBalancedPreviewMode]);
+
+  const applyBalancedSyncTerminalPayload = useCallback(
+    (payload: import('@/lib/generation-job-sse').GenerationJobTerminalPayload) => {
+      if (payload.status !== 'completed') {
+        const msg = (payload.message || 'Balanced sync failed').trim();
+        setBalancedSyncError(msg);
+        setBalancedSyncProgress(null);
+        return;
+      }
+      const out = payload.outputData;
+      let o: any = out;
+      if (typeof out === 'string') {
+        try {
+          o = JSON.parse(out);
+        } catch {
+          o = null;
+        }
+      }
+      const readUrl = o?.result?.readUrl ?? o?.result?.audioUrl ?? null;
+      const s3Key = o?.result?.s3Key ?? null;
+      if (typeof readUrl !== 'string' || !readUrl.trim() || typeof s3Key !== 'string' || !s3Key.trim()) {
+        setBalancedSyncError('Balanced sync finished but no video URL was returned.');
+        setBalancedSyncProgress(null);
+        return;
+      }
+
+      // Stop any playing voice-over audio and ensure combined video audio is used.
+      try {
+        voiceRef.current?.pause();
+        if (voiceRef.current) voiceRef.current.currentTime = 0;
+      } catch {
+        /* ignore */
+      }
+      try {
+        if (videoRef.current) videoRef.current.muted = false;
+      } catch {
+        /* ignore */
+      }
+
+      // Temporarily force preview mode to use the combined MP4 audio (rollback on Reject).
+      prevAudioModeRef.current = {
+        voiceOverEnabled,
+        originalAudioEnabled,
+        voiceOverPlaybackRate,
+      };
+      setVoiceOverEnabled(false);
+      setOriginalAudioEnabled(true);
+      setVoiceOverPlaybackRate(1);
+
+      setBalancedSyncPreviewUrl(String(readUrl));
+      setBalancedSyncPreviewS3Key(String(s3Key));
+      setBalancedSyncProgress({ percent: 100, label: 'Balanced preview ready' });
+      setShowBalancedPreview(true);
+    },
+    [originalAudioEnabled, voiceOverEnabled, voiceOverPlaybackRate],
+  );
+
+  // Resume balanced sync after refresh / navigation:
+  // - If the job is still running, reconnect to SSE and keep showing progress.
+  // - If the job already finished, the SSE stream returns a terminal chunk immediately.
+  useEffect(() => {
+    if (!balancedSyncGenerationId) return;
+    if (isBalancedPreviewMode) return;
+    if (balancedSyncStreamRef.current === balancedSyncGenerationId) return;
+    if (balancedSyncProgress && balancedSyncProgress.percent >= 100) return;
+
+    balancedSyncStreamRef.current = balancedSyncGenerationId;
+    setBalancedSyncError(null);
+    if (!balancedSyncProgress) {
+      setBalancedSyncProgress({ percent: 10, label: 'Resuming balanced sync…' });
+    }
+
+    openGenerationJobSseStream(balancedSyncGenerationId, {
+      onOpen: () => {
+        setBalancedSyncProgress((prev) => prev ?? { percent: 12, label: 'Connected…' });
+      },
+      onStatus: (raw) => {
+        const p = parseGenerationSseProgressPayload(raw, {
+          stages: {
+            parse_srt: { percent: 44, label: 'Reading subtitles' },
+            gen_original_srt: { percent: 28, label: 'Generating original SRT' },
+            gen_voice_srt: { percent: 34, label: 'Generating voice SRT' },
+            ffmpeg_segments: { percent: 78, label: 'Syncing video segments' },
+            upload: { percent: 92, label: 'Uploading' },
+          },
+          subscribedLabel: 'Connected — resuming…',
+          subscribedPercent: 12,
+        });
+        if (p) setBalancedSyncProgress(p);
+      },
+      onTerminal: (payload) => {
+        applyBalancedSyncTerminalPayload(payload);
+      },
+      onError: (message) => {
+        setBalancedSyncError(message || 'Balanced sync stream error');
+        setBalancedSyncProgress(null);
+      },
+      onDone: () => {
+        // allow retry/resume if needed
+        if (balancedSyncStreamRef.current === balancedSyncGenerationId) {
+          balancedSyncStreamRef.current = null;
+        }
+      },
+    });
+  }, [applyBalancedSyncTerminalPayload, balancedSyncGenerationId, balancedSyncProgress, isBalancedPreviewMode]);
 
   useEffect(() => {
     if (typeof onBalancedSyncGenerationIdChange === 'function') {
