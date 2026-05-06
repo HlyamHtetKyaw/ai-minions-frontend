@@ -111,7 +111,7 @@ export function HeaderMobileNav({
             role="dialog"
             aria-modal="true"
             aria-labelledby="mobile-nav-title"
-            className="fixed left-3 right-3 top-18 z-120 max-h-[min(72vh,calc(100dvh-6rem))] overflow-y-auto rounded-2xl border border-card-border bg-elevated/95 p-2 shadow-[0_24px_64px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:bg-[rgba(10,15,30,0.92)] lg:hidden"
+            className="scrollbar-themed fixed left-3 right-3 top-18 z-120 max-h-[min(72vh,calc(100dvh-6rem))] overflow-y-auto rounded-2xl border border-card-border bg-elevated/95 p-2 shadow-[0_24px_64px_rgba(0,0,0,0.35)] backdrop-blur-xl dark:bg-[rgba(10,15,30,0.92)] lg:hidden"
           >
             <div className="flex items-center justify-between border-b border-card-border px-2 py-2">
               <span

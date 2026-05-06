@@ -175,7 +175,7 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
       {/* cqw = this width; row ≈ col + p-1 + square(col−0.5rem) + mt-1 + 9px line + pb; +2×gap-2 + grid pb-1 */}
       <div className="@container w-full min-w-0 shrink-0">
         <div
-          className="max-h-[min(27rem,calc(3*((100cqw-0.5rem)/2+1.125rem)+1.25rem))] w-full min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain [scrollbar-gutter:stable]"
+          className="scrollbar-themed max-h-[min(27rem,calc(3*((100cqw-0.5rem)/2+1.125rem)+1.25rem))] w-full min-h-0 overflow-y-auto overflow-x-hidden overscroll-y-contain [scrollbar-gutter:stable]"
           role="region"
           aria-label="Uploaded images"
         >

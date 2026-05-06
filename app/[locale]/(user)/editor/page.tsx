@@ -119,7 +119,7 @@ export default function EditorPage() {
             {uploadPanelOpen ? 'Hide media upload' : 'Media upload'}
           </button>
           {uploadPanelOpen && (
-            <div className="mt-3 min-h-0 overflow-y-auto">
+            <div className="scrollbar-themed mt-3 min-h-0 overflow-y-auto">
               <MediaUpload />
             </div>
           )}
@@ -251,7 +251,7 @@ export default function EditorPage() {
         </main>
 
         {showPropertiesPanel && (
-          <aside className="flex w-64 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-[#121212]">
+          <aside className="scrollbar-themed flex w-64 shrink-0 flex-col overflow-y-auto border-l border-zinc-800 bg-[#121212]">
             <div className="border-b border-zinc-800 px-3 py-2">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-400">
                 {panelTitle}

@@ -5,6 +5,7 @@ import { useTranslations } from 'next-intl';
 import { ArrowLeftRight } from 'lucide-react';
 import LoginGate from '@/components/shared/components/login-gate';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
+import EstimatedCost from '@/components/common/estimated-cost';
 import LanguageSelector from '@/features/translate/components/language-selector';
 import TextPanels from '@/features/translate/components/text-panels';
 import TranslateButton from '@/features/translate/components/translate-button';
@@ -36,6 +37,7 @@ export default function TranslatePage() {
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
   const [estimateError, setEstimateError] = useState<string | null>(null);
+  const estimatedPoints = estimate?.reserveCostPoints ?? 0;
 
   useEffect(() => {
     const resolve = () => setIsSignedIn(Boolean(getStoredAccessToken()));
@@ -123,6 +125,8 @@ export default function TranslatePage() {
               <h1 className="text-2xl font-bold text-foreground">{t('page.title')}</h1>
               <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
             </div>
+            <EstimatedCost points={estimatedPoints} isLoading={estimateLoading} variant="card" size="lg" />
+            {estimateError ? <p className="text-sm text-red-400">Estimate unavailable: {estimateError}</p> : null}
 
             <div className="flex w-full min-w-0 flex-nowrap items-center gap-2">
               <div className="min-w-0 flex-[1_1_0%]">
@@ -182,22 +186,6 @@ export default function TranslatePage() {
               <p className="text-sm text-red-400" role="alert">
                 {error}
               </p>
-            ) : null}
-
-            {estimateLoading || estimate || estimateError ? (
-              <div
-                className={`rounded-xl border border-glass-border bg-glass/60 px-4 py-3 text-sm backdrop-blur-sm ${
-                  estimateError ? 'text-red-400' : 'text-muted'
-                }`}
-              >
-                {estimateLoading
-                  ? 'Estimating points…'
-                  : estimate
-                    ? `Estimated cost: ~${estimate.reserveCostPoints} points`
-                    : estimateError
-                      ? `Estimate unavailable: ${estimateError}`
-                      : null}
-              </div>
             ) : null}
 
             <TranslateButton

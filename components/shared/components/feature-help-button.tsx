@@ -54,7 +54,7 @@ export default function FeatureHelpButton({ ariaLabel, message }: FeatureHelpBut
                 Close
               </button>
             </div>
-            <div className="max-h-[70vh] overflow-y-auto px-5 py-4">
+            <div className="scrollbar-themed max-h-[70vh] overflow-y-auto px-5 py-4">
               <p id={modalBodyId} className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
                 {message}
               </p>

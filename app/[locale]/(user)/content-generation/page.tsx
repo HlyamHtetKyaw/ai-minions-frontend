@@ -15,6 +15,7 @@ import FacebookPreview from '@/features/content-generation/components/FacebookPr
 import { DEFAULT_TOON_STYLE, TOON_STYLE_OPTIONS } from '@/features/content-generation/content-toon-styles';
 import UploadZone from '@/components/shared/components/upload-zone';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
+import EstimatedCost from '@/components/common/estimated-cost';
 import {
   contentGenerationEstimatePoints,
   normalizeContentGenerateV2Result,
@@ -78,6 +79,7 @@ export default function ContentGenerationPage() {
   const [scriptCopied, setScriptCopied] = useState(false);
   const scriptCopyResetRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isVisualOutput = outputMode === 'imageAndText' || outputMode === 'imageOnly';
+  const estimatedPoints = estimate?.reserveCostPoints ?? 0;
 
   /** Image-only mode drops all body text server-side — unusable for scripts. */
   useEffect(() => {
@@ -467,8 +469,21 @@ export default function ContentGenerationPage() {
               ) : null}
                 </div>
 
-                <aside className="content-creator-output-aside w-full shrink-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] lg:w-[min(100%,440px)] lg:overflow-y-auto lg:self-start xl:w-[min(100%,500px)]">
+                <aside className="scrollbar-themed content-creator-output-aside w-full shrink-0 lg:sticky lg:top-24 lg:max-h-[calc(100vh-6rem)] lg:w-[min(100%,440px)] lg:overflow-y-auto lg:self-start xl:w-[min(100%,500px)]">
                   <div className="space-y-6 lg:rounded-2xl lg:border lg:border-card-border lg:bg-card/25 lg:p-4 xl:p-5">
+                    <EstimatedCost
+                      points={estimatedPoints}
+                      isLoading={estimateLoading}
+                      variant="card"
+                      size="lg"
+                    />
+                    {estimateError ? (
+                      <p className="text-xs text-red-400">
+                        {isEstimateNotFoundError(estimateError)
+                          ? t('estimate.backendMissing')
+                          : t('estimate.unavailable', { message: estimateError })}
+                      </p>
+                    ) : null}
                     <div className="space-y-6">
                       <h2 className="text-sm font-semibold tracking-tight text-foreground">
                         {t('layout.styleAndActionsHeading')}
@@ -511,21 +526,9 @@ export default function ContentGenerationPage() {
                         </div>
                       ) : null}
                       <TonePicker value={tone} onChange={setTone} />
-                      <div className="rounded-xl border border-card-border bg-card px-4 py-3">
-                        <p className={`text-sm ${estimateError ? 'text-red-400' : 'text-muted-foreground'}`}>
-                          {estimateLoading
-                            ? t('estimate.loading')
-                            : estimate
-                              ? t('estimate.cost', { points: estimate.reserveCostPoints })
-                              : estimateError
-                                ? isEstimateNotFoundError(estimateError)
-                                  ? t('estimate.backendMissing')
-                                  : t('estimate.unavailable', { message: estimateError })
-                                : t('estimate.prompt')}
-                        </p>
-                      </div>
                       <GenerateButton
                         topic={topic}
+                        points={estimatedPoints}
                         isLoading={isLoading}
                         disabled={isLogoUploading}
                         onClick={handleGenerate}
@@ -583,7 +586,7 @@ export default function ContentGenerationPage() {
                                 {scriptCopied ? t('result.copied') : t('result.copy')}
                               </button>
                             </div>
-                            <pre className="max-h-[min(70vh,48rem)] overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-sans text-sm leading-relaxed text-foreground lg:max-h-[min(60vh,36rem)]">
+                            <pre className="scrollbar-themed max-h-[min(70vh,48rem)] overflow-auto whitespace-pre-wrap break-words px-4 py-3 font-sans text-sm leading-relaxed text-foreground lg:max-h-[min(60vh,36rem)]">
                               {generatedText}
                             </pre>
                           </div>

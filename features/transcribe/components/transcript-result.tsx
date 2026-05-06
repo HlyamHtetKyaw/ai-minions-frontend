@@ -55,7 +55,7 @@ export default function TranscriptResult({ text }: Props) {
           </button>
         </div>
       </div>
-      <div className="max-h-72 overflow-y-auto rounded-lg bg-subtle p-3">
+      <div className="scrollbar-themed max-h-72 overflow-y-auto rounded-lg bg-subtle p-3">
         <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground">
           {text}
         </p>
