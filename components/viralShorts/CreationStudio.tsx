@@ -42,6 +42,7 @@ import {
   extractTranscriptTextFromOutputData,
   openGenerationJobSseStream,
   parseGenerationSseProgressPayload,
+  type GenerationSseProgressLabelOverrides,
 } from '@/lib/generation-job-sse';
 import type { GenerationJobTerminalPayload } from '@/lib/generation-job-sse';
 import {
@@ -75,6 +76,23 @@ const MIN_SYNC_RATE = 0.8;
 const MAX_SYNC_RATE = 1.25;
 // Testing: allow up to 5x so it's obvious (production should likely be <= 1.4x).
 const MAX_SYNC_RATE_STRONG = 5;
+
+/**
+ * Balanced sync worker stages: {@code download → gen_* → parse_srt → ffmpeg_segments → upload}.
+ * Playful copy + monotonic percents; heavier “finalizing” language only after AI-ish steps.
+ */
+const BALANCED_SYNC_SSE_FOR_UI: GenerationSseProgressLabelOverrides = {
+  subscribedLabel: 'You’re in—we’re warming up the backstage.',
+  subscribedPercent: 8,
+  stages: {
+    download: { percent: 18, label: 'Rounding up footage and soundtrack from the ether…' },
+    gen_original_srt: { percent: 36, label: 'Focus pass one—squinting at the details so you don’t have to.' },
+    gen_voice_srt: { percent: 54, label: 'Focus pass two—same mystery, fresher vibes.' },
+    parse_srt: { percent: 66, label: 'Connecting invisible dots behind the curtain…' },
+    ffmpeg_segments: { percent: 82, label: 'Finalizing—marrying picture to voice frame by frame.' },
+    upload: { percent: 94, label: 'Final touches—moving your shiny cut onto the marquee.' },
+  },
+};
 
 type EditableSrtCue = SrtCue & { id: string };
 
@@ -891,7 +909,7 @@ export default function CreationStudio({
 
       setBalancedSyncPreviewUrl(String(readUrl));
       setBalancedSyncPreviewS3Key(String(s3Key));
-      setBalancedSyncProgress({ percent: 100, label: 'Balanced preview ready' });
+      setBalancedSyncProgress({ percent: 100, label: 'All set — your preview’s ready!' });
       setShowBalancedPreview(true);
     },
     [originalAudioEnabled, voiceOverEnabled, voiceOverPlaybackRate],
@@ -1212,25 +1230,23 @@ export default function CreationStudio({
     balancedSyncStreamRef.current = balancedSyncGenerationId;
     setBalancedSyncError(null);
     if (!balancedSyncProgress) {
-      setBalancedSyncProgress({ percent: 10, label: 'Resuming balanced sync…' });
+      setBalancedSyncProgress({
+        percent: BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8,
+        label: 'Picking back up where we left off…',
+      });
     }
 
     openGenerationJobSseStream(balancedSyncGenerationId, {
       onOpen: () => {
-        setBalancedSyncProgress((prev) => prev ?? { percent: 12, label: 'Connected…' });
+        setBalancedSyncProgress((prev) =>
+          prev ?? {
+            percent: BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8,
+            label: 'Back online—we’re syncing the signal.',
+          },
+        );
       },
       onStatus: (raw) => {
-        const p = parseGenerationSseProgressPayload(raw, {
-          stages: {
-            parse_srt: { percent: 44, label: 'Reading subtitles' },
-            gen_original_srt: { percent: 28, label: 'Generating original SRT' },
-            gen_voice_srt: { percent: 34, label: 'Generating voice SRT' },
-            ffmpeg_segments: { percent: 78, label: 'Syncing video segments' },
-            upload: { percent: 92, label: 'Uploading' },
-          },
-          subscribedLabel: 'Connected — resuming…',
-          subscribedPercent: 12,
-        });
+        const p = parseGenerationSseProgressPayload(raw, BALANCED_SYNC_SSE_FOR_UI);
         if (p) setBalancedSyncProgress(p);
       },
       onTerminal: (payload) => {
@@ -1788,7 +1804,7 @@ export default function CreationStudio({
 
   const handleStartBalancedSync = async () => {
     setBalancedSyncError(null);
-    setBalancedSyncProgress({ percent: 8, label: 'Starting balanced sync…' });
+    setBalancedSyncProgress({ percent: 4, label: 'Saving your seat in line—we’ll start shortly.' });
     try {
       if (!workspaceS3Key) {
         throw new Error('Video key is missing. Please re-upload the video.');
@@ -1815,10 +1831,12 @@ export default function CreationStudio({
 
       openGenerationJobSseStream(started.generationId, {
         onOpen: () => {
-          setBalancedSyncProgress({ percent: 12, label: 'Connected…' });
+          const pct = BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8;
+          const lbl = BALANCED_SYNC_SSE_FOR_UI.subscribedLabel ?? 'Connecting…';
+          setBalancedSyncProgress({ percent: pct, label: lbl });
         },
         onStatus: (raw) => {
-          const p = parseGenerationSseProgressPayload(raw);
+          const p = parseGenerationSseProgressPayload(raw, BALANCED_SYNC_SSE_FOR_UI);
           if (p) setBalancedSyncProgress(p);
         },
         onTerminal: (payload) => {
@@ -1865,7 +1883,7 @@ export default function CreationStudio({
 
           setBalancedSyncPreviewUrl(String(readUrl));
           setBalancedSyncPreviewS3Key(String(s3Key));
-          setBalancedSyncProgress({ percent: 100, label: 'Balanced preview ready' });
+          setBalancedSyncProgress({ percent: 100, label: 'All set — your preview’s ready!' });
           setShowBalancedPreview(true);
         },
         onError: (message) => {
@@ -3039,7 +3057,7 @@ export default function CreationStudio({
               ) : null}
               {isBalancedPreviewMode ? (
                 <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
-                  <span className="font-semibold">Balanced preview ready</span>
+                  <span className="font-semibold">All set — synced preview on deck</span>
                   <button
                     type="button"
                     onClick={() => setShowBalancedPreview(true)}
