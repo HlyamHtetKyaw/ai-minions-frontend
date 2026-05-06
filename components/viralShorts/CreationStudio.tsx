@@ -35,6 +35,7 @@ import {
   openGenerationJobSseStream,
   parseGenerationSseProgressPayload,
 } from '@/lib/generation-job-sse';
+import type { GenerationJobTerminalPayload } from '@/lib/generation-job-sse';
 import {
   triggerWorkspaceExportDownload,
   videoEditorExportEstimateExisting,
@@ -182,6 +183,7 @@ function extractWorkspaceKeyFromVideoUrl(value: string | null | undefined): stri
 type Props = {
   videoUrl: string;
   videoName: string;
+  initialTranscribeGenerationId?: number | null;
   initialBalancedSyncGenerationId?: number | null;
   initialBalancedSyncPreviewUrl?: string;
   initialBalancedSyncPreviewS3Key?: string;
@@ -198,6 +200,7 @@ type Props = {
   initialTone?: TranslateTone;
   initialVoiceOverAudioUrl?: string;
   initialVoiceOverS3Key?: string;
+  initialVoiceOverJobId?: string | null;
   /** Persisted Gemini voice id (e.g. {@code kore}); legacy {@code woman-kore}/{@code man} normalized on load. */
   initialVoiceOverVoice?: string;
   initialVoiceOverEnabled?: boolean;
@@ -206,11 +209,15 @@ type Props = {
   initialAllowStrongerSync?: boolean;
   initialProtectFlip?: boolean;
   initialProtectHueDeg?: number;
+  initialExportGenerationId?: number | null;
+  initialExportedVideoUrl?: string | null;
+  initialExportedVideoKey?: string | null;
   onTranscriptTextChange?: (text: string) => void;
   onTranslatedTextChange?: (text: string) => void;
   onToneChange?: (tone: TranslateTone) => void;
   onVoiceOverAudioUrlChange?: (url: string) => void;
   onVoiceOverS3KeyChange?: (key: string) => void;
+  onVoiceOverJobIdChange?: (jobId: string | null) => void;
   onVoiceOverVoiceChange?: (voiceId: string) => void;
   onVoiceOverEnabledChange?: (enabled: boolean) => void;
   onOriginalAudioEnabledChange?: (enabled: boolean) => void;
@@ -218,6 +225,7 @@ type Props = {
   onAllowStrongerSyncChange?: (enabled: boolean) => void;
   onProtectFlipChange?: (enabled: boolean) => void;
   onProtectHueDegChange?: (deg: number) => void;
+  onTranscribeGenerationIdChange?: (id: number | null) => void;
   onBalancedSyncGenerationIdChange?: (id: number | null) => void;
   onBalancedSyncPreviewUrlChange?: (url: string) => void;
   onBalancedSyncPreviewS3KeyChange?: (key: string) => void;
@@ -231,6 +239,9 @@ type Props = {
   onSubtitlesFontSizeChange?: (size: number) => void;
   onSubtitlesBackgroundBlurChange?: (blur: number) => void;
   onSubtitlesBackgroundOpacityChange?: (opacity: number) => void;
+  onExportGenerationIdChange?: (id: number | null) => void;
+  onExportedVideoUrlChange?: (url: string | null) => void;
+  onExportedVideoKeyChange?: (key: string) => void;
   onDiscardWorkspace?: () => void;
   /** Persist viral workspace to the server right after export (avoids losing state if URLs refresh). */
   onExportSuccess?: () => void | Promise<void>;
@@ -239,6 +250,7 @@ type Props = {
 export default function CreationStudio({
   videoUrl,
   videoName,
+  initialTranscribeGenerationId,
   initialBalancedSyncGenerationId,
   initialBalancedSyncPreviewUrl,
   initialBalancedSyncPreviewS3Key,
@@ -255,6 +267,7 @@ export default function CreationStudio({
   initialTone,
   initialVoiceOverAudioUrl,
   initialVoiceOverS3Key,
+  initialVoiceOverJobId,
   initialVoiceOverVoice,
   initialVoiceOverEnabled,
   initialOriginalAudioEnabled,
@@ -262,11 +275,15 @@ export default function CreationStudio({
   initialAllowStrongerSync,
   initialProtectFlip,
   initialProtectHueDeg,
+  initialExportGenerationId,
+  initialExportedVideoUrl,
+  initialExportedVideoKey,
   onTranscriptTextChange,
   onTranslatedTextChange,
   onToneChange,
   onVoiceOverAudioUrlChange,
   onVoiceOverS3KeyChange,
+  onVoiceOverJobIdChange,
   onVoiceOverVoiceChange,
   onVoiceOverEnabledChange,
   onOriginalAudioEnabledChange,
@@ -274,6 +291,7 @@ export default function CreationStudio({
   onAllowStrongerSyncChange,
   onProtectFlipChange,
   onProtectHueDegChange,
+  onTranscribeGenerationIdChange,
   onBalancedSyncGenerationIdChange,
   onBalancedSyncPreviewUrlChange,
   onBalancedSyncPreviewS3KeyChange,
@@ -287,6 +305,9 @@ export default function CreationStudio({
   onSubtitlesFontSizeChange,
   onSubtitlesBackgroundBlurChange,
   onSubtitlesBackgroundOpacityChange,
+  onExportGenerationIdChange,
+  onExportedVideoUrlChange,
+  onExportedVideoKeyChange,
   onDiscardWorkspace,
   onExportSuccess,
 }: Props) {
@@ -316,8 +337,19 @@ export default function CreationStudio({
   const [exportEstimateError, setExportEstimateError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<string | null>(null);
-  const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
-  const [exportedVideoKey, setExportedVideoKey] = useState('');
+  const [exportGenerationId, setExportGenerationId] = useState<number | null>(() =>
+    typeof initialExportGenerationId === 'number' && Number.isFinite(initialExportGenerationId)
+      ? initialExportGenerationId
+      : null,
+  );
+  const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(() => {
+    const s = typeof initialExportedVideoUrl === 'string' ? initialExportedVideoUrl.trim() : '';
+    return s ? s : null;
+  });
+  const [exportedVideoKey, setExportedVideoKey] = useState(() => {
+    const s = typeof initialExportedVideoKey === 'string' ? initialExportedVideoKey.trim() : '';
+    return s;
+  });
 
   const [balancedSyncProgress, setBalancedSyncProgress] = useState<{ percent: number; label: string } | null>(null);
   const [balancedSyncError, setBalancedSyncError] = useState<string | null>(null);
@@ -506,6 +538,11 @@ export default function CreationStudio({
   const [transcriptText, setTranscriptText] = useState(() =>
     typeof initialTranscriptText === 'string' ? initialTranscriptText : '',
   );
+  const [transcribeGenerationId, setTranscribeGenerationId] = useState<number | null>(() =>
+    typeof initialTranscribeGenerationId === 'number' && Number.isFinite(initialTranscribeGenerationId)
+      ? initialTranscribeGenerationId
+      : null,
+  );
   const [translatedText, setTranslatedText] = useState(() =>
     typeof initialTranslatedText === 'string' ? initialTranslatedText : '',
   );
@@ -516,6 +553,10 @@ export default function CreationStudio({
   const [voiceOverS3Key, setVoiceOverS3Key] = useState(() =>
     typeof initialVoiceOverS3Key === 'string' ? initialVoiceOverS3Key : '',
   );
+  const [voiceOverJobId, setVoiceOverJobId] = useState<string | null>(() => {
+    const s = typeof initialVoiceOverJobId === 'string' ? initialVoiceOverJobId.trim() : '';
+    return s ? s : null;
+  });
   const [voiceOverEnabled, setVoiceOverEnabled] = useState(() => Boolean(initialVoiceOverEnabled));
   const [originalAudioEnabled, setOriginalAudioEnabled] = useState(() =>
     initialOriginalAudioEnabled == null ? true : Boolean(initialOriginalAudioEnabled),
@@ -835,6 +876,185 @@ export default function CreationStudio({
     [originalAudioEnabled, voiceOverEnabled, voiceOverPlaybackRate],
   );
 
+  const transcribeStreamRef = useRef<number | null>(null);
+  const exportStreamRef = useRef<number | null>(null);
+  const voiceOverStreamRef = useRef<string | null>(null);
+
+  const applyTranscribeTerminalPayload = useCallback((payload: GenerationJobTerminalPayload) => {
+    const text = extractTranscriptTextFromOutputData(payload.outputData);
+    if (text) {
+      setIsTranscribed(true);
+      setIsTranslated(false);
+      setTranscriptText(text);
+      setTranslatedText('');
+      setScriptText(text);
+      setTranscribeProgress(null);
+      setTranscribeError(null);
+      setTranscribeGenerationId(null);
+      return;
+    }
+    const raw = payload.message ?? 'No transcript text returned.';
+    setTranscribeError(raw);
+    setTranscribeProgress(null);
+  }, []);
+
+  const applyExportTerminalPayload = useCallback(
+    (payload: GenerationJobTerminalPayload) => {
+      if (payload.status !== 'completed') {
+        setExportError(payload.message || 'Export failed');
+        setExporting(false);
+        setExportGenerationId(null);
+        return;
+      }
+      const output =
+        typeof payload.outputData === 'string'
+          ? (() => {
+              try {
+                return JSON.parse(payload.outputData) as Record<string, unknown>;
+              } catch {
+                return undefined;
+              }
+            })()
+          : payload.outputData != null && typeof payload.outputData === 'object'
+            ? (payload.outputData as Record<string, unknown>)
+            : undefined;
+      const resultNode =
+        output && typeof output.result === 'object' && output.result != null
+          ? (output.result as Record<string, unknown>)
+          : undefined;
+      const pick = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
+      const downloadUrl =
+        pick(resultNode?.readUrl) ||
+        pick(resultNode?.downloadUrl) ||
+        pick(resultNode?.storageUrl) ||
+        (output ? pick(output.readUrl) || pick(output.downloadUrl) || pick(output.storageUrl) : '') ||
+        '';
+      const s3Key = pick(resultNode?.s3Key) || '';
+      if (!downloadUrl) {
+        setExportError('Export completed but missing download URL');
+        setExporting(false);
+        setExportGenerationId(null);
+        return;
+      }
+      setExportedVideoUrl(downloadUrl);
+      setExportedVideoKey(s3Key);
+      setExportError(null);
+      setExporting(false);
+      setExportGenerationId(null);
+    },
+    [],
+  );
+
+  // Resume transcription after refresh.
+  useEffect(() => {
+    if (!transcribeGenerationId) return;
+    if (transcribeStreamRef.current === transcribeGenerationId) return;
+    if (isTranscribing) return;
+    if (isTranscribed && transcriptText.trim()) {
+      setTranscribeGenerationId(null);
+      return;
+    }
+    transcribeStreamRef.current = transcribeGenerationId;
+    setTranscribeError(null);
+    if (!transcribeProgress) setTranscribeProgress({ percent: 10, label: 'Resuming transcription…' });
+    openGenerationJobSseStream(transcribeGenerationId, {
+      onStatus: (raw) => {
+        const p = parseGenerationSseProgressPayload(raw);
+        if (p) setTranscribeProgress(p);
+      },
+      onDone: () => {
+        if (transcribeStreamRef.current === transcribeGenerationId) transcribeStreamRef.current = null;
+      },
+      onError: (msg) => {
+        setTranscribeError(msg);
+        setTranscribeProgress(null);
+      },
+      onTerminal: applyTranscribeTerminalPayload,
+    });
+  }, [applyTranscribeTerminalPayload, isTranscribed, isTranscribing, transcriptText, transcribeGenerationId, transcribeProgress]);
+
+  // Resume voice over after refresh (voice-over SSE uses a string jobId).
+  useEffect(() => {
+    if (!voiceOverJobId) return;
+    if (voiceOverStreamRef.current === voiceOverJobId) return;
+    if (isGenerating) return;
+    if (voiceOverAudioUrl.trim()) {
+      setVoiceOverJobId(null);
+      return;
+    }
+    voiceOverStreamRef.current = voiceOverJobId;
+    setVoiceOverError(null);
+    if (!voiceOverProgress) setVoiceOverProgress({ percent: 10, label: tVo('progress.starting') });
+    openVoiceOverSse(voiceOverJobId, {
+      onStatus: (raw) => {
+        const p = parseGenerationSseProgressPayload(raw);
+        if (p) setVoiceOverProgress(p);
+      },
+      onDone: () => {
+        if (voiceOverStreamRef.current === voiceOverJobId) voiceOverStreamRef.current = null;
+      },
+      onError: (msg) => {
+        setVoiceOverError(msg);
+        setVoiceOverProgress(null);
+      },
+      onTerminal: (payload) => {
+        if (payload.status === 'completed' && payload.data && typeof payload.data === 'object') {
+          const d = payload.data as Record<string, unknown>;
+          const url = typeof d.audioUrl === 'string' ? d.audioUrl : '';
+          const key = typeof d.s3Key === 'string' ? d.s3Key : '';
+          if (url) {
+            setVoiceOverAudioUrl(url);
+            if (key) setVoiceOverS3Key(key);
+            setIsGenerated(true);
+            setVoiceOverProgress(null);
+            setVoiceOverEnabled(true);
+            setOriginalAudioEnabled(false);
+            setVoiceOverJobId(null);
+            return;
+          }
+        }
+        setVoiceOverError(payload.message ?? 'Voice over failed');
+        setVoiceOverProgress(null);
+      },
+    });
+  }, [isGenerating, tVo, voiceOverAudioUrl, voiceOverJobId, voiceOverProgress]);
+
+  // Resume export after refresh (do NOT auto-download; just show link when ready).
+  useEffect(() => {
+    if (!exportGenerationId) return;
+    if (exportStreamRef.current === exportGenerationId) return;
+    if (exportedVideoUrl) {
+      setExportGenerationId(null);
+      return;
+    }
+    exportStreamRef.current = exportGenerationId;
+    setExportError(null);
+    setExporting(true);
+    const exportSseOverrides = {
+      subscribedLabel: 'Export queued',
+      subscribedPercent: 18,
+      stages: {
+        workspace_export_started: { percent: 28, label: 'Rendering timeline' },
+        workspace_export_encoding: { percent: 62, label: 'Encoding video' },
+        workspace_export_uploading: { percent: 88, label: 'Uploading result' },
+      },
+    } as const;
+    openGenerationJobSseStream(exportGenerationId, {
+      onStatus: (raw) => {
+        // Keep stream active; unified bar uses `exporting` flag.
+        parseGenerationSseProgressPayload(raw, exportSseOverrides);
+      },
+      onDone: () => {
+        if (exportStreamRef.current === exportGenerationId) exportStreamRef.current = null;
+      },
+      onError: (message) => {
+        setExportError(message || 'Export stream failed');
+        setExporting(false);
+      },
+      onTerminal: applyExportTerminalPayload,
+    });
+  }, [applyExportTerminalPayload, exportGenerationId, exportedVideoUrl]);
+
   // Resume balanced sync after refresh / navigation:
   // - If the job is still running, reconnect to SSE and keep showing progress.
   // - If the job already finished, the SSE stream returns a terminal chunk immediately.
@@ -901,6 +1121,26 @@ export default function CreationStudio({
       onBalancedSyncPreviewS3KeyChange(balancedSyncPreviewS3Key);
     }
   }, [balancedSyncPreviewS3Key, onBalancedSyncPreviewS3KeyChange]);
+
+  useEffect(() => {
+    onTranscribeGenerationIdChange?.(transcribeGenerationId);
+  }, [onTranscribeGenerationIdChange, transcribeGenerationId]);
+
+  useEffect(() => {
+    onVoiceOverJobIdChange?.(voiceOverJobId);
+  }, [onVoiceOverJobIdChange, voiceOverJobId]);
+
+  useEffect(() => {
+    onExportGenerationIdChange?.(exportGenerationId);
+  }, [exportGenerationId, onExportGenerationIdChange]);
+
+  useEffect(() => {
+    onExportedVideoUrlChange?.(exportedVideoUrl);
+  }, [exportedVideoUrl, onExportedVideoUrlChange]);
+
+  useEffect(() => {
+    onExportedVideoKeyChange?.(exportedVideoKey);
+  }, [exportedVideoKey, onExportedVideoKeyChange]);
 
   useEffect(() => {
     onSubtitlesGenerationIdChange?.(subtitlesGenerationId);
@@ -1695,6 +1935,7 @@ export default function CreationStudio({
         contentType: 'video/mp4',
         originalFileName: videoName || null,
       });
+      setTranscribeGenerationId(complete.jobId);
 
       openGenerationJobSseStream(complete.jobId, {
         onStatus: (raw) => {
@@ -1715,6 +1956,7 @@ export default function CreationStudio({
             setTranslatedText('');
             setScriptText(text);
             setTranscribeProgress(null);
+            setTranscribeGenerationId(null);
           } else {
             const raw = payload.message ?? 'No transcript text returned.';
             setTranscribeError(raw);
@@ -1853,6 +2095,7 @@ export default function CreationStudio({
       };
       const res = await exportVideoEditorWorkspace(payload);
       if (res.generationId != null) {
+        setExportGenerationId(res.generationId);
         const exportSseOverrides = {
           subscribedLabel: 'Export queued',
           subscribedPercent: 18,
@@ -1915,6 +2158,7 @@ export default function CreationStudio({
         });
         setExportedVideoUrl(sseResult.downloadUrl);
         setExportedVideoKey(sseResult.s3Key);
+        setExportGenerationId(null);
         await triggerWorkspaceExportDownload(sseResult.downloadUrl, sseResult.s3Key);
       } else {
         setExportedVideoUrl(res.downloadUrl);
@@ -1943,6 +2187,7 @@ export default function CreationStudio({
         aiModel: selectedVoiceId,
         style: deliveryStyleForToneGroup(voiceToneGroupId),
       });
+      setVoiceOverJobId(started.jobId);
       openVoiceOverSse(started.jobId, {
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw);
@@ -1965,6 +2210,7 @@ export default function CreationStudio({
               setVoiceOverProgress(null);
               setVoiceOverEnabled(true);
               setOriginalAudioEnabled(false);
+              setVoiceOverJobId(null);
               return;
             }
           }

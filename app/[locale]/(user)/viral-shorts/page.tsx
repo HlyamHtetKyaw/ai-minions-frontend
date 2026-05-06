@@ -31,6 +31,7 @@ export default function ViralShortsPage() {
   >('casual_social_media');
   const [voiceOverAudioUrl, setVoiceOverAudioUrl] = useState('');
   const [voiceOverS3Key, setVoiceOverS3Key] = useState('');
+  const [voiceOverJobId, setVoiceOverJobId] = useState<string | null>(null);
   const [voiceOverVoice, setVoiceOverVoice] = useState<string>('kore');
   const [voiceOverEnabled, setVoiceOverEnabled] = useState(false);
   const [originalAudioEnabled, setOriginalAudioEnabled] = useState(true);
@@ -41,6 +42,10 @@ export default function ViralShortsPage() {
   const [balancedSyncGenerationId, setBalancedSyncGenerationId] = useState<number | null>(null);
   const [balancedSyncPreviewUrl, setBalancedSyncPreviewUrl] = useState('');
   const [balancedSyncPreviewS3Key, setBalancedSyncPreviewS3Key] = useState('');
+  const [transcribeGenerationId, setTranscribeGenerationId] = useState<number | null>(null);
+  const [exportGenerationId, setExportGenerationId] = useState<number | null>(null);
+  const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
+  const [exportedVideoKey, setExportedVideoKey] = useState<string>('');
   const [subtitlesGenerationId, setSubtitlesGenerationId] = useState<number | null>(null);
   const [subtitlesSrtKey, setSubtitlesSrtKey] = useState('');
   const [subtitlesDownloadUrl, setSubtitlesDownloadUrl] = useState('');
@@ -89,6 +94,7 @@ export default function ViralShortsPage() {
           tone?: string | null;
           voiceOverAudioUrl?: string | null;
           voiceOverS3Key?: string | null;
+          voiceOverJobId?: string | null;
           voiceOverVoice?: string | null;
           voiceOverEnabled?: boolean | null;
           originalAudioEnabled?: boolean | null;
@@ -99,6 +105,10 @@ export default function ViralShortsPage() {
           balancedSyncGenerationId?: number | null;
           balancedSyncPreviewUrl?: string | null;
           balancedSyncPreviewS3Key?: string | null;
+          transcribeGenerationId?: number | null;
+          exportGenerationId?: number | null;
+          exportedVideoUrl?: string | null;
+          exportedVideoKey?: string | null;
           subtitlesGenerationId?: number | null;
           subtitlesSrtKey?: string | null;
           subtitlesDownloadUrl?: string | null;
@@ -132,6 +142,10 @@ export default function ViralShortsPage() {
           setTranslatedText(restoredTranslated);
           setVoiceOverAudioUrl(typeof parsed.voiceOverAudioUrl === 'string' ? parsed.voiceOverAudioUrl : '');
           setVoiceOverS3Key(typeof parsed.voiceOverS3Key === 'string' ? parsed.voiceOverS3Key : '');
+          {
+            const jid = typeof parsed.voiceOverJobId === 'string' ? parsed.voiceOverJobId.trim() : '';
+            setVoiceOverJobId(jid ? jid : null);
+          }
           const vv = typeof parsed.voiceOverVoice === 'string' ? parsed.voiceOverVoice : '';
           setVoiceOverVoice(normalizePersistedVoiceId(vv));
           setVoiceOverEnabled(Boolean(parsed.voiceOverEnabled));
@@ -157,6 +171,20 @@ export default function ViralShortsPage() {
           setBalancedSyncPreviewS3Key(
             typeof parsed.balancedSyncPreviewS3Key === 'string' ? parsed.balancedSyncPreviewS3Key : '',
           );
+          setTranscribeGenerationId(
+            typeof parsed.transcribeGenerationId === 'number' && Number.isFinite(parsed.transcribeGenerationId)
+              ? parsed.transcribeGenerationId
+              : null,
+          );
+          setExportGenerationId(
+            typeof parsed.exportGenerationId === 'number' && Number.isFinite(parsed.exportGenerationId)
+              ? parsed.exportGenerationId
+              : null,
+          );
+          setExportedVideoUrl(
+            typeof parsed.exportedVideoUrl === 'string' && parsed.exportedVideoUrl.trim() ? parsed.exportedVideoUrl.trim() : null,
+          );
+          setExportedVideoKey(typeof parsed.exportedVideoKey === 'string' ? parsed.exportedVideoKey : '');
           setSubtitlesGenerationId(
             typeof parsed.subtitlesGenerationId === 'number' && Number.isFinite(parsed.subtitlesGenerationId)
               ? parsed.subtitlesGenerationId
@@ -244,10 +272,12 @@ export default function ViralShortsPage() {
         videoUrl: videoUrlWithKey,
         videoName: file.name,
         transcriptText: '',
+        transcribeGenerationId: null,
         translatedText: '',
         tone: 'casual_social_media',
         voiceOverAudioUrl: '',
         voiceOverS3Key: '',
+        voiceOverJobId: null,
         voiceOverVoice: 'kore',
         voiceOverEnabled: false,
         originalAudioEnabled: true,
@@ -258,6 +288,9 @@ export default function ViralShortsPage() {
         balancedSyncGenerationId: null,
         balancedSyncPreviewUrl: '',
         balancedSyncPreviewS3Key: '',
+        exportGenerationId: null,
+        exportedVideoUrl: null,
+        exportedVideoKey: '',
         subtitlesGenerationId: null,
         subtitlesSrtKey: '',
         subtitlesDownloadUrl: '',
@@ -291,10 +324,12 @@ export default function ViralShortsPage() {
             videoUrl,
             videoName,
             transcriptText,
+            transcribeGenerationId,
             translatedText,
             tone: translateTone,
             voiceOverAudioUrl,
             voiceOverS3Key,
+            voiceOverJobId,
             voiceOverVoice,
             voiceOverEnabled,
             originalAudioEnabled,
@@ -305,6 +340,9 @@ export default function ViralShortsPage() {
             balancedSyncGenerationId,
             balancedSyncPreviewUrl,
             balancedSyncPreviewS3Key,
+            exportGenerationId,
+            exportedVideoUrl,
+            exportedVideoKey,
             subtitlesGenerationId,
             subtitlesSrtKey,
             subtitlesDownloadUrl,
@@ -338,12 +376,17 @@ export default function ViralShortsPage() {
     voiceOverEnabled,
     originalAudioEnabled,
     voiceOverPlaybackRate,
+    voiceOverJobId,
     allowStrongerSync,
     protectFlip,
     protectHueDeg,
+    transcribeGenerationId,
     balancedSyncGenerationId,
     balancedSyncPreviewUrl,
     balancedSyncPreviewS3Key,
+    exportGenerationId,
+    exportedVideoUrl,
+    exportedVideoKey,
     subtitlesGenerationId,
     subtitlesSrtKey,
     subtitlesDownloadUrl,
@@ -568,10 +611,12 @@ export default function ViralShortsPage() {
                 videoName={videoName}
                 videoUrl={videoUrl}
                 initialTranscriptText={transcriptText}
+                initialTranscribeGenerationId={transcribeGenerationId}
                 initialTranslatedText={translatedText}
                 initialTone={translateTone}
                 initialVoiceOverAudioUrl={voiceOverAudioUrl}
                 initialVoiceOverS3Key={voiceOverS3Key}
+                initialVoiceOverJobId={voiceOverJobId}
                 initialVoiceOverVoice={voiceOverVoice}
                 initialVoiceOverEnabled={voiceOverEnabled}
                 initialOriginalAudioEnabled={originalAudioEnabled}
@@ -582,6 +627,9 @@ export default function ViralShortsPage() {
                 initialBalancedSyncGenerationId={balancedSyncGenerationId}
                 initialBalancedSyncPreviewUrl={balancedSyncPreviewUrl}
                 initialBalancedSyncPreviewS3Key={balancedSyncPreviewS3Key}
+                initialExportGenerationId={exportGenerationId}
+                initialExportedVideoUrl={exportedVideoUrl}
+                initialExportedVideoKey={exportedVideoKey}
                 initialSubtitlesGenerationId={subtitlesGenerationId}
                 initialSubtitlesSrtKey={subtitlesSrtKey}
                 initialSubtitlesDownloadUrl={subtitlesDownloadUrl}
@@ -591,10 +639,12 @@ export default function ViralShortsPage() {
                 initialSubtitlesBackgroundBlur={subtitlesBackgroundBlur}
                 initialSubtitlesBackgroundOpacity={subtitlesBackgroundOpacity}
                 onTranscriptTextChange={setTranscriptText}
+                onTranscribeGenerationIdChange={setTranscribeGenerationId}
                 onTranslatedTextChange={setTranslatedText}
                 onToneChange={setTranslateTone}
                 onVoiceOverAudioUrlChange={setVoiceOverAudioUrl}
                 onVoiceOverS3KeyChange={setVoiceOverS3Key}
+                onVoiceOverJobIdChange={setVoiceOverJobId}
                 onVoiceOverVoiceChange={setVoiceOverVoice}
                 onVoiceOverEnabledChange={setVoiceOverEnabled}
                 onOriginalAudioEnabledChange={setOriginalAudioEnabled}
@@ -605,6 +655,9 @@ export default function ViralShortsPage() {
                 onBalancedSyncGenerationIdChange={setBalancedSyncGenerationId}
                 onBalancedSyncPreviewUrlChange={setBalancedSyncPreviewUrl}
                 onBalancedSyncPreviewS3KeyChange={setBalancedSyncPreviewS3Key}
+                onExportGenerationIdChange={setExportGenerationId}
+                onExportedVideoUrlChange={setExportedVideoUrl}
+                onExportedVideoKeyChange={setExportedVideoKey}
                 onSubtitlesGenerationIdChange={setSubtitlesGenerationId}
                 onSubtitlesSrtKeyChange={setSubtitlesSrtKey}
                 onSubtitlesDownloadUrlChange={setSubtitlesDownloadUrl}
