@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 export type EstimatedCostProps = {
   points: number;
@@ -31,16 +31,27 @@ export default function EstimatedCost({
   animated = true,
   className,
 }: EstimatedCostProps) {
-  const [animateTick, setAnimateTick] = useState(false);
   const prevPointsRef = useRef(points);
+  const valueRef = useRef<HTMLSpanElement | null>(null);
 
   useEffect(() => {
     if (!animated) return;
     if (prevPointsRef.current === points) return;
     prevPointsRef.current = points;
-    setAnimateTick(true);
-    const id = setTimeout(() => setAnimateTick(false), 220);
-    return () => clearTimeout(id);
+
+    const node = valueRef.current;
+    if (!node) return;
+
+    const animation = node.animate(
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.05)' },
+        { transform: 'scale(1)' },
+      ],
+      { duration: 220, easing: 'ease-out' },
+    );
+
+    return () => animation.cancel();
   }, [animated, points]);
 
   const safePoints = Number.isFinite(points) ? Math.max(0, Math.round(points)) : 0;
@@ -88,11 +99,11 @@ export default function EstimatedCost({
           />
         ) : (
           <span
+            ref={valueRef}
             className={cx(
               'font-bold tabular-nums text-white transition-transform duration-200',
               valueSize,
               getTone(safePoints),
-              animated && animateTick && 'scale-105',
             )}
           >
             {safePoints.toLocaleString()} Points

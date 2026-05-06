@@ -268,7 +268,9 @@ export default function ContentGenerationPage() {
               const body = (result.generatedText || '').trim();
               const titleLine = (result.shortTextOnImage || '').trim();
               setGeneratedText(body || (contentType === 'script' ? titleLine : ''));
-              setGeneratedImageDataUrl(result.imageBase64 ? `data:image/png;base64,${result.imageBase64}` : '');
+              setGeneratedImageDataUrl(
+                result.imageBase64 ? `data:image/png;base64,${result.imageBase64}` : (result.storageUrl || ''),
+              );
               setProgress({ percent: 100, label: t('progress.finished') });
               setStatus('');
             } else {
@@ -610,21 +612,32 @@ export default function ContentGenerationPage() {
                         textContent={generatedText}
                         onDownload={() => {
                           if (!generatedImageDataUrl) return;
-                          const byteCharacters = atob(generatedImageDataUrl.split(',')[1]);
-                          const byteNumbers = new Array(byteCharacters.length);
-                          for (let i = 0; i < byteCharacters.length; i++) {
-                            byteNumbers[i] = byteCharacters.charCodeAt(i);
+                          if (generatedImageDataUrl.startsWith('data:')) {
+                            const byteCharacters = atob(generatedImageDataUrl.split(',')[1]);
+                            const byteNumbers = new Array(byteCharacters.length);
+                            for (let i = 0; i < byteCharacters.length; i++) {
+                              byteNumbers[i] = byteCharacters.charCodeAt(i);
+                            }
+                            const byteArray = new Uint8Array(byteNumbers);
+                            const blob = new Blob([byteArray], { type: 'image/png' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `ai-minions-content-${Date.now()}.png`;
+                            document.body.appendChild(a);
+                            a.click();
+                            document.body.removeChild(a);
+                            URL.revokeObjectURL(url);
+                            return;
                           }
-                          const byteArray = new Uint8Array(byteNumbers);
-                          const blob = new Blob([byteArray], { type: 'image/png' });
-                          const url = URL.createObjectURL(blob);
                           const a = document.createElement('a');
-                          a.href = url;
+                          a.href = generatedImageDataUrl;
                           a.download = `ai-minions-content-${Date.now()}.png`;
+                          a.target = '_blank';
+                          a.rel = 'noopener noreferrer';
                           document.body.appendChild(a);
                           a.click();
                           document.body.removeChild(a);
-                          URL.revokeObjectURL(url);
                         }}
                       />
                     ) : null}
