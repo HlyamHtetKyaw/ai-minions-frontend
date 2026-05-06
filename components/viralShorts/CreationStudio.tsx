@@ -1073,7 +1073,22 @@ export default function CreationStudio({
     }
 
     const wantVoice = Boolean(voiceOverAudioUrl) && voiceOverEnabled && !originalAudioEnabled;
-    v.muted = wantVoice;
+    try {
+      if (wantVoice) {
+        v.muted = true;
+      } else {
+        // Allow the user to hear the video's original audio track.
+        // Some browsers can keep a "stuck muted" state unless we explicitly unmute + restore volume.
+        v.muted = false;
+        if (!Number.isFinite(v.volume) || v.volume <= 0) v.volume = 1;
+        // Prevent default-muted behaviors from fighting the controls icon.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const anyV = v as any;
+        if (typeof anyV.defaultMuted === 'boolean') anyV.defaultMuted = false;
+      }
+    } catch {
+      /* ignore */
+    }
     if (!a) return;
 
     if (!wantVoice) {
@@ -1432,11 +1447,27 @@ export default function CreationStudio({
     const urlWithKey = `${balancedSyncPreviewUrl}#wk=${encodeURIComponent(balancedSyncPreviewS3Key)}`;
     onVideoUrlChange?.(urlWithKey);
     onVideoNameChange?.('balanced-sync.mp4');
+    // Switch preview to use the combined MP4's audio track.
+    setVoiceOverAudioUrl('');
+    setVoiceOverPlayableUrl('');
+    setVoiceOverS3Key('');
+    setVoiceOverEnabled(false);
+    setOriginalAudioEnabled(true);
+    setVoiceOverPlaybackRate(1);
     onVoiceOverAudioUrlChange?.('');
     onVoiceOverS3KeyChange?.('');
     onVoiceOverEnabledChange?.(false);
     onOriginalAudioEnabledChange?.(true);
     onVoiceOverPlaybackRateChange?.(1);
+    try {
+      // Some browsers can keep the muted flag from the prior voice-over mode; force audio back on.
+      if (videoRef.current) {
+        videoRef.current.muted = false;
+        videoRef.current.volume = 1;
+      }
+    } catch {
+      /* ignore */
+    }
 
     setBalancedSyncGenerationId(null);
     setBalancedSyncPreviewUrl('');
@@ -2498,7 +2529,7 @@ export default function CreationStudio({
             </div>
           </div>
 
-          {voiceOverAudioUrl && !isBalancedPreviewMode ? (
+          {!isBalancedPreviewMode ? (
             <div className="border-b border-card-border px-3 py-3 text-[11px] text-muted">
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2">
@@ -2510,6 +2541,16 @@ export default function CreationStudio({
                     onChange={() => {
                       setOriginalAudioEnabled(true);
                       setVoiceOverEnabled(false);
+                      try {
+                        if (videoRef.current) {
+                          videoRef.current.muted = false;
+                          if (!Number.isFinite(videoRef.current.volume) || videoRef.current.volume <= 0) {
+                            videoRef.current.volume = 1;
+                          }
+                        }
+                      } catch {
+                        /* ignore */
+                      }
                     }}
                   />
                   Original sound
@@ -2532,27 +2573,29 @@ export default function CreationStudio({
                 ) : null}
               </div>
               {/* Single source of truth: this audio element is BOTH the visible player and the synced track. */}
-              <audio
-                ref={voiceRef}
-                src={voiceOverPlayableUrl || voiceOverAudioUrl}
-                preload="auto"
-                controls
-                className="mt-3 w-full"
-                onError={async () => {
-                  // If the presigned URL expired while user stays on page, refresh it using the stable s3Key.
-                  if (!voiceOverS3Key) return;
-                  try {
-                    const fresh = await voiceOverPresignRead(voiceOverS3Key);
-                    if (fresh && fresh !== voiceOverAudioUrl) {
-                      setVoiceOverAudioUrl(fresh);
-                      setVoiceOverError(null);
+              {voiceOverAudioUrl ? (
+                <audio
+                  ref={voiceRef}
+                  src={voiceOverPlayableUrl || voiceOverAudioUrl}
+                  preload="auto"
+                  controls
+                  className="mt-3 w-full"
+                  onError={async () => {
+                    // If the presigned URL expired while user stays on page, refresh it using the stable s3Key.
+                    if (!voiceOverS3Key) return;
+                    try {
+                      const fresh = await voiceOverPresignRead(voiceOverS3Key);
+                      if (fresh && fresh !== voiceOverAudioUrl) {
+                        setVoiceOverAudioUrl(fresh);
+                        setVoiceOverError(null);
+                      }
+                    } catch (e) {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      setVoiceOverError(msg || 'Failed to refresh voice over URL');
                     }
-                  } catch (e) {
-                    const msg = e instanceof Error ? e.message : String(e);
-                    setVoiceOverError(msg || 'Failed to refresh voice over URL');
-                  }
-                }}
-              />
+                  }}
+                />
+              ) : null}
             </div>
           ) : null}
 
@@ -2773,7 +2816,37 @@ export default function CreationStudio({
                       type="button"
                       className="flex min-h-10 w-full items-center justify-center rounded-lg bg-[#7c5cff] px-3 py-2 text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
                       disabled={isAnyTaskRunning}
-                      onClick={() => window.open(subtitlesDownloadUrl, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        void (async () => {
+                          let nextUrl = subtitlesDownloadUrl;
+                          try {
+                            if (subtitlesGenerationId) {
+                              const d = await fetchSubtitleDownloadUrl(subtitlesGenerationId);
+                              if (d?.downloadUrl) {
+                                nextUrl = d.downloadUrl;
+                                setSubtitlesDownloadUrl(d.downloadUrl);
+                                setSubtitlesSrtKey(d.srtKey || '');
+                              }
+                            }
+                          } catch {
+                            // Signed URL refresh failed; fall back to existing cached URL.
+                          }
+
+                          try {
+                            // Match subtitles page behavior (download attribute) and avoid popup blockers.
+                            const a = document.createElement('a');
+                            a.href = nextUrl;
+                            a.download = '';
+                            a.rel = 'noreferrer';
+                            a.target = '_blank';
+                            document.body.appendChild(a);
+                            a.click();
+                            a.remove();
+                          } catch {
+                            // Last-resort: do nothing (no user-facing "expiry" messaging).
+                          }
+                        })();
+                      }}
                     >
                       {tEditor('buttons.downloadSrt')}
                     </button>
