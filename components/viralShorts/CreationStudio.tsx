@@ -2559,7 +2559,7 @@ export default function CreationStudio({
       ) : null}
 
       <div className="grid min-h-[640px] grid-cols-1 auto-rows-auto lg:grid-cols-[minmax(300px,420px)_1fr] lg:grid-rows-[auto_1fr] 2xl:grid-cols-[minmax(272px,360px)_minmax(0,1fr)_minmax(296px,400px)] 2xl:grid-rows-1">
-        <aside className="flex min-h-0 flex-col border-b border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto">
+        <aside className="scrollbar-themed flex min-h-0 flex-col border-b border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto">
           <div className="space-y-2">
             <button
               type="button"
@@ -2758,7 +2758,7 @@ export default function CreationStudio({
                     </div>
                   </div>
                   <div className="flex min-h-0 max-h-[min(420px,48vh)] flex-col gap-2">
-                    <div className="min-h-0 flex-1 overflow-auto rounded border border-card-border bg-subtle/10 p-1.5">
+                    <div className="scrollbar-themed min-h-0 flex-1 overflow-auto rounded border border-card-border bg-subtle/10 p-1.5">
                       {editableCues.length === 0 ? (
                         <p className="px-1 py-2 text-xs text-muted">{tEditor('labels.generateSubtitlesFirst')}</p>
                       ) : (
@@ -3129,7 +3129,7 @@ export default function CreationStudio({
           </div>
         </div>
 
-        <aside className="flex min-h-0 flex-col border-t border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 2xl:col-start-3 2xl:row-start-1 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto 2xl:border-t-0 2xl:border-l 2xl:border-card-border">
+        <aside className="scrollbar-themed flex min-h-0 flex-col border-t border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 2xl:col-start-3 2xl:row-start-1 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto 2xl:border-t-0 2xl:border-l 2xl:border-card-border">
           <div className="space-y-4 pt-1">
             <div className="rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -3568,7 +3568,7 @@ export default function CreationStudio({
                 </p>
                 <p className="mt-1 text-xs text-zinc-600 dark:text-slate-400">{tViral('voiceStyleModalSubtitle')}</p>
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto bg-zinc-100 px-4 py-4 dark:bg-[#0b1424]">
+              <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto bg-zinc-100 px-4 py-4 dark:bg-[#0b1424]">
                 <VoiceToneVoicePicker
                   catalog={voiceModelCatalog}
                   loading={voiceModelsLoading}
