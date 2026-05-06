@@ -9,6 +9,7 @@ import {
   useState,
   type PointerEvent as ReactPointerEvent,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { useTranslations } from 'next-intl';
 import { useRouter } from '@/i18n/navigation';
 import { AudioProperties } from '@/components/editor/panels/AudioProperties';
@@ -259,6 +260,11 @@ export function VideoWorkspaceShell() {
   const exportOverlayPhaseRef = useRef<'idle' | 'exporting' | 'downloading'>('idle');
   const volumeBeforeMuteRef = useRef(72);
   const [previewFullscreen, setPreviewFullscreen] = useState(false);
+  const [isCompactWorkspaceLayout, setIsCompactWorkspaceLayout] = useState(false);
+  const [mobileToolPanelOpen, setMobileToolPanelOpen] = useState(false);
+  const prevSelectedLayerIdRef = useRef<string | null>(null);
+  const prevSelectedSegmentIdRef = useRef<string | null>(null);
+  const prevSelectedAudioTrackIdRef = useRef<string | null>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const historyPastRef = useRef<WorkspaceHistorySnapshot[]>([]);
   const historyFutureRef = useRef<WorkspaceHistorySnapshot[]>([]);
@@ -592,6 +598,15 @@ export function VideoWorkspaceShell() {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const media = window.matchMedia('(max-width: 1279px)');
+    const sync = () => setIsCompactWorkspaceLayout(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+
   const onToggleMute = useCallback(() => {
     if (!originalAudioMuted) {
       setOriginalAudioMuted(true);
@@ -636,15 +651,32 @@ export function VideoWorkspaceShell() {
 
   const handleToolChange = useCallback(
     (id: WorkspaceToolId) => {
+      if (id === 'image') {
+        // Enter "add image" mode explicitly; selecting an existing image opens properties.
+        setSelectedLayerId(null);
+        setSelectedSegmentId(null);
+        setSelectedAudioTrackId(null);
+      }
       setActiveTool(id);
       setActiveToolStore(STORE_TOOL_BY_WORKSPACE[id]);
+      if (isCompactWorkspaceLayout) {
+        const shouldOpenPanel = id !== 'media' && id !== 'trim';
+        setMobileToolPanelOpen(shouldOpenPanel);
+      }
       if (id === 'media') {
         queueMicrotask(() => {
           document.getElementById(WORKSPACE_VIDEO_FILE_INPUT_ID)?.click();
         });
       }
     },
-    [setActiveTool, setActiveToolStore],
+    [
+      isCompactWorkspaceLayout,
+      setActiveTool,
+      setActiveToolStore,
+      setSelectedAudioTrackId,
+      setSelectedLayerId,
+      setSelectedSegmentId,
+    ],
   );
 
   const onTogglePlay = useCallback(() => {
@@ -1028,6 +1060,106 @@ export function VideoWorkspaceShell() {
                         : selectedLayerId != null
                           ? 'text'
                           : null;
+
+  const panelTitle =
+    panelMode === 'segment'
+      ? t('audio.segmentAudio')
+      : panelMode === 'speed'
+          ? t('tools.speed')
+          : panelMode === 'subs'
+            ? t('tools.subs')
+            : panelMode === 'audio'
+              ? t('tools.audio')
+              : panelMode === 'blur'
+                ? t('tools.blur')
+                : panelMode === 'image'
+                  ? t('tools.image')
+                  : t('tools.text');
+
+  const closeToolPanel = useCallback(() => {
+    setMobileToolPanelOpen(false);
+  }, []);
+
+  const renderStoreToolPanelContent = () => {
+    if (panelMode === 'segment') {
+      return <SegmentAudioPanel />;
+    }
+    if (panelMode === 'speed') {
+      return <SpeedProperties />;
+    }
+    if (panelMode === 'subs') {
+      return (
+        <WorkspaceSubsPanel
+          onImported={() => {
+            setActiveTool('text');
+            setActiveToolStore('text');
+          }}
+        />
+      );
+    }
+    if (panelMode === 'audio') {
+      return <AudioProperties />;
+    }
+    if (panelMode === 'blur') {
+      return <BlurProperties />;
+    }
+    if (panelMode === 'image') {
+      if (selectedIsImage) {
+        return (
+          <div className="min-h-0 shrink-0 overflow-y-auto p-4">
+            <ImageProperties />
+          </div>
+        );
+      }
+      return (
+        <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
+          {activeTool === 'image' ? (
+            <>
+              <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+                <ImageGalleryPanel developerSourceOnly />
+              </div>
+              <p className="shrink-0 text-xs leading-relaxed text-muted">
+                {t('image.dragHint')}
+              </p>
+            </>
+          ) : (
+            <p className="shrink-0 text-xs leading-relaxed text-muted">
+              {t('image.dragHint')}
+            </p>
+          )}
+        </div>
+      );
+    }
+    return <TextProperties />;
+  };
+
+  useEffect(() => {
+    if (isCompactWorkspaceLayout && showStoreToolPanel) {
+      setMobileToolPanelOpen(true);
+    }
+  }, [isCompactWorkspaceLayout, showStoreToolPanel]);
+
+  useEffect(() => {
+    const changed =
+      prevSelectedLayerIdRef.current !== selectedLayerId ||
+      prevSelectedSegmentIdRef.current !== selectedSegmentId ||
+      prevSelectedAudioTrackIdRef.current !== selectedAudioTrackId;
+
+    prevSelectedLayerIdRef.current = selectedLayerId;
+    prevSelectedSegmentIdRef.current = selectedSegmentId;
+    prevSelectedAudioTrackIdRef.current = selectedAudioTrackId;
+
+    if (!isCompactWorkspaceLayout || !changed) return;
+    if (!showStoreToolPanel) return;
+    if (selectedLayerId == null && selectedSegmentId == null && selectedAudioTrackId == null) return;
+    setMobileToolPanelOpen(true);
+  }, [
+    isCompactWorkspaceLayout,
+    selectedAudioTrackId,
+    selectedLayerId,
+    selectedSegmentId,
+    showStoreToolPanel,
+  ]);
 
   const estimateAudioMbForExport = useCallback(() => {
     const state = useEditorStore.getState();
@@ -1429,64 +1561,58 @@ export function VideoWorkspaceShell() {
             />
           </div>
         </div>
-        {activeTool !== 'media' && activeTool !== 'trim' || selectedSegmentId != null ? (
+        {((activeTool !== 'media' && activeTool !== 'trim') || selectedSegmentId != null) ? (
           showStoreToolPanel ? (
-            <aside className="flex max-h-[55vh] min-h-0 w-full shrink-0 flex-col border-t border-zinc-200/90 bg-white/95 xl:h-full xl:max-h-none xl:w-72 xl:min-w-72 xl:max-w-72 xl:border-l xl:border-t-0 dark:border-white/10 dark:bg-black/70">
-              <div className="shrink-0 border-b border-zinc-200/90 px-4 py-3 dark:border-white/10">
-                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  {panelMode === 'segment'
-                    ? t('audio.segmentAudio')
-                    : panelMode === 'speed'
-                        ? t('tools.speed')
-                        : panelMode === 'subs'
-                          ? t('tools.subs')
-                          : panelMode === 'audio'
-                            ? t('tools.audio')
-                            : panelMode === 'blur'
-                              ? t('tools.blur')
-                              : panelMode === 'image'
-                                ? t('tools.image')
-                                : t('tools.text')}
-                </h2>
-              </div>
-              <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
-                {panelMode === 'segment' ? (
-                  <SegmentAudioPanel />
-                ) : panelMode === 'speed' ? (
-                  <SpeedProperties />
-                ) : panelMode === 'subs' ? (
-                  <WorkspaceSubsPanel
-                    onImported={() => {
-                      setActiveTool('text');
-                      setActiveToolStore('text');
-                    }}
-                  />
-                ) : panelMode === 'audio' ? (
-                  <AudioProperties />
-                ) : panelMode === 'blur' ? (
-                  <BlurProperties />
-                ) : panelMode === 'image' ? (
-                  <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4">
-                    {activeTool === 'image' ? (
-                      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-                        <ImageGalleryPanel developerSourceOnly />
-                      </div>
-                    ) : null}
-                    {selectedIsImage ? (
-                      <div className="min-h-0 shrink-0 overflow-y-auto">
-                        <ImageProperties />
-                      </div>
-                    ) : activeTool === 'image' ? (
-                      <p className="shrink-0 text-xs leading-relaxed text-muted">
-                        {t('image.dragHint')}
-                      </p>
-                    ) : null}
+            !isCompactWorkspaceLayout || mobileToolPanelOpen ? (
+              isCompactWorkspaceLayout ? (
+                typeof document !== 'undefined'
+                  ? createPortal(
+                      <div className="fixed inset-0 z-[999] isolate" role="presentation">
+                        <button
+                          type="button"
+                          className="absolute inset-0 bg-black/85 backdrop-blur-[1px] dark:bg-black/90"
+                          aria-label={t('resetDialog.cancel')}
+                          onClick={closeToolPanel}
+                        />
+                        <section
+                          role="dialog"
+                          aria-modal="true"
+                          aria-labelledby="workspace-tool-panel-title"
+                          className="relative z-[1000] flex h-dvh w-screen min-h-0 flex-col overflow-hidden bg-white dark:bg-zinc-950"
+                        >
+                          <div className="flex shrink-0 items-center justify-between border-b border-zinc-200/90 px-4 py-3 dark:border-white/10">
+                            <h2 id="workspace-tool-panel-title" className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                              {panelTitle}
+                            </h2>
+                            <button
+                              type="button"
+                              onClick={closeToolPanel}
+                              className="rounded-md border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-white/15 dark:text-zinc-200 dark:hover:bg-white/5"
+                            >
+                              Close
+                            </button>
+                          </div>
+                          <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
+                            {renderStoreToolPanelContent()}
+                          </div>
+                        </section>
+                      </div>,
+                      document.body,
+                    )
+                  : null
+              ) : (
+                <aside className="flex max-h-[55vh] min-h-0 w-full shrink-0 flex-col border-t border-zinc-200/90 bg-white/95 xl:h-full xl:max-h-none xl:w-72 xl:min-w-72 xl:max-w-72 xl:border-l xl:border-t-0 dark:border-white/10 dark:bg-black/70">
+                  <div className="shrink-0 border-b border-zinc-200/90 px-4 py-3 dark:border-white/10">
+                    <h2 className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                      {panelTitle}
+                    </h2>
                   </div>
-                ) : (
-                  <TextProperties />
-                )}
-              </div>
-            </aside>
+                  <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden text-foreground [scrollbar-gutter:stable]">
+                    {renderStoreToolPanelContent()}
+                  </div>
+                </aside>
+              )
+            ) : null
           ) : (
             <WorkspacePropertiesPanel
               titleLabel={t('tabs.properties')}
