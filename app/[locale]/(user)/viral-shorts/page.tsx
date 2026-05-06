@@ -43,6 +43,7 @@ export default function ViralShortsPage() {
   const [balancedSyncPreviewUrl, setBalancedSyncPreviewUrl] = useState('');
   const [balancedSyncPreviewS3Key, setBalancedSyncPreviewS3Key] = useState('');
   const [transcribeGenerationId, setTranscribeGenerationId] = useState<number | null>(null);
+  const [translateGenerationId, setTranslateGenerationId] = useState<number | null>(null);
   const [exportGenerationId, setExportGenerationId] = useState<number | null>(null);
   const [exportedVideoUrl, setExportedVideoUrl] = useState<string | null>(null);
   const [exportedVideoKey, setExportedVideoKey] = useState<string>('');
@@ -106,6 +107,7 @@ export default function ViralShortsPage() {
           balancedSyncPreviewUrl?: string | null;
           balancedSyncPreviewS3Key?: string | null;
           transcribeGenerationId?: number | null;
+          translateGenerationId?: number | null;
           exportGenerationId?: number | null;
           exportedVideoUrl?: string | null;
           exportedVideoKey?: string | null;
@@ -174,6 +176,11 @@ export default function ViralShortsPage() {
           setTranscribeGenerationId(
             typeof parsed.transcribeGenerationId === 'number' && Number.isFinite(parsed.transcribeGenerationId)
               ? parsed.transcribeGenerationId
+              : null,
+          );
+          setTranslateGenerationId(
+            typeof parsed.translateGenerationId === 'number' && Number.isFinite(parsed.translateGenerationId)
+              ? parsed.translateGenerationId
               : null,
           );
           setExportGenerationId(
@@ -273,6 +280,7 @@ export default function ViralShortsPage() {
         videoName: file.name,
         transcriptText: '',
         transcribeGenerationId: null,
+        translateGenerationId: null,
         translatedText: '',
         tone: 'casual_social_media',
         voiceOverAudioUrl: '',
@@ -325,6 +333,7 @@ export default function ViralShortsPage() {
             videoName,
             transcriptText,
             transcribeGenerationId,
+            translateGenerationId,
             translatedText,
             tone: translateTone,
             voiceOverAudioUrl,
@@ -381,6 +390,7 @@ export default function ViralShortsPage() {
     protectFlip,
     protectHueDeg,
     transcribeGenerationId,
+    translateGenerationId,
     balancedSyncGenerationId,
     balancedSyncPreviewUrl,
     balancedSyncPreviewS3Key,
@@ -418,6 +428,7 @@ export default function ViralShortsPage() {
     setBalancedSyncGenerationId(null);
     setBalancedSyncPreviewUrl('');
     setBalancedSyncPreviewS3Key('');
+    setTranslateGenerationId(null);
     setSubtitlesGenerationId(null);
     setSubtitlesSrtKey('');
     setSubtitlesDownloadUrl('');
@@ -444,6 +455,8 @@ export default function ViralShortsPage() {
         videoUrl,
         videoName,
         transcriptText,
+        transcribeGenerationId,
+        translateGenerationId,
         translatedText,
         tone: translateTone,
         voiceOverAudioUrl,
@@ -478,6 +491,8 @@ export default function ViralShortsPage() {
     videoUrl,
     videoName,
     transcriptText,
+    transcribeGenerationId,
+    translateGenerationId,
     translatedText,
     translateTone,
     voiceOverAudioUrl,
@@ -612,6 +627,7 @@ export default function ViralShortsPage() {
                 videoUrl={videoUrl}
                 initialTranscriptText={transcriptText}
                 initialTranscribeGenerationId={transcribeGenerationId}
+                initialTranslateGenerationId={translateGenerationId}
                 initialTranslatedText={translatedText}
                 initialTone={translateTone}
                 initialVoiceOverAudioUrl={voiceOverAudioUrl}
@@ -640,6 +656,7 @@ export default function ViralShortsPage() {
                 initialSubtitlesBackgroundOpacity={subtitlesBackgroundOpacity}
                 onTranscriptTextChange={setTranscriptText}
                 onTranscribeGenerationIdChange={setTranscribeGenerationId}
+                onTranslateGenerationIdChange={setTranslateGenerationId}
                 onTranslatedTextChange={setTranslatedText}
                 onToneChange={setTranslateTone}
                 onVoiceOverAudioUrlChange={setVoiceOverAudioUrl}
@@ -670,6 +687,7 @@ export default function ViralShortsPage() {
                 onVideoNameChange={(next) => setVideoName(next)}
                 onDiscardWorkspace={() => void handleDiscardWorkspace()}
                 onExportSuccess={() => void flushViralWorkspaceToServer()}
+                onPersistWorkspaceSnapshot={() => void flushViralWorkspaceToServer()}
               />
             ) : null}
 

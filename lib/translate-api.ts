@@ -13,6 +13,8 @@ export type TranslateResult = {
   translatedTo?: string | null;
   style?: string | null;
   usedProvider?: string | null;
+  /** Main-service ai_generation id (for refresh recovery via GET /api/v1/ai-generations/:id). */
+  generationId?: number | null;
 };
 
 export type PointsEstimate = {
@@ -74,7 +76,10 @@ export async function translateText(params: {
     throw new Error('Translate response missing text');
   }
   notifyUserCreditBalanceRefresh();
-  return json.data;
+  const genRaw = (json.data as { generationId?: unknown }).generationId;
+  const generationId =
+    typeof genRaw === 'number' && Number.isFinite(genRaw) ? genRaw : Number.isFinite(Number(genRaw)) ? Number(genRaw) : null;
+  return { ...json.data, generationId: generationId != null && Number.isFinite(generationId) ? generationId : null };
 }
 
 export async function translateEstimatePoints(text: string): Promise<PointsEstimate> {

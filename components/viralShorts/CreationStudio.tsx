@@ -6,6 +6,9 @@ import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
 import ProgressBar from '@/components/shared/components/progress-bar';
 import {
+  fetchAiGeneration,
+  GENERATION_STATUS_FAILED,
+  GENERATION_STATUS_SUCCESS,
   transcribeEstimatePointsFromExisting,
   transcribeFromExisting,
   type PointsEstimate,
@@ -196,6 +199,7 @@ type Props = {
   initialSubtitlesBackgroundBlur?: number;
   initialSubtitlesBackgroundOpacity?: number;
   initialTranscriptText?: string;
+  initialTranslateGenerationId?: number | null;
   initialTranslatedText?: string;
   initialTone?: TranslateTone;
   initialVoiceOverAudioUrl?: string;
@@ -226,6 +230,7 @@ type Props = {
   onProtectFlipChange?: (enabled: boolean) => void;
   onProtectHueDegChange?: (deg: number) => void;
   onTranscribeGenerationIdChange?: (id: number | null) => void;
+  onTranslateGenerationIdChange?: (id: number | null) => void;
   onBalancedSyncGenerationIdChange?: (id: number | null) => void;
   onBalancedSyncPreviewUrlChange?: (url: string) => void;
   onBalancedSyncPreviewS3KeyChange?: (key: string) => void;
@@ -245,6 +250,8 @@ type Props = {
   onDiscardWorkspace?: () => void;
   /** Persist viral workspace to the server right after export (avoids losing state if URLs refresh). */
   onExportSuccess?: () => void | Promise<void>;
+  /** Best-effort immediate snapshot (debounced auto-save may lag behind active jobs). */
+  onPersistWorkspaceSnapshot?: () => void | Promise<void>;
 };
 
 export default function CreationStudio({
@@ -263,6 +270,7 @@ export default function CreationStudio({
   initialSubtitlesBackgroundBlur,
   initialSubtitlesBackgroundOpacity,
   initialTranscriptText,
+  initialTranslateGenerationId,
   initialTranslatedText,
   initialTone,
   initialVoiceOverAudioUrl,
@@ -292,6 +300,7 @@ export default function CreationStudio({
   onProtectFlipChange,
   onProtectHueDegChange,
   onTranscribeGenerationIdChange,
+  onTranslateGenerationIdChange,
   onBalancedSyncGenerationIdChange,
   onBalancedSyncPreviewUrlChange,
   onBalancedSyncPreviewS3KeyChange,
@@ -310,6 +319,7 @@ export default function CreationStudio({
   onExportedVideoKeyChange,
   onDiscardWorkspace,
   onExportSuccess,
+  onPersistWorkspaceSnapshot,
 }: Props) {
   const tVo = useTranslations('voice-over');
   const tViral = useTranslations('viralShorts.voiceStudio');
@@ -325,6 +335,12 @@ export default function CreationStudio({
   const [translateEstimate, setTranslateEstimate] = useState<TranslatePointsEstimate | null>(null);
   const [translateEstimateError, setTranslateEstimateError] = useState<string | null>(null);
   const [translateEstimateLoading, setTranslateEstimateLoading] = useState(false);
+  const [translateGenerationId, setTranslateGenerationId] = useState<number | null>(() =>
+    typeof initialTranslateGenerationId === 'number' && Number.isFinite(initialTranslateGenerationId)
+      ? initialTranslateGenerationId
+      : null,
+  );
+  const [translateRecoveryBusy, setTranslateRecoveryBusy] = useState(false);
 
   const [showVoiceOverConfirm, setShowVoiceOverConfirm] = useState(false);
   const [showVoiceStyleModal, setShowVoiceStyleModal] = useState(false);
@@ -878,6 +894,7 @@ export default function CreationStudio({
 
   const transcribeStreamRef = useRef<number | null>(null);
   const exportStreamRef = useRef<number | null>(null);
+  const subtitlesStreamRef = useRef<number | null>(null);
   const voiceOverStreamRef = useRef<string | null>(null);
 
   const applyTranscribeTerminalPayload = useCallback((payload: GenerationJobTerminalPayload) => {
@@ -941,8 +958,47 @@ export default function CreationStudio({
       setExportError(null);
       setExporting(false);
       setExportGenerationId(null);
+      void onExportSuccess?.();
     },
-    [],
+    [onExportSuccess],
+  );
+
+  const pullSubtitlesArtifacts = useCallback(
+    (jobId: number) => {
+      void fetchSubtitleDownloadUrl(jobId)
+        .then((d) => {
+          setSubtitlesDownloadUrl(d.downloadUrl);
+          setSubtitlesSrtKey(d.srtKey);
+        })
+        .catch((e) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          setSubtitlesError(msg);
+        });
+
+      void fetchSubtitleSrtText(jobId)
+        .then((d) => {
+          setSubtitlesSrtText(d.srtText);
+        })
+        .catch((e) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          setSubtitlesError(msg);
+        });
+      void onPersistWorkspaceSnapshot?.();
+    },
+    [onPersistWorkspaceSnapshot],
+  );
+
+  const applySubtitlesJobTerminal = useCallback(
+    (jobId: number, payload: GenerationJobTerminalPayload) => {
+      if (payload.status !== 'completed') {
+        setSubtitlesError(payload.message || 'Subtitles job failed');
+        setSubtitlesProgress(null);
+        return;
+      }
+      setSubtitlesProgress({ percent: 100, label: 'Subtitles ready' });
+      pullSubtitlesArtifacts(jobId);
+    },
+    [pullSubtitlesArtifacts],
   );
 
   // Resume transcription after refresh.
@@ -1055,6 +1111,90 @@ export default function CreationStudio({
     });
   }, [applyExportTerminalPayload, exportGenerationId, exportedVideoUrl]);
 
+  // Resume subtitles after refresh: reconnect SSE until SRT + download URL are present.
+  useEffect(() => {
+    if (!subtitlesGenerationId) return;
+    if (subtitlesSrtText.trim() && subtitlesDownloadUrl.trim()) {
+      return;
+    }
+    if (subtitlesStreamRef.current === subtitlesGenerationId) return;
+
+    subtitlesStreamRef.current = subtitlesGenerationId;
+    setSubtitlesError(null);
+    setSubtitlesProgress((prev) => prev ?? { percent: 12, label: 'Resuming subtitles…' });
+
+    openGenerationJobSseStream(subtitlesGenerationId, {
+      onStatus: (raw) => {
+        const p = parseGenerationSseProgressPayload(raw);
+        if (p) setSubtitlesProgress(p);
+      },
+      onDone: () => {
+        if (subtitlesStreamRef.current === subtitlesGenerationId) subtitlesStreamRef.current = null;
+      },
+      onError: (msg) => {
+        setSubtitlesError(msg);
+        setSubtitlesProgress(null);
+      },
+      onTerminal: (payload) => applySubtitlesJobTerminal(subtitlesGenerationId, payload),
+    });
+  }, [applySubtitlesJobTerminal, subtitlesDownloadUrl, subtitlesGenerationId, subtitlesSrtText]);
+
+  // Recover translate text by generation id when the HTTP response was lost (e.g. refresh).
+  useEffect(() => {
+    if (!translateGenerationId) return;
+    if (translatedText.trim()) {
+      setTranslateGenerationId(null);
+      setTranslateRecoveryBusy(false);
+      return;
+    }
+    if (!transcriptText.trim()) return;
+
+    let cancelled = false;
+    setTranslateRecoveryBusy(true);
+
+    void (async () => {
+      const intervalMs = 1500;
+      for (let i = 0; i < 45 && !cancelled; i++) {
+        const snap = await fetchAiGeneration(translateGenerationId);
+        if (cancelled) return;
+        if (!snap) break;
+        if (snap.status === GENERATION_STATUS_FAILED) {
+          if (!cancelled) {
+            setTranslateGenerationId(null);
+            setTranslateRecoveryBusy(false);
+          }
+          return;
+        }
+        if (snap.status === GENERATION_STATUS_SUCCESS && snap.outputData) {
+          try {
+            const o = JSON.parse(snap.outputData) as { translatedText?: string };
+            const next = typeof o.translatedText === 'string' ? o.translatedText : '';
+            if (next.trim()) {
+              setTranslatedText(next);
+              setScriptText(next);
+              setIsTranslated(true);
+              setTranslateGenerationId(null);
+              void onPersistWorkspaceSnapshot?.();
+              setTranslateRecoveryBusy(false);
+              return;
+            }
+          } catch {
+            /* ignore malformed snapshot */
+          }
+        }
+        await new Promise((r) => setTimeout(r, intervalMs));
+      }
+      if (!cancelled) {
+        setTranslateRecoveryBusy(false);
+        setTranslateGenerationId(null);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onPersistWorkspaceSnapshot, transcriptText, translateGenerationId, translatedText]);
+
   // Resume balanced sync after refresh / navigation:
   // - If the job is still running, reconnect to SSE and keep showing progress.
   // - If the job already finished, the SSE stream returns a terminal chunk immediately.
@@ -1125,6 +1265,10 @@ export default function CreationStudio({
   useEffect(() => {
     onTranscribeGenerationIdChange?.(transcribeGenerationId);
   }, [onTranscribeGenerationIdChange, transcribeGenerationId]);
+
+  useEffect(() => {
+    onTranslateGenerationIdChange?.(translateGenerationId);
+  }, [onTranslateGenerationIdChange, translateGenerationId]);
 
   useEffect(() => {
     onVoiceOverJobIdChange?.(voiceOverJobId);
@@ -1225,6 +1369,12 @@ export default function CreationStudio({
       setTranslateEstimate(null);
       setTranslateEstimateError(null);
       setTranslateEstimateLoading(false);
+      setTranslateGenerationId(
+        typeof initialTranslateGenerationId === 'number' && Number.isFinite(initialTranslateGenerationId)
+          ? initialTranslateGenerationId
+          : null,
+      );
+      setTranslateRecoveryBusy(false);
       setShowVoiceOverConfirm(false);
       setVoiceOverProgress(null);
       setVoiceOverError(null);
@@ -1853,42 +2003,20 @@ export default function CreationStudio({
         translatedText: subtitleTranslatedText,
       });
       setSubtitlesGenerationId(complete.jobId);
+      subtitlesStreamRef.current = complete.jobId;
       openGenerationJobSseStream(complete.jobId, {
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw);
           if (p) setSubtitlesProgress(p);
         },
-        onDone: () => {},
+        onDone: () => {
+          if (subtitlesStreamRef.current === complete.jobId) subtitlesStreamRef.current = null;
+        },
         onError: (msg) => {
           setSubtitlesError(msg);
           setSubtitlesProgress(null);
         },
-        onTerminal: (payload) => {
-          if (payload.status !== 'completed') {
-            setSubtitlesError(payload.message || 'Subtitles job failed');
-            setSubtitlesProgress(null);
-            return;
-          }
-          setSubtitlesProgress({ percent: 100, label: 'Subtitles ready' });
-          void fetchSubtitleDownloadUrl(complete.jobId)
-            .then((d) => {
-              setSubtitlesDownloadUrl(d.downloadUrl);
-              setSubtitlesSrtKey(d.srtKey);
-            })
-            .catch((e) => {
-              const msg = e instanceof Error ? e.message : String(e);
-              setSubtitlesError(msg);
-            });
-
-          void fetchSubtitleSrtText(complete.jobId)
-            .then((d) => {
-              setSubtitlesSrtText(d.srtText);
-            })
-            .catch((e) => {
-              const msg = e instanceof Error ? e.message : String(e);
-              setSubtitlesError(msg);
-            });
-        },
+        onTerminal: (payload) => applySubtitlesJobTerminal(complete.jobId, payload),
       });
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
@@ -1988,6 +2116,7 @@ export default function CreationStudio({
     if (!isTranscribed) return;
     setIsTranslating(true);
     setIsGenerated(false);
+    setTranslateGenerationId(null);
     try {
       const result = await translateText({
         text: transcriptText.trim(),
@@ -1999,6 +2128,10 @@ export default function CreationStudio({
       setTranslatedText(out);
       setScriptText(out);
       setIsTranslated(Boolean(out.trim()));
+      if (result.generationId != null && Number.isFinite(result.generationId)) {
+        setTranslateGenerationId(result.generationId);
+      }
+      void onPersistWorkspaceSnapshot?.();
     } finally {
       setIsTranslating(false);
     }
@@ -2251,11 +2384,11 @@ export default function CreationStudio({
         barClass: 'bg-violet-500',
       };
     }
-    if (isTranslating) {
+    if (isTranslating || translateRecoveryBusy) {
       return {
         key: 'translate',
         title: 'Translation',
-        label: 'Translating script…',
+        label: translateRecoveryBusy ? 'Recovering translation…' : 'Translating script…',
         percent: -1,
         done: false,
         barClass: 'bg-sky-500',
@@ -2304,7 +2437,7 @@ export default function CreationStudio({
         barClass: 'bg-cyan-500',
       };
     }
-    if (exporting) {
+    if (exporting || (Boolean(exportGenerationId) && !exportedVideoUrl)) {
       return {
         key: 'export',
         title: 'Export',
@@ -2334,11 +2467,14 @@ export default function CreationStudio({
     transcribeProgress,
     isTranscribing,
     isTranslating,
+    translateRecoveryBusy,
     voiceOverProgress,
     isGenerating,
     balancedSyncProgress,
     subtitlesProgress,
     exporting,
+    exportGenerationId,
+    exportedVideoUrl,
     videoMetadataReady,
     voiceMetadataReady,
     voiceOverAudioUrl,
@@ -2352,6 +2488,7 @@ export default function CreationStudio({
     Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
     isTranscribing ||
     isTranslating ||
+    translateRecoveryBusy ||
     Boolean(voiceOverProgress && voiceOverProgress.percent < 100) ||
     isGenerating ||
     isSyncingVoice ||
@@ -3109,6 +3246,16 @@ export default function CreationStudio({
                     {balancedSyncError}
                   </div>
                 ) : null}
+                {isBalancedPreviewMode && !showBalancedPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => setShowBalancedPreview(true)}
+                    disabled={isAnyTaskRunning}
+                    className="flex min-h-11 w-full items-center justify-center rounded-lg border border-[#7c5cff]/40 bg-[#7c5cff]/10 px-3 py-2.5 text-center text-[11px] font-semibold leading-snug text-foreground transition-colors hover:bg-[#7c5cff]/20 disabled:opacity-50"
+                  >
+                    {tEditor('buttons.viewBalancedPreview')}
+                  </button>
+                ) : null}
                 <label className="flex cursor-pointer items-start gap-3 rounded-lg px-0.5 py-1 text-xs leading-relaxed text-muted-foreground">
                   <input
                     type="checkbox"
@@ -3558,7 +3705,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => void handleRejectBalancedSync()}
+                  onClick={() => setShowBalancedPreview(false)}
                 >
                   {tEditor('buttons.close')}
                 </button>

@@ -980,6 +980,7 @@
         "syncingVoiceLength": "Syncing voice length...",
         "balancedSyncRenderCombine": "Balanced sync (render & combine)",
         "renderingBalancedSync": "Rendering balanced sync...",
+        "viewBalancedPreview": "View preview",
         "protectionFlipHue": "Protection (flip + hue)",
         "generateSubtitles": "Generate subtitles",
         "generatingSubtitles": "Generating subtitles...",
