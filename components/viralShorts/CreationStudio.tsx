@@ -13,7 +13,12 @@ import {
   transcribeFromExisting,
   type PointsEstimate,
 } from '@/lib/transcribe-api';
-import { translateEstimatePoints, translateText, type PointsEstimate as TranslatePointsEstimate } from '@/lib/translate-api';
+import {
+  translateBegin,
+  translateEstimatePoints,
+  translateExecute,
+  type PointsEstimate as TranslatePointsEstimate,
+} from '@/lib/translate-api';
 import {
   fetchVoiceOverModels,
   normalizePersistedVoiceId,
@@ -2003,6 +2008,7 @@ export default function CreationStudio({
         translatedText: subtitleTranslatedText,
       });
       setSubtitlesGenerationId(complete.jobId);
+      void onPersistWorkspaceSnapshot?.();
       subtitlesStreamRef.current = complete.jobId;
       openGenerationJobSseStream(complete.jobId, {
         onStatus: (raw) => {
@@ -2118,19 +2124,20 @@ export default function CreationStudio({
     setIsGenerated(false);
     setTranslateGenerationId(null);
     try {
-      const result = await translateText({
+      // Begin returns generationId before the long model call so we can persist it and recover after refresh.
+      const beginId = await translateBegin({
         text: transcriptText.trim(),
         sourceLanguage: 'English',
         targetLanguage: 'Burmese',
         style: tone,
       });
+      setTranslateGenerationId(beginId);
+      void onPersistWorkspaceSnapshot?.();
+      const result = await translateExecute(beginId);
       const out = result.translatedText ?? '';
       setTranslatedText(out);
       setScriptText(out);
       setIsTranslated(Boolean(out.trim()));
-      if (result.generationId != null && Number.isFinite(result.generationId)) {
-        setTranslateGenerationId(result.generationId);
-      }
       void onPersistWorkspaceSnapshot?.();
     } finally {
       setIsTranslating(false);
@@ -2138,7 +2145,9 @@ export default function CreationStudio({
   };
 
   const handleTranslateClick = () => {
-    if (!isTranscribed || isTranslating) return;
+    if (!isTranscribed || isTranslating || translateRecoveryBusy || (translateGenerationId != null && !translatedText.trim())) {
+      return;
+    }
     setShowTranslateConfirm(true);
     void ensureTranslateEstimate();
   };
@@ -2229,6 +2238,7 @@ export default function CreationStudio({
       const res = await exportVideoEditorWorkspace(payload);
       if (res.generationId != null) {
         setExportGenerationId(res.generationId);
+        void onPersistWorkspaceSnapshot?.();
         const exportSseOverrides = {
           subscribedLabel: 'Export queued',
           subscribedPercent: 18,
@@ -2384,11 +2394,18 @@ export default function CreationStudio({
         barClass: 'bg-violet-500',
       };
     }
-    if (isTranslating || translateRecoveryBusy) {
+    const translateStripActive =
+      isTranslating ||
+      translateRecoveryBusy ||
+      (translateGenerationId != null && !translatedText.trim());
+    if (translateStripActive) {
+      let label = 'Translation in progress…';
+      if (translateRecoveryBusy) label = 'Recovering translation…';
+      else if (isTranslating) label = 'Translating script…';
       return {
         key: 'translate',
         title: 'Translation',
-        label: translateRecoveryBusy ? 'Recovering translation…' : 'Translating script…',
+        label,
         percent: -1,
         done: false,
         barClass: 'bg-sky-500',
@@ -2426,13 +2443,20 @@ export default function CreationStudio({
         barClass: 'bg-amber-500',
       };
     }
-    if (subtitlesProgress != null && subtitlesProgress.percent < 100) {
-      const pct = subtitlesProgress.percent;
+    const subtitlesWorkPending =
+      subtitlesGenerationId != null && (!subtitlesSrtText.trim() || !subtitlesDownloadUrl.trim());
+    const subtitlesBarActive =
+      (subtitlesProgress != null && subtitlesProgress.percent < 100) || subtitlesWorkPending;
+    if (subtitlesBarActive) {
+      const pctFromStream =
+        subtitlesProgress != null && subtitlesProgress.percent < 100 ? subtitlesProgress.percent : -1;
+      const labelFromStream =
+        subtitlesProgress != null && subtitlesProgress.percent < 100 ? subtitlesProgress.label : null;
       return {
         key: 'subtitles',
         title: 'Subtitles',
-        label: subtitlesProgress.label,
-        percent: pct,
+        label: labelFromStream ?? (subtitlesWorkPending ? 'Subtitles in progress…' : 'Subtitles'),
+        percent: pctFromStream,
         done: false,
         barClass: 'bg-cyan-500',
       };
@@ -2468,10 +2492,15 @@ export default function CreationStudio({
     isTranscribing,
     isTranslating,
     translateRecoveryBusy,
+    translateGenerationId,
+    translatedText,
     voiceOverProgress,
     isGenerating,
     balancedSyncProgress,
     subtitlesProgress,
+    subtitlesGenerationId,
+    subtitlesSrtText,
+    subtitlesDownloadUrl,
     exporting,
     exportGenerationId,
     exportedVideoUrl,
@@ -2483,18 +2512,24 @@ export default function CreationStudio({
   ]);
   const isSyncingVoice = syncUi.kind === 'working';
   const isBalancedSyncRunning = Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100);
-  const isSubtitlesRunning = Boolean(subtitlesProgress && subtitlesProgress.percent < 100);
+  const isSubtitlesRunning = Boolean(
+    (subtitlesProgress && subtitlesProgress.percent < 100) ||
+      (subtitlesGenerationId != null &&
+        (!subtitlesSrtText.trim() || !subtitlesDownloadUrl.trim())),
+  );
+  const isExportPipelineBusy = exporting || (exportGenerationId != null && !exportedVideoUrl);
   const isAnyTaskRunning =
     Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
     isTranscribing ||
     isTranslating ||
     translateRecoveryBusy ||
+    (translateGenerationId != null && !translatedText.trim()) ||
     Boolean(voiceOverProgress && voiceOverProgress.percent < 100) ||
     isGenerating ||
     isSyncingVoice ||
     isBalancedSyncRunning ||
     isSubtitlesRunning ||
-    exporting;
+    isExportPipelineBusy;
 
   return (
     <section className="overflow-hidden rounded-2xl border border-card-border bg-card shadow-[0_18px_40px_rgba(0,0,0,0.25)]">
@@ -2516,8 +2551,8 @@ export default function CreationStudio({
           ) : null}
           <ActionButton
             onClick={() => void handleFinalExportClick()}
-            isLoading={exporting}
-            disabled={!workspaceS3Key || exporting || isAnyTaskRunning}
+            isLoading={isExportPipelineBusy}
+            disabled={!workspaceS3Key || isAnyTaskRunning}
             label={tEditor('buttons.finalExport')}
             loadingLabel={tEditor('buttons.exporting')}
             className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40"
@@ -3537,7 +3572,7 @@ export default function CreationStudio({
                 <button
                   type="button"
                   className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-                  disabled={exportEstimateLoading || exporting || isAnyTaskRunning}
+                  disabled={exportEstimateLoading || isAnyTaskRunning}
                   onClick={() => {
                     setShowExportConfirm(false);
                     void startFinalExport();
