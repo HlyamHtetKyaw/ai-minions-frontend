@@ -110,6 +110,8 @@ declare const messages: {
       "statusPending": "Pending",
       "statusSuccess": "Success",
       "statusFailed": "Failed",
+      "pendingQueued": "Queued and waiting to start…",
+      "pendingSubscribed": "Connected. Tracking live progress…",
       "featureTranslate": "Translate",
       "featureVoiceOver": "Voice over",
       "featureTranscribe": "Transcribe",
@@ -1277,6 +1279,12 @@ declare const messages: {
     "swapAria": "Swap source and target languages and text",
     "action": "Translate",
     "translating": "Translating…",
+    "sse": {
+      "subscribed": "Hang tight — we’re translating your text."
+    },
+    "progress": {
+      "finished": "Finished 🎉"
+    },
     "errors": {
       "generic": "Something went wrong. Please try again.",
       "unauthorized": "Your session expired. Please sign in again.",
