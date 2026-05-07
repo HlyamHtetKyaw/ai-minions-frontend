@@ -9,18 +9,21 @@ import { useAuthSession } from '@/components/layout/auth-session-context';
 export type HeaderNavLabels = {
   homeLabel: string;
   workspaceLabel: string;
+  historyLabel: string;
   pricingLabel: string;
 };
 
 export function HeaderDesktopNav({
   homeLabel,
   workspaceLabel,
+  historyLabel,
   pricingLabel,
 }: HeaderNavLabels) {
   const pathname = usePathname();
 
   const isHome = pathname === '/';
   const isWorkspace = pathname === '/tools';
+  const isHistory = pathname === '/history';
   const isPricing = pathname === '/pricing';
 
   const navLinkDesktop = (active: boolean) =>
@@ -38,6 +41,10 @@ export function HeaderDesktopNav({
         {workspaceLabel}
       </NavLink>
 
+      <NavLink href="/history" className={navLinkDesktop(isHistory)}>
+        {historyLabel}
+      </NavLink>
+
       <NavLink href="/pricing" className={navLinkDesktop(isPricing)}>
         {pricingLabel}
       </NavLink>
@@ -48,6 +55,7 @@ export function HeaderDesktopNav({
 export function HeaderMobileNav({
   homeLabel,
   workspaceLabel,
+  historyLabel,
   pricingLabel,
 }: HeaderNavLabels) {
   const pathname = usePathname();
@@ -58,6 +66,7 @@ export function HeaderMobileNav({
 
   const isHome = pathname === '/';
   const isWorkspace = pathname === '/tools';
+  const isHistory = pathname === '/history';
   const isPricing = pathname === '/pricing';
 
   if (pathname !== menuPathname) {
@@ -140,6 +149,13 @@ export function HeaderMobileNav({
                 onClick={() => setMobileOpen(false)}
               >
                 {workspaceLabel}
+              </NavLink>
+              <NavLink
+                href="/history"
+                className={navLinkMobile(isHistory)}
+                onClick={() => setMobileOpen(false)}
+              >
+                {historyLabel}
               </NavLink>
               <NavLink
                 href="/pricing"

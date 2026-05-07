@@ -7,6 +7,7 @@
     "dashboardLabel": "ဒက်ရှ်ဘုတ်",
     "brandTitle": "Monetization Myanmar",
     "home": "မူလ",
+    "history": "မှတ်တမ်း",
     "pricing": "စျေးနှုန်း",
     "pointsBadge": "ပွိုင့် ၁၂၀",
     "pointsWithBalance": "ပွိုင့် {count}",
@@ -106,6 +107,8 @@
       "statusPending": "စောင့်ဆိုင်းနေ",
       "statusSuccess": "အောင်မြင်",
       "statusFailed": "မအောင်မြင်",
+      "pendingQueued": "စောင့်ဆိုင်းစာရင်းထဲတွင် ရှိနေပြီး စတင်ရန် စောင့်နေသည်…",
+      "pendingSubscribed": "ချိတ်ဆက်ပြီးပါပြီ။ တိုက်ရိုက် လုပ်ဆောင်မှု အခြေအနေကို စောင့်ကြည့်နေသည်…",
       "featureTranslate": "ဘာသာပြန်",
       "featureVoiceOver": "အသံသွင်း",
       "featureTranscribe": "စကားပြောမှတ်တမ်း",
@@ -1273,6 +1276,12 @@
     "swapAria": "ရင်းမြစ်နှင့် ပန်းတိုင် ဘာသာစကားနှင့် စာသား လဲလှယ်ရန်",
     "action": "ဘာသာပြန်ရန်",
     "translating": "ပြန်ဆိုနေသည်…",
+    "sse": {
+      "subscribed": "ခဏစောင့်ပါ — သင့်စာသားကို ဘာသာပြန်နေပါသည်။"
+    },
+    "progress": {
+      "finished": "ပြီးစီးပါပြီ 🎉"
+    },
     "errors": {
       "generic": "တစ်ခုခု မှားယွင်းသွားသည်။ ထပ်စမ်းကြည့်ပါ။",
       "unauthorized": "သင့်အကောင့် သက်တမ်းကုန်သွားပါပြီ။ ထပ်ဝင်ပါ။",

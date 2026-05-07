@@ -12,7 +12,9 @@ import TranslateButton from '@/features/translate/components/translate-button';
 import { LANGUAGES } from '@/lib/constants';
 import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
 import { normalizeClientErrorMessage } from '@/lib/api-error-message';
-import { translateEstimatePoints, translateText, type PointsEstimate } from '@/lib/translate-api';
+import { openGenerationJobSseStream, parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
+import { translateBegin, translateEstimatePoints, translateExecute, type PointsEstimate } from '@/lib/translate-api';
+import ProgressBar from '@/components/shared/components/progress-bar';
 
 function languageLabel(code: string): string {
   return LANGUAGES.find((l) => l.code === code)?.name ?? code;
@@ -33,6 +35,7 @@ export default function TranslatePage() {
   const [translatedText, setTranslatedText] = useState('');
   const [tone, setTone] = useState<TranslateTone>('casual_social_media');
   const [isLoading, setIsLoading] = useState(false);
+  const [progress, setProgress] = useState<{ percent: number; label: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateLoading, setEstimateLoading] = useState(false);
@@ -98,17 +101,37 @@ export default function TranslatePage() {
   const handleTranslate = async () => {
     setError(null);
     setIsLoading(true);
+    setProgress({ percent: 8, label: t('sse.subscribed') });
     try {
-      const result = await translateText({
+      const generationId = await translateBegin({
         text: sourceText.trim(),
         sourceLanguage: languageLabel(sourceLang),
         targetLanguage: languageLabel(targetLang),
         style: tone,
       });
+
+      openGenerationJobSseStream(generationId, {
+        onStatus: (raw) => {
+          const parsed = parseGenerationSseProgressPayload(raw, {
+            subscribedLabel: t('sse.subscribed'),
+          });
+          if (!parsed) return;
+          setProgress((prev) => ({
+            percent: Math.max(prev?.percent ?? 0, parsed.percent),
+            label: parsed.label,
+          }));
+        },
+        onDone: () => {},
+        onError: (msg) => setError(toUserSafeError(msg)),
+      });
+
+      const result = await translateExecute(generationId);
       setTranslatedText(result.translatedText);
+      setProgress({ percent: 100, label: t('progress.finished') });
     } catch (e) {
       const raw = e instanceof Error ? e.message : String(e);
       setError(toUserSafeError(raw));
+      setProgress(null);
     } finally {
       setIsLoading(false);
     }
@@ -186,6 +209,27 @@ export default function TranslatePage() {
               <p className="text-sm text-red-400" role="alert">
                 {error}
               </p>
+            ) : null}
+
+            {progress ? (
+              <div
+                className={`rounded-xl border border-card-border bg-card px-4 py-3 ${
+                  progress.percent >= 100 ? 'border-emerald-500/30 bg-emerald-500/5' : ''
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <p className={`text-sm ${progress.percent >= 100 ? 'font-medium text-foreground' : 'text-muted-foreground'}`}>
+                    {progress.label}
+                  </p>
+                  <p className="text-xs font-semibold text-muted-foreground tabular-nums">{progress.percent}%</p>
+                </div>
+                <ProgressBar
+                  value={progress.percent}
+                  max={100}
+                  ariaLabel={progress.label}
+                  isComplete={progress.percent >= 100}
+                />
+              </div>
             ) : null}
 
             <TranslateButton
