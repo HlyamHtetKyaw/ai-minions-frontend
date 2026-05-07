@@ -12,7 +12,10 @@ export type MyProfile = {
   memberLevelId: number | null;
   fullname: string | null;
   phoneNumber: string | null;
+  /** Always null from `/me/profile`; use `geminiApiKeyConfigured`. */
   geminiApiKey: string | null;
+  useDefaultGeminiApiKey: boolean | null;
+  geminiApiKeyConfigured: boolean | null;
   openAiApiKey: string | null;
 };
 
@@ -71,13 +74,26 @@ export async function fetchMyProfile(): Promise<MyProfile> {
 export async function updateMyProfile(body: {
   fullname: string;
   phoneNumber: string;
+  useDefaultGeminiApiKey?: boolean;
+  geminiApiKey?: string | null;
 }): Promise<MyProfile> {
+  const payload: Record<string, unknown> = {
+    fullname: body.fullname.trim(),
+    phoneNumber: body.phoneNumber.trim(),
+  };
+  if (body.useDefaultGeminiApiKey !== undefined) {
+    payload.useDefaultGeminiApiKey = body.useDefaultGeminiApiKey;
+  }
+  if (
+    body.geminiApiKey !== undefined &&
+    body.geminiApiKey !== null &&
+    String(body.geminiApiKey).trim() !== ""
+  ) {
+    payload.geminiApiKey = String(body.geminiApiKey).trim();
+  }
   const raw = await apiFetch("/api/v1/me/profile", {
     method: "PUT",
-    body: JSON.stringify({
-      fullname: body.fullname.trim(),
-      phoneNumber: body.phoneNumber.trim(),
-    }),
+    body: JSON.stringify(payload),
   });
   return unwrap<MyProfile>(raw);
 }
