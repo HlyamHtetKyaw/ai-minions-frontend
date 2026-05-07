@@ -39,6 +39,7 @@ export default function Header() {
         languageLabel={t('languageLabel')}
         homeLabel={t('home')}
         workspaceLabel={t('tools')}
+        historyLabel={t('history')}
         pricingLabel={t('pricing')}
       />
     </header>

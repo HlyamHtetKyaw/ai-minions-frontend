@@ -21,11 +21,13 @@ export default function HeaderShell({
   languageLabel,
   homeLabel,
   workspaceLabel,
+  historyLabel,
   pricingLabel,
 }: Props) {
   const navLabels: HeaderNavLabels = {
     homeLabel,
     workspaceLabel,
+    historyLabel,
     pricingLabel,
   };
 
