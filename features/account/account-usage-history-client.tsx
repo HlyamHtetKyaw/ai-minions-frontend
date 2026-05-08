@@ -231,7 +231,8 @@ export default function AccountUsageHistoryClient() {
                   ) : null}
                 </div>
                 <div className="flex items-center gap-2 sm:justify-end">
-                  {String(row.status ?? '').toUpperCase() === 'FAILED' ? (
+                  {String(row.status ?? '').toUpperCase() === 'FAILED' ||
+                  (String(row.status ?? '').toUpperCase() === 'SUCCESS' && row.notCharged) ? (
                     <span className="text-xs font-medium text-muted">{t('usageHistory.notCharged')}</span>
                   ) : (
                     <>

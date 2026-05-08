@@ -28,6 +28,7 @@ export type UsageHistoryItem = {
   featureKey: UsageHistoryFeatureKey;
   featureType: UsageHistoryFeatureType;
   chargedPoints: number;
+  notCharged?: boolean;
   status: UsageHistoryStatus;
   createdAt: string;
 };
