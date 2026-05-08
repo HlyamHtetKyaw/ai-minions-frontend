@@ -3412,7 +3412,7 @@ export default function CreationStudio({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <p className="text-sm font-semibold text-foreground">Transcribe this video?</p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+              <p className="mt-2 text-sm text-muted-foreground">
                 This will use{' '}
                 <span className="font-semibold text-foreground">{estimate?.reserveCostPoints ?? '—'}</span> points to
                 generate a transcript for your viral workspace.
@@ -3460,7 +3460,7 @@ export default function CreationStudio({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <p className="text-sm font-semibold text-foreground">Translate this transcript?</p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+              <p className="mt-2 text-sm text-muted-foreground">
                 This will translate your transcript and use{' '}
                 <span className="font-semibold text-foreground">
                   {translateEstimateLoading ? '…' : translateEstimate?.reserveCostPoints ?? '—'}
@@ -3507,7 +3507,7 @@ export default function CreationStudio({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <p className="text-sm font-semibold text-foreground">Generate subtitles?</p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+              <p className="mt-2 text-sm text-muted-foreground">
                 This will generate subtitles for your video and use{' '}
                 <span className="font-semibold text-foreground">
                   {subtitlesEstimateLoading ? '…' : subtitlesEstimate?.reserveCostPoints ?? '—'}
@@ -3552,7 +3552,7 @@ export default function CreationStudio({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <p className="text-sm font-semibold text-foreground">Export final video?</p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+              <p className="mt-2 text-sm text-muted-foreground">
                 This will export your current edits (protection + subtitles if enabled) and use{' '}
                 <span className="font-semibold text-foreground">
                   {exportEstimateLoading ? '…' : exportEstimate?.reserveCostPoints ?? '—'}
@@ -3600,9 +3600,9 @@ export default function CreationStudio({
                 <p id="voice-style-modal-title" className="text-sm font-semibold text-foreground">
                   {tViral('voiceStyleModalTitle')}
                 </p>
-                <p className="mt-1 text-xs text-zinc-600 dark:text-slate-400">{tViral('voiceStyleModalSubtitle')}</p>
+                <p className="mt-1 text-xs text-muted-foreground">{tViral('voiceStyleModalSubtitle')}</p>
               </div>
-              <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto bg-zinc-100 px-4 py-4 dark:bg-[#0b1424]">
+              <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto bg-subtle px-4 py-4">
                 <VoiceToneVoicePicker
                   catalog={voiceModelCatalog}
                   loading={voiceModelsLoading}
@@ -3640,7 +3640,7 @@ export default function CreationStudio({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <p className="text-sm font-semibold text-foreground">Generate voice over?</p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+              <p className="mt-2 text-sm text-muted-foreground">
                 This will generate an audio voice over for your script and use{' '}
                 <span className="font-semibold text-foreground">
                   {voiceOverEstimateLoading ? '…' : voiceOverPointsEstimate?.reserveCostPoints ?? '—'}
@@ -3687,7 +3687,7 @@ export default function CreationStudio({
               onMouseDown={(e) => e.stopPropagation()}
             >
               <p className="text-sm font-semibold text-foreground">Render balanced sync?</p>
-              <p className="mt-2 text-sm text-zinc-600 dark:text-slate-400">
+              <p className="mt-2 text-sm text-muted-foreground">
                 This will create a combined video preview and use{' '}
                 <span className="font-semibold text-foreground">
                   {balancedSyncEstimateLoading ? '…' : balancedSyncPointsEstimate?.reserveCostPoints ?? '—'}
@@ -3732,7 +3732,7 @@ export default function CreationStudio({
               <div className="viral-modal-divider flex items-center justify-between border-b px-4 py-3">
                 <div>
                   <p className="text-sm font-semibold text-foreground">Balanced sync preview</p>
-                  <p className="mt-0.5 text-xs text-zinc-600 dark:text-slate-400">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     Listen carefully — accept only if it feels aligned.
                   </p>
                 </div>

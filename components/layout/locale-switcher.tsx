@@ -39,18 +39,18 @@ export default function LocaleSwitcher({ label }: { label: string }) {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-glass-border bg-glass/80 px-2 py-1.5 backdrop-blur-sm transition-colors hover:bg-glass lg:gap-3 lg:px-3 lg:py-2"
+        className="flex cursor-pointer items-center gap-1.5 rounded-xl border border-glass-border bg-glass/80 px-2 py-1.5 backdrop-blur-sm transition-colors hover:bg-glass xl:gap-3 xl:px-3 xl:py-2"
         aria-label={`${label}: ${currentLanguage}`}
       >
-        <Globe className="h-5 w-5 shrink-0 rounded-lg bg-foreground/10 p-1 text-foreground lg:h-8 lg:w-8 lg:p-1.5" />
-        <div className="hidden flex-col leading-tight text-left lg:flex">
+        <Globe className="h-5 w-5 shrink-0 rounded-lg bg-foreground/10 p-1 text-foreground xl:h-8 xl:w-8 xl:p-1.5" />
+        <div className="hidden flex-col leading-tight text-left xl:flex">
           <span className="text-[10px] font-semibold uppercase tracking-widest text-violet-400">
             Language
           </span>
           <span className="text-sm font-medium text-foreground">{currentLanguage}</span>
         </div>
         <ChevronDown
-          className={`h-3.5 w-3.5 shrink-0 text-foreground/60 transition-transform duration-200 lg:ml-1 lg:h-4 lg:w-4 ${open ? 'rotate-180' : ''}`}
+          className={`h-3.5 w-3.5 shrink-0 text-foreground/60 transition-transform duration-200 xl:ml-1 xl:h-4 xl:w-4 ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
