@@ -181,10 +181,15 @@ export async function changePassword(body: {
 export async function fetchUsageHistory(params?: {
   page?: number;
   size?: number;
+  pendingOnly?: boolean;
 }): Promise<UsageHistoryPage> {
   const page = typeof params?.page === "number" ? Math.max(0, params.page) : 0;
   const size = typeof params?.size === "number" ? Math.max(1, Math.min(100, params.size)) : 10;
-  const raw = await apiFetch(`/api/v1/auth/usage-history?page=${page}&size=${size}`);
+  const pending =
+    params?.pendingOnly === true ? "&pendingOnly=true" : "";
+  const raw = await apiFetch(
+    `/api/v1/auth/usage-history?page=${page}&size=${size}${pending}`,
+  );
   return unwrap<UsageHistoryPage>(raw);
 }
 

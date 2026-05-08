@@ -22,7 +22,12 @@ declare const messages: {
     "logout": "Logout",
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "navigationLabel": "Site navigation"
+    "navigationLabel": "Site navigation",
+    "pendingJobsAriaClock": "Pending jobs",
+    "pendingJobsTitle": "Pending jobs",
+    "pendingJobsEmpty": "No pending jobs right now.",
+    "pendingJobsReservedPoints": "Reserved points",
+    "pendingJobsClose": "Close"
   },
   "verify": {
     "metaTitle": "Verify email — Monetization Myanmar",

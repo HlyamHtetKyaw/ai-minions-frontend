@@ -19,7 +19,12 @@
     "logout": "ထွက်ရန်",
     "openMenu": "မီနူး ဖွင့်ရန်",
     "closeMenu": "မီနူး ပိတ်ရန်",
-    "navigationLabel": "ဝဘ်ဆိုဒ် လမ်းညွှန်မှု"
+    "navigationLabel": "ဝဘ်ဆိုဒ် လမ်းညွှန်မှု",
+    "pendingJobsAriaClock": "စောင့်ဆိုင်း လုပ်ဆောင်ချက်များ",
+    "pendingJobsTitle": "စောင့်ဆိုင်း လုပ်ဆောင်ချက်များ",
+    "pendingJobsEmpty": "စောင့်ဆိုင်း လုပ်ဆောင်ချက် မရှိသေးပါ။",
+    "pendingJobsReservedPoints": "ကြိုတင်ပိတ်ချ ထားသော ပွိုင့်",
+    "pendingJobsClose": "ပိတ်မည်"
   },
   "verify": {
     "metaTitle": "အီးမေးလ် အတည်ပြုရန် — Monetization Myanmar",
