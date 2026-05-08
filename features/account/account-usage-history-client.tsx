@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from '@/i18n/navigation';
 import { useTranslations } from 'next-intl';
-import ProgressBar from '@/components/shared/components/progress-bar';
-import { fetchUsageHistory, type UsageHistoryFeatureKey, type UsageHistoryItem, type UsageHistoryStatus } from '@/lib/account';
-import { openGenerationJobSseStream, parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
+import { fetchUsageHistory, type UsageHistoryItem, type UsageHistoryStatus } from '@/lib/account';
+import { resolveUsageHistoryFeatureLabel } from '@/features/account/usage-history-feature-label';
 
 export default function AccountUsageHistoryClient() {
   const t = useTranslations('account');
@@ -15,8 +14,6 @@ export default function AccountUsageHistoryClient() {
   const [usagePage, setUsagePage] = useState(0);
   const [usageTotalPages, setUsageTotalPages] = useState(1);
   const [usageLoadingMore, setUsageLoadingMore] = useState(false);
-  const [pendingProgress, setPendingProgress] = useState<Record<number, { percent: number; label: string }>>({});
-  const subscribedPendingIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
     let cancelled = false;
@@ -59,93 +56,8 @@ export default function AccountUsageHistoryClient() {
     }
   }
 
-  useEffect(() => {
-    const pendingRows = usageRows.filter((row) => String(row.status ?? '').toUpperCase() === 'PENDING');
-    if (pendingRows.length === 0) return;
-
-    pendingRows.forEach((row) => {
-      const generationId = Number(row.id);
-      if (!Number.isFinite(generationId) || generationId <= 0) return;
-      if (subscribedPendingIdsRef.current.has(generationId)) return;
-      subscribedPendingIdsRef.current.add(generationId);
-      setPendingProgress((prev) => {
-        if (prev[generationId]) return prev;
-        return {
-          ...prev,
-          [generationId]: {
-            percent: 8,
-            label: t('usageHistory.pendingQueued'),
-          },
-        };
-      });
-      openGenerationJobSseStream(generationId, {
-        onStatus: (raw) => {
-          const parsed = parseGenerationSseProgressPayload(raw, {
-            subscribedLabel: t('usageHistory.pendingSubscribed'),
-          });
-          if (!parsed) return;
-          setPendingProgress((prev) => ({
-            ...prev,
-            [generationId]: {
-              percent: Math.max(prev[generationId]?.percent ?? 0, parsed.percent),
-              label: parsed.label,
-            },
-          }));
-        },
-        onDone: () => {},
-        onError: () => {
-          subscribedPendingIdsRef.current.delete(generationId);
-        },
-        onTerminal: (payload) => {
-          const isSuccess = payload.status === 'completed';
-          subscribedPendingIdsRef.current.delete(generationId);
-          setUsageRows((prev) =>
-            prev.map((item) =>
-              item.id === generationId
-                ? {
-                    ...item,
-                    status: isSuccess ? 'SUCCESS' : 'FAILED',
-                    chargedPoints: isSuccess ? item.chargedPoints : 0,
-                  }
-                : item,
-            ),
-          );
-          setPendingProgress((prev) => {
-            const next = { ...prev };
-            delete next[generationId];
-            return next;
-          });
-        },
-      });
-    });
-  }, [usageRows, t]);
-
-  function featureLabel(featureKey: UsageHistoryFeatureKey): string {
-    const key = String(featureKey ?? '').toUpperCase();
-    switch (key) {
-      case 'TRANSLATE':
-        return t('usageHistory.featureTranslate');
-      case 'VOICE_OVER':
-        return t('usageHistory.featureVoiceOver');
-      case 'TRANSCRIBE':
-        return t('usageHistory.featureTranscribe');
-      case 'SUBTITLES':
-        return t('usageHistory.featureSubtitles');
-      case 'CONTENT_V2':
-        return t('usageHistory.featureContentV2');
-      case 'BALANCED_SYNC':
-        return t('usageHistory.featureBalancedSync');
-      case 'TEXT_GENERATION':
-        return t('usageHistory.featureTextGeneration');
-      case 'IMAGE_GENERATION':
-        return t('usageHistory.featureImageGeneration');
-      case 'AUDIO_GENERATION':
-        return t('usageHistory.featureAudioGeneration');
-      case 'VIDEO_GENERATION':
-        return t('usageHistory.featureVideoGeneration');
-      default:
-        return key || t('usageHistory.featureUnknown');
-    }
+  function featureLabel(featureKey: UsageHistoryItem['featureKey']): string {
+    return resolveUsageHistoryFeatureLabel(featureKey, t);
   }
 
   function statusLabel(status: UsageHistoryStatus): string {
@@ -217,21 +129,10 @@ export default function AccountUsageHistoryClient() {
                 <div className="min-w-0">
                   <p className="truncate text-sm font-medium text-foreground">{featureLabel(row.featureKey)}</p>
                   <p className="text-xs text-muted">{formatWhen(row.createdAt)}</p>
-                  {String(row.status ?? '').toUpperCase() === 'PENDING' ? (
-                    <div className="mt-2 max-w-md rounded-lg border border-primary/20 bg-primary/5 px-3 py-2">
-                      <p className="text-xs text-muted-foreground">
-                        {pendingProgress[row.id]?.label || t('usageHistory.pendingQueued')}
-                      </p>
-                      <ProgressBar
-                        value={pendingProgress[row.id]?.percent ?? 10}
-                        max={100}
-                        ariaLabel={pendingProgress[row.id]?.label || t('usageHistory.pendingQueued')}
-                      />
-                    </div>
-                  ) : null}
                 </div>
                 <div className="flex items-center gap-2 sm:justify-end">
-                  {String(row.status ?? '').toUpperCase() === 'FAILED' ? (
+                  {String(row.status ?? '').toUpperCase() === 'FAILED' ||
+                  (String(row.status ?? '').toUpperCase() === 'SUCCESS' && row.notCharged) ? (
                     <span className="text-xs font-medium text-muted">{t('usageHistory.notCharged')}</span>
                   ) : (
                     <>
@@ -280,4 +181,3 @@ export default function AccountUsageHistoryClient() {
     </div>
   );
 }
-

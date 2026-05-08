@@ -207,18 +207,20 @@ export function parseGenerationSseProgressPayload(
 /**
  * SSE for any {@code ai_generations} async job (transcribe, translate, voice-over, …).
  *
- * Uses `fetch()` streaming with `Authorization: Bearer …` (same as other API calls).
- * Native {@link EventSource} cannot attach Bearer tokens, which breaks production setups that rely on JWTs.
+ * Uses {@code fetch()} streaming with {@code Authorization: Bearer …}.
+ * Native {@link EventSource} cannot attach Bearer tokens reliably.
+ *
+ * @returns Abort function to cancel the stream (e.g. when a parent dialog unmounts).
  */
 export function openGenerationJobSseStream(
   generationId: number,
   handlers: GenerationJobSseHandlers,
-): void {
+): () => void {
   const base = getPublicApiBaseUrl();
   if (!base) {
     handlers.onError('API base URL is not set');
     handlers.onDone();
-    return;
+    return () => {};
   }
   const path = `${base}/api/v1/generations/${generationId}/stream`;
   let finished = false;
@@ -257,7 +259,7 @@ export function openGenerationJobSseStream(
     }
   };
 
-  consumeSseWithAuth(path, {
+  return consumeSseWithAuth(path, {
     onOpen: () => {
       if (!finished) handlers.onOpen?.();
     },

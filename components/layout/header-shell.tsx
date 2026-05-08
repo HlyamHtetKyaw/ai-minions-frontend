@@ -5,6 +5,7 @@ import { Link } from '@/i18n/navigation';
 import ThemeToggle from '@/components/theme/theme-toggle';
 import LocaleSwitcher from '@/components/layout/locale-switcher';
 import HeaderSession from '@/components/layout/header-session';
+import PendingUsageHistoryTrigger from '@/components/layout/pending-usage-history-trigger';
 import { AuthSessionProvider } from '@/components/layout/auth-session-context';
 import { HeaderDesktopNav, HeaderMobileNav, type HeaderNavLabels } from '@/components/layout/header-client';
 import logoSrc from '@/assets/logo.png';
@@ -66,6 +67,8 @@ export default function HeaderShell({
           </div>
 
           <ThemeToggle />
+
+          <PendingUsageHistoryTrigger />
 
           <HeaderSession />
 
