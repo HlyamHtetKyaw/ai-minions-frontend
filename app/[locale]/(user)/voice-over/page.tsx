@@ -192,7 +192,7 @@ export default function VoiceOverPage() {
                     size="lg"
                   />
                   {estimateUnavailable && estimateError ? (
-                    <p className="text-sm text-red-400">{estimateError}</p>
+                    <p className="text-sm text-red-600 dark:text-red-300">{estimateError}</p>
                   ) : null}
                   <ScriptInput
                     value={scriptText}
@@ -257,7 +257,7 @@ export default function VoiceOverPage() {
                     </div>
                   ) : null}
 
-                  {error ? <p className="text-sm text-red-400">{error}</p> : null}
+                  {error ? <p className="text-sm text-red-600 dark:text-red-300">{error}</p> : null}
 
                   {audioSrc ? (
                     <AudioPlayer src={audioSrc} filename="voice-over.mp3" />
