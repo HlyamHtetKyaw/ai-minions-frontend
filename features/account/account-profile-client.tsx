@@ -22,6 +22,10 @@ export default function AccountProfileClient() {
   const [credits, setCredits] = useState<number | null>(null);
   const [fullname, setFullname] = useState('');
   const [phone, setPhone] = useState('');
+  const [useDefaultGemini, setUseDefaultGemini] = useState(true);
+  const [geminiKeyDraft, setGeminiKeyDraft] = useState('');
+  const [geminiApiKeyConfigured, setGeminiApiKeyConfigured] = useState(false);
+  const [savingGemini, setSavingGemini] = useState(false);
 
   const [editingField, setEditingField] = useState<'fullname' | 'phone' | null>(null);
   const [draftValue, setDraftValue] = useState('');
@@ -49,6 +53,9 @@ export default function AccountProfileClient() {
         setCredits(typeof me.creditBalance === 'number' ? me.creditBalance : 0);
         setFullname(profile.fullname ?? '');
         setPhone(profile.phoneNumber ?? '');
+        setUseDefaultGemini(profile.useDefaultGeminiApiKey ?? true);
+        setGeminiApiKeyConfigured(!!profile.geminiApiKeyConfigured);
+        setGeminiKeyDraft('');
       } catch (e) {
         if (!cancelled) {
           setError(e instanceof Error ? e.message : t('loadError'));
@@ -93,6 +100,28 @@ export default function AccountProfileClient() {
       setError(e instanceof Error ? e.message : t('saveError'));
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function saveGeminiSettings() {
+    setError('');
+    setOk('');
+    setSavingGemini(true);
+    try {
+      const nextProfile = await updateMyProfile({
+        fullname,
+        phoneNumber: phone,
+        useDefaultGeminiApiKey: useDefaultGemini,
+        ...(geminiKeyDraft.trim() ? { geminiApiKey: geminiKeyDraft } : {}),
+      });
+      setGeminiApiKeyConfigured(!!nextProfile.geminiApiKeyConfigured);
+      setUseDefaultGemini(nextProfile.useDefaultGeminiApiKey ?? true);
+      setGeminiKeyDraft('');
+      setOk(t('saved'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('saveError'));
+    } finally {
+      setSavingGemini(false);
     }
   }
 
@@ -173,6 +202,40 @@ export default function AccountProfileClient() {
                 className="rounded-xl border border-card-border px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-surface"
               >
                 {t('edit')}
+              </button>
+            </div>
+            <div className="px-6 py-5 sm:px-8">
+              <h3 className="text-sm font-semibold text-foreground">{t('geminiHeading')}</h3>
+              <p className="mt-1 text-sm text-muted">{t('geminiHint')}</p>
+              <label className="mt-4 flex cursor-pointer items-start gap-3">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4 rounded border-card-border"
+                  checked={useDefaultGemini}
+                  onChange={(e) => setUseDefaultGemini(e.target.checked)}
+                />
+                <span className="text-sm text-foreground">{t('geminiUseDefault')}</span>
+              </label>
+              {!useDefaultGemini ? (
+                <input
+                  type="password"
+                  value={geminiKeyDraft}
+                  onChange={(e) => setGeminiKeyDraft(e.target.value)}
+                  placeholder={t('geminiKeyPlaceholder')}
+                  autoComplete="off"
+                  className="mt-3 w-full rounded-xl border border-card-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-shadow focus:border-accent-gold/50 focus:ring-2 focus:ring-accent-gold/20"
+                />
+              ) : null}
+              {geminiApiKeyConfigured ? (
+                <p className="mt-2 text-xs text-muted">{t('geminiKeyStored')}</p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void saveGeminiSettings()}
+                disabled={savingGemini}
+                className="mt-4 rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-fg transition-opacity hover:bg-primary-hover disabled:opacity-50"
+              >
+                {savingGemini ? t('savingGemini') : t('saveGemini')}
               </button>
             </div>
           </dl>
