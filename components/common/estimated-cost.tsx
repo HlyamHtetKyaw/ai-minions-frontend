@@ -17,9 +17,9 @@ function cx(...parts: Array<string | false | null | undefined>) {
 }
 
 function getTone(points: number) {
-  if (points < 100) return 'text-emerald-300';
-  if (points <= 300) return 'text-amber-300';
-  return 'text-rose-300';
+  if (points < 100) return 'text-emerald-700 dark:text-emerald-300';
+  if (points <= 300) return 'text-amber-700 dark:text-amber-300';
+  return 'text-rose-700 dark:text-rose-300';
 }
 
 export default function EstimatedCost({
@@ -72,11 +72,11 @@ export default function EstimatedCost({
 
   const shell = cx(
     variant === 'card' &&
-      'rounded-2xl border border-white/10 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 px-4 py-3 backdrop-blur-sm',
+      'rounded-2xl border border-violet-200/80 bg-gradient-to-r from-violet-100/80 to-indigo-100/80 px-4 py-3 backdrop-blur-sm dark:border-white/10 dark:from-purple-600/20 dark:to-indigo-600/20',
     variant === 'inline' &&
-      'flex items-center gap-2 rounded-xl border border-white/10 bg-gradient-to-r from-purple-600/10 to-indigo-600/10 px-3 py-2',
+      'flex items-center gap-2 rounded-xl border border-violet-200/80 bg-gradient-to-r from-violet-100/70 to-indigo-100/70 px-3 py-2 dark:border-white/10 dark:from-purple-600/10 dark:to-indigo-600/10',
     variant === 'badge' &&
-      'inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-gradient-to-r from-purple-600/20 to-indigo-600/20 px-3 py-1.5',
+      'inline-flex items-center gap-1.5 rounded-full border border-violet-200/80 bg-gradient-to-r from-violet-100/80 to-indigo-100/80 px-3 py-1.5 dark:border-white/10 dark:from-purple-600/20 dark:to-indigo-600/20',
     className,
   );
 
@@ -85,14 +85,14 @@ export default function EstimatedCost({
       <div className={cx('flex items-center', variant === 'card' ? 'justify-between gap-4' : 'gap-2')}>
         <div className="flex min-w-0 items-center gap-2">
           {showLabel ? (
-            <span className={cx('font-medium text-white/60', labelSize)}>Estimated Cost</span>
+            <span className={cx('font-medium text-slate-600 dark:text-white/60', labelSize)}>Estimated Cost</span>
           ) : null}
         </div>
 
         {isLoading ? (
           <span
             className={cx(
-              'inline-block h-7 w-24 animate-pulse rounded-md bg-white/15',
+              'inline-block h-7 w-24 animate-pulse rounded-md bg-violet-300/35 dark:bg-white/15',
               variant === 'badge' && 'h-5 w-14 rounded-full',
               size === 'lg' && variant !== 'badge' && 'h-9 w-28',
             )}
@@ -101,7 +101,7 @@ export default function EstimatedCost({
           <span
             ref={valueRef}
             className={cx(
-              'font-bold tabular-nums text-white transition-transform duration-200',
+              'font-bold tabular-nums text-slate-900 transition-transform duration-200 dark:text-white',
               valueSize,
               getTone(safePoints),
             )}

@@ -175,13 +175,13 @@ export default function VoiceToneVoicePicker({
   }, [t]);
 
   if (loading) {
-    return <p className="text-xs text-zinc-600 sm:text-sm dark:text-slate-400">{t('loadingVoices')}</p>;
+    return <p className="text-xs text-muted-foreground sm:text-sm">{t('loadingVoices')}</p>;
   }
   if (error) {
     return <p className="text-xs text-red-600 sm:text-sm dark:text-red-300">{error}</p>;
   }
   if (catalog.length === 0) {
-    return <p className="text-xs text-zinc-600 sm:text-sm dark:text-slate-400">{t('emptyCatalog')}</p>;
+    return <p className="text-xs text-muted-foreground sm:text-sm">{t('emptyCatalog')}</p>;
   }
 
   const handleToneClick = (id: VoiceToneGroupId) => {
@@ -266,7 +266,7 @@ export default function VoiceToneVoicePicker({
   return (
     <div className="space-y-5">
       <div className="space-y-3">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-600 dark:text-slate-400">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
           {t('step1')}
         </p>
         <div className="flex flex-col gap-3">
@@ -281,12 +281,12 @@ export default function VoiceToneVoicePicker({
                 aria-pressed={pressed}
                 className={`rounded-lg border px-3 py-2 text-left transition-colors ${
                   pressed
-                    ? 'border-violet-500 bg-violet-50 text-zinc-900 ring-2 ring-violet-400/40 dark:border-violet-400 dark:bg-violet-950/90 dark:text-slate-100 dark:ring-violet-400/35'
-                    : 'border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 hover:bg-zinc-50 dark:border-white/18 dark:bg-slate-800 dark:text-slate-100 dark:hover:border-white/28 dark:hover:bg-slate-700/90'
+                    ? 'border-violet-500 bg-violet-500/12 text-foreground ring-2 ring-violet-400/35'
+                    : 'border-card-border bg-card text-foreground hover:border-border-emphasis hover:bg-surface'
                 }`}
               >
                 <span className="block text-xs font-semibold sm:text-sm">{opt.title}</span>
-                <span className="mt-0.5 block text-[10px] leading-snug text-zinc-600 sm:text-[11px] dark:text-slate-400">
+                <span className="mt-0.5 block text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
                   {opt.hint}
                 </span>
               </button>
@@ -296,7 +296,7 @@ export default function VoiceToneVoicePicker({
       </div>
 
       <div className="space-y-3">
-        <p className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-600 dark:text-slate-400">
+        <p className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
           {t('step2')}
         </p>
 
@@ -306,7 +306,7 @@ export default function VoiceToneVoicePicker({
           {previewError ? (
             <p className="text-[11px] text-red-600 dark:text-red-300">{previewError}</p>
           ) : (
-            <p className="text-[11px] text-zinc-600 dark:text-slate-400">{t('previewHint')}</p>
+            <p className="text-[11px] text-muted-foreground">{t('previewHint')}</p>
           )}
 
           <div className="scrollbar-themed max-h-64 space-y-3 overflow-y-auto pr-0.5 pb-1">
@@ -347,7 +347,7 @@ export default function VoiceToneVoicePicker({
                     disabled={disabled || isRowLoading}
                     onClick={() => void togglePreview(m.id)}
                     onMouseEnter={() => prefetchPreview(m.id)}
-                    className="inline-flex h-9 w-10 items-center justify-center rounded-md border border-card-border bg-card text-foreground transition-colors hover:bg-surface disabled:opacity-50"
+                    className="inline-flex h-9 w-10 items-center justify-center rounded-md border border-card-border bg-elevated text-foreground transition-colors hover:bg-surface disabled:opacity-50"
                     aria-label={isPlaying ? t('pausePreview') : t('playPreview')}
                     title={isPlaying ? t('pausePreview') : t('playPreview')}
                   >
