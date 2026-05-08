@@ -206,6 +206,99 @@ function extractWorkspaceKeyFromVideoUrl(value: string | null | undefined): stri
   return null;
 }
 
+function pickTrimmedString(value: unknown): string {
+  return typeof value === 'string' ? value.trim() : '';
+}
+
+function parseTerminalOutputObject(outputData: unknown): Record<string, unknown> | undefined {
+  if (typeof outputData === 'string') {
+    try {
+      return JSON.parse(outputData) as Record<string, unknown>;
+    } catch {
+      return undefined;
+    }
+  }
+  if (outputData != null && typeof outputData === 'object') {
+    return outputData as Record<string, unknown>;
+  }
+  return undefined;
+}
+
+function extractExportResult(
+  outputData: unknown,
+  fallback?: { downloadUrl?: string | null; s3Key?: string | null },
+): { downloadUrl: string; s3Key: string } {
+  const output = parseTerminalOutputObject(outputData);
+  const resultNode =
+    output && typeof output.result === 'object' && output.result != null
+      ? (output.result as Record<string, unknown>)
+      : undefined;
+  const downloadUrl =
+    pickTrimmedString(resultNode?.readUrl) ||
+    pickTrimmedString(resultNode?.downloadUrl) ||
+    pickTrimmedString(resultNode?.storageUrl) ||
+    (output
+      ? pickTrimmedString(output.readUrl) ||
+        pickTrimmedString(output.downloadUrl) ||
+        pickTrimmedString(output.storageUrl)
+      : '') ||
+    pickTrimmedString(fallback?.downloadUrl) ||
+    '';
+  const s3Key = pickTrimmedString(resultNode?.s3Key) || pickTrimmedString(fallback?.s3Key) || '';
+  return { downloadUrl, s3Key };
+}
+
+function bindMediaBufferTracking(
+  media: HTMLMediaElement,
+  onMetadataReady: (ready: boolean) => void,
+  onBufferPct: (pct: number) => void,
+  onFullyLoaded: (ready: boolean) => void,
+): () => void {
+  const calc = () => {
+    const duration = media.duration;
+    if (Number.isFinite(duration) && duration > 0) {
+      onMetadataReady(true);
+    } else {
+      return;
+    }
+    let end = 0;
+    try {
+      if (media.buffered && media.buffered.length > 0) {
+        end = media.buffered.end(media.buffered.length - 1);
+      }
+    } catch {
+      end = 0;
+    }
+    const pct = Math.max(0, Math.min(1, end / duration));
+    onBufferPct(pct);
+    if (pct >= 0.995) {
+      onFullyLoaded(true);
+    }
+  };
+
+  const onProgress = () => calc();
+  const onMeta = () => calc();
+  const onCanPlayThrough = () => {
+    calc();
+    onFullyLoaded(true);
+  };
+
+  media.addEventListener('progress', onProgress);
+  media.addEventListener('loadedmetadata', onMeta);
+  media.addEventListener('durationchange', onMeta);
+  media.addEventListener('canplaythrough', onCanPlayThrough);
+  const timer = window.setInterval(calc, 400);
+  calc();
+
+  return () => {
+    window.clearInterval(timer);
+    media.removeEventListener('progress', onProgress);
+    media.removeEventListener('loadedmetadata', onMeta);
+    media.removeEventListener('durationchange', onMeta);
+    media.removeEventListener('canplaythrough', onCanPlayThrough);
+  };
+}
+
 type Props = {
   videoUrl: string;
   videoName: string;
@@ -389,6 +482,7 @@ export default function CreationStudio({
     const s = typeof initialExportedVideoKey === 'string' ? initialExportedVideoKey.trim() : '';
     return s;
   });
+  const [showExportDownloadNotice, setShowExportDownloadNotice] = useState(false);
 
   const [balancedSyncProgress, setBalancedSyncProgress] = useState<{ percent: number; label: string } | null>(null);
   const [balancedSyncError, setBalancedSyncError] = useState<string | null>(null);
@@ -660,53 +754,7 @@ export default function CreationStudio({
 
     const v = videoRef.current;
     if (!v) return;
-
-    const calc = () => {
-      const d = v.duration;
-      if (Number.isFinite(d) && d > 0) {
-        setVideoMetadataReady(true);
-      } else {
-        return;
-      }
-      let end = 0;
-      try {
-        if (v.buffered && v.buffered.length > 0) {
-          end = v.buffered.end(v.buffered.length - 1);
-        }
-      } catch {
-        end = 0;
-      }
-      const pct = Math.max(0, Math.min(1, end / d));
-      setVideoBufferPct(pct);
-      if (pct >= 0.995) {
-        setVideoFullyLoaded(true);
-      }
-    };
-
-    const onProgress = () => calc();
-    const onMeta = () => calc();
-    const onCanPlayThrough = () => {
-      // Some browsers signal this when it *expects* full playback without buffering.
-      // We still prefer buffered check, but this is a good hint.
-      calc();
-      setVideoFullyLoaded(true);
-    };
-
-    v.addEventListener('progress', onProgress);
-    v.addEventListener('loadedmetadata', onMeta);
-    v.addEventListener('durationchange', onMeta);
-    v.addEventListener('canplaythrough', onCanPlayThrough);
-    const tmr = window.setInterval(calc, 400);
-    calc();
-
-    return () => {
-      window.clearInterval(tmr);
-      v.removeEventListener('progress', onProgress);
-      v.removeEventListener('loadedmetadata', onMeta);
-      v.removeEventListener('durationchange', onMeta);
-      v.removeEventListener('canplaythrough', onCanPlayThrough);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return bindMediaBufferTracking(v, setVideoMetadataReady, setVideoBufferPct, setVideoFullyLoaded);
   }, [videoUrl]);
 
   useEffect(() => {
@@ -717,51 +765,7 @@ export default function CreationStudio({
 
     const a = voiceRef.current;
     if (!a) return;
-
-    const calc = () => {
-      const d = a.duration;
-      if (Number.isFinite(d) && d > 0) {
-        setVoiceMetadataReady(true);
-      } else {
-        return;
-      }
-      let end = 0;
-      try {
-        if (a.buffered && a.buffered.length > 0) {
-          end = a.buffered.end(a.buffered.length - 1);
-        }
-      } catch {
-        end = 0;
-      }
-      const pct = Math.max(0, Math.min(1, end / d));
-      setAudioBufferPct(pct);
-      if (pct >= 0.995) {
-        setVoiceFullyLoaded(true);
-      }
-    };
-
-    const onProgress = () => calc();
-    const onMeta = () => calc();
-    const onCanPlayThrough = () => {
-      calc();
-      setVoiceFullyLoaded(true);
-    };
-
-    a.addEventListener('progress', onProgress);
-    a.addEventListener('loadedmetadata', onMeta);
-    a.addEventListener('durationchange', onMeta);
-    a.addEventListener('canplaythrough', onCanPlayThrough);
-    const tmr = window.setInterval(calc, 400);
-    calc();
-
-    return () => {
-      window.clearInterval(tmr);
-      a.removeEventListener('progress', onProgress);
-      a.removeEventListener('loadedmetadata', onMeta);
-      a.removeEventListener('durationchange', onMeta);
-      a.removeEventListener('canplaythrough', onCanPlayThrough);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    return bindMediaBufferTracking(a, setVoiceMetadataReady, setAudioBufferPct, setVoiceFullyLoaded);
   }, [voiceOverAudioUrl, voiceOverPlayableUrl]);
 
   const [scriptText, setScriptText] = useState(() => {
@@ -930,12 +934,15 @@ export default function CreationStudio({
       setScriptText(text);
       setTranscribeProgress(null);
       setTranscribeError(null);
+      transcribeStreamRef.current = null;
       setTranscribeGenerationId(null);
       return;
     }
     const raw = payload.message ?? 'No transcript text returned.';
     setTranscribeError(raw);
     setTranscribeProgress(null);
+    transcribeStreamRef.current = null;
+    setTranscribeGenerationId(null);
   }, []);
 
   const applyExportTerminalPayload = useCallback(
@@ -946,30 +953,7 @@ export default function CreationStudio({
         setExportGenerationId(null);
         return;
       }
-      const output =
-        typeof payload.outputData === 'string'
-          ? (() => {
-              try {
-                return JSON.parse(payload.outputData) as Record<string, unknown>;
-              } catch {
-                return undefined;
-              }
-            })()
-          : payload.outputData != null && typeof payload.outputData === 'object'
-            ? (payload.outputData as Record<string, unknown>)
-            : undefined;
-      const resultNode =
-        output && typeof output.result === 'object' && output.result != null
-          ? (output.result as Record<string, unknown>)
-          : undefined;
-      const pick = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
-      const downloadUrl =
-        pick(resultNode?.readUrl) ||
-        pick(resultNode?.downloadUrl) ||
-        pick(resultNode?.storageUrl) ||
-        (output ? pick(output.readUrl) || pick(output.downloadUrl) || pick(output.storageUrl) : '') ||
-        '';
-      const s3Key = pick(resultNode?.s3Key) || '';
+      const { downloadUrl, s3Key } = extractExportResult(payload.outputData);
       if (!downloadUrl) {
         setExportError('Export completed but missing download URL');
         setExporting(false);
@@ -1047,6 +1031,8 @@ export default function CreationStudio({
       onError: (msg) => {
         setTranscribeError(msg);
         setTranscribeProgress(null);
+        transcribeStreamRef.current = null;
+        setTranscribeGenerationId(null);
       },
       onTerminal: applyTranscribeTerminalPayload,
     });
@@ -2091,16 +2077,21 @@ export default function CreationStudio({
         originalFileName: videoName || null,
       });
       setTranscribeGenerationId(complete.jobId);
+      transcribeStreamRef.current = complete.jobId;
 
       openGenerationJobSseStream(complete.jobId, {
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw);
           if (p) setTranscribeProgress(p);
         },
-        onDone: () => {},
+        onDone: () => {
+          if (transcribeStreamRef.current === complete.jobId) transcribeStreamRef.current = null;
+        },
         onError: (msg) => {
           setTranscribeError(msg);
           setTranscribeProgress(null);
+          if (transcribeStreamRef.current === complete.jobId) transcribeStreamRef.current = null;
+          setTranscribeGenerationId(null);
         },
         onTerminal: (payload) => {
           const text = extractTranscriptTextFromOutputData(payload.outputData);
@@ -2111,11 +2102,14 @@ export default function CreationStudio({
             setTranslatedText('');
             setScriptText(text);
             setTranscribeProgress(null);
+            if (transcribeStreamRef.current === complete.jobId) transcribeStreamRef.current = null;
             setTranscribeGenerationId(null);
           } else {
             const raw = payload.message ?? 'No transcript text returned.';
             setTranscribeError(raw);
             setTranscribeProgress(null);
+            if (transcribeStreamRef.current === complete.jobId) transcribeStreamRef.current = null;
+            setTranscribeGenerationId(null);
           }
         },
       });
@@ -2185,6 +2179,7 @@ export default function CreationStudio({
     setExportError(null);
     setExportedVideoUrl(null);
     setExportedVideoKey('');
+    setShowExportDownloadNotice(false);
     try {
       const estimatedVideoSrcKey = extractWorkspaceKeyFromVideoUrl(String(videoUrl ?? '')) ?? workspaceS3Key ?? null;
       if (!estimatedVideoSrcKey) throw new Error('Video key is missing. Please re-upload the video.');
@@ -2205,6 +2200,7 @@ export default function CreationStudio({
     setExportError(null);
     setExportedVideoUrl(null);
     setExportedVideoKey('');
+    setShowExportDownloadNotice(false);
     setExporting(true);
     try {
       const v = videoRef.current;
@@ -2287,31 +2283,10 @@ export default function CreationStudio({
                 reject(new Error(payload.message || 'Export failed'));
                 return;
               }
-              const output =
-                typeof payload.outputData === 'string'
-                  ? (() => {
-                      try {
-                        return JSON.parse(payload.outputData) as Record<string, unknown>;
-                      } catch {
-                        return undefined;
-                      }
-                    })()
-                  : payload.outputData != null && typeof payload.outputData === 'object'
-                    ? (payload.outputData as Record<string, unknown>)
-                    : undefined;
-              const resultNode =
-                output && typeof output.result === 'object' && output.result != null
-                  ? (output.result as Record<string, unknown>)
-                  : undefined;
-              const pick = (v: unknown): string => (typeof v === 'string' ? v.trim() : '');
-              const downloadUrl =
-                pick(resultNode?.readUrl) ||
-                pick(resultNode?.downloadUrl) ||
-                pick(resultNode?.storageUrl) ||
-                (output ? pick(output.readUrl) || pick(output.downloadUrl) || pick(output.storageUrl) : '') ||
-                pick(res.downloadUrl) ||
-                '';
-              const s3Key = pick(resultNode?.s3Key) || pick(res.s3Key) || '';
+              const { downloadUrl, s3Key } = extractExportResult(payload.outputData, {
+                downloadUrl: res.downloadUrl,
+                s3Key: res.s3Key,
+              });
               if (!downloadUrl) {
                 reject(new Error('Export completed but missing download URL'));
                 return;
@@ -2324,15 +2299,18 @@ export default function CreationStudio({
         setExportedVideoKey(sseResult.s3Key);
         setExportGenerationId(null);
         await triggerWorkspaceExportDownload(sseResult.downloadUrl, sseResult.s3Key);
+        setShowExportDownloadNotice(true);
       } else {
         setExportedVideoUrl(res.downloadUrl);
         setExportedVideoKey(res.s3Key);
         await triggerWorkspaceExportDownload(res.downloadUrl, res.s3Key);
+        setShowExportDownloadNotice(true);
       }
       await onExportSuccess?.();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setExportError(msg || 'Export failed');
+      setShowExportDownloadNotice(false);
     } finally {
       setExporting(false);
     }
@@ -3169,7 +3147,7 @@ export default function CreationStudio({
                 {exportError}
               </div>
             ) : null}
-            {exportedVideoUrl ? (
+            {exportedVideoUrl && showExportDownloadNotice ? (
               <div className="mb-2 rounded border border-card-border bg-subtle/20 px-2 py-1.5 text-[10px] text-muted">
                 Export saved — your browser should have downloaded the file.{' '}
                 <button
