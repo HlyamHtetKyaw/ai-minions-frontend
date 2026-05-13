@@ -2007,12 +2007,20 @@ export default function CreationStudio({
     setSubtitlesError(null);
     setSubtitlesProgress({ percent: 10, label: 'Starting subtitles…' });
     try {
+      const useSyncedVoiceSubs =
+        Boolean(voiceOverEnabled && !originalAudioEnabled && voiceOverS3Key?.trim());
       const complete = await subtitlesFromExisting({
         s3Key: workspaceS3Key,
         sourceType: 'video',
         targetLanguage: 'my',
         style: 'caption_rules_v1',
         translatedText: subtitleTranslatedText,
+        ...(useSyncedVoiceSubs && voiceOverS3Key.trim()
+          ? {
+              voiceOverS3Key: voiceOverS3Key.trim(),
+              voiceOverPlaybackRate: voiceOverPlaybackRate,
+            }
+          : {}),
       });
       setSubtitlesGenerationId(complete.jobId);
       void onPersistWorkspaceSnapshot?.();
@@ -2224,6 +2232,39 @@ export default function CreationStudio({
         Number.isFinite(previewBurnedSubtitleFontPx) &&
         previewBurnedSubtitleFontPx > 0;
 
+      /** Worker resolves object via `#wk=` fragment; prefer voice read URL host for bucket hint, fallback to video. */
+      let voiceMixForExport:
+        | { audioTracks: Array<Record<string, unknown>>; originalAudio: { muted: boolean; volume: number } }
+        | undefined;
+      const wantVoiceInExport =
+        Boolean(voiceOverEnabled && !originalAudioEnabled && voiceOverS3Key?.trim());
+
+      if (wantVoiceInExport) {
+        const rawVoice = typeof voiceOverAudioUrl === 'string' ? voiceOverAudioUrl.trim() : '';
+        const voiceBase =
+          rawVoice !== ''
+            ? rawVoice.includes('#')
+              ? rawVoice.slice(0, rawVoice.indexOf('#'))
+              : rawVoice
+            : noFrag;
+        voiceMixForExport = {
+          originalAudio: { muted: true, volume: 100 },
+          audioTracks: [
+            {
+              id: 'viral-voice-over',
+              type: 'voiceover',
+              src: `${voiceBase}#wk=${encodeURIComponent(voiceOverS3Key.trim())}`,
+              startTime: 0,
+              endTime: duration,
+              volume: 100,
+              fadeIn: 0,
+              fadeOut: 0,
+              playbackRate: voiceOverPlaybackRate,
+            },
+          ],
+        };
+      }
+
       const payload = {
         videoUrl: noFrag,
         videoSrcKey,
@@ -2235,7 +2276,8 @@ export default function CreationStudio({
         displayToNaturalScale: { x: 1, y: 1 },
         textLayers: [],
         imageLayers: [],
-        originalAudio: { muted: false, volume: 100 },
+        originalAudio: voiceMixForExport?.originalAudio ?? { muted: false, volume: 100 },
+        ...(voiceMixForExport?.audioTracks ? { audioTracks: voiceMixForExport.audioTracks } : {}),
         protectFlip,
         protectHueDeg,
         burnSubtitles: Boolean(showSubtitlesOverlay && subtitlesSrtText.trim()),

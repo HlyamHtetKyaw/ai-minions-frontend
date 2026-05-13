@@ -149,6 +149,9 @@ export async function subtitlesFromExisting(params: {
   targetLanguage?: string;
   style?: string;
   translatedText?: string;
+  /** Gemini voice-over object key (`voice-over/…`); subtitles use tempo-aligned audio when combined with voiceOverPlaybackRate. */
+  voiceOverS3Key?: string;
+  voiceOverPlaybackRate?: number;
 }): Promise<SubtitlesCompleteData> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set');
