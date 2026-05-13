@@ -149,8 +149,9 @@ export async function subtitlesFromExisting(params: {
   targetLanguage?: string;
   style?: string;
   translatedText?: string;
-  /** Gemini voice-over object key (`voice-over/…`); subtitles use tempo-aligned audio when combined with voiceOverPlaybackRate. */
+  /** Gemini voice-over key when subs follow AI voice timeline; omit when using original audio. */
   voiceOverS3Key?: string;
+  /** Same factor as CreationStudio sync / HTML playbackRate (`atempo` before AI): with voice key = voice asset; without key + video = original soundtrack from the video file. */
   voiceOverPlaybackRate?: number;
 }): Promise<SubtitlesCompleteData> {
   const base = getPublicApiBaseUrl();

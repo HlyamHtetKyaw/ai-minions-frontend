@@ -2009,6 +2009,8 @@ export default function CreationStudio({
     try {
       const useSyncedVoiceSubs =
         Boolean(voiceOverEnabled && !originalAudioEnabled && voiceOverS3Key?.trim());
+      const useOriginalAudioSyncRateForSubs =
+        !useSyncedVoiceSubs && Math.abs(voiceOverPlaybackRate - 1) > 0.001;
       const complete = await subtitlesFromExisting({
         s3Key: workspaceS3Key,
         sourceType: 'video',
@@ -2021,6 +2023,7 @@ export default function CreationStudio({
               voiceOverPlaybackRate: voiceOverPlaybackRate,
             }
           : {}),
+        ...(useOriginalAudioSyncRateForSubs ? { voiceOverPlaybackRate: voiceOverPlaybackRate } : {}),
       });
       setSubtitlesGenerationId(complete.jobId);
       void onPersistWorkspaceSnapshot?.();
