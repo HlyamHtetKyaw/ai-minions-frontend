@@ -11,9 +11,7 @@ import {
   openGenerationJobSseStream,
   parseGenerationSseProgressPayload,
 } from '@/lib/generation-job-sse';
-
-const COUNT_POLL_MS = 45_000;
-const MODAL_REFRESH_MS = 25_000;
+import { openPendingJobsSseStream } from '@/lib/pending-jobs-sse';
 
 export default function PendingUsageHistoryTrigger() {
   const { user } = useAuthSession();
@@ -22,64 +20,75 @@ export default function PendingUsageHistoryTrigger() {
   const [open, setOpen] = useState(false);
   const [pendingCount, setPendingCount] = useState(0);
   const [rows, setRows] = useState<UsageHistoryItem[]>([]);
-  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [pendingProgress, setPendingProgress] = useState<Record<number, { percent: number; label: string }>>(
     {},
   );
+  const [snapshotReady, setSnapshotReady] = useState(false);
 
   const streamAbortsRef = useRef<Map<number, () => void>>(new Map());
   const sseSubscribedIdsRef = useRef<Set<number>>(new Set());
 
   useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    const tick = async () => {
-      try {
-        const page = await fetchUsageHistory({ page: 0, size: 1, pendingOnly: true });
-        if (cancelled) return;
-        const n = typeof page.totalItems === 'number' ? Number(page.totalItems) : 0;
-        setPendingCount(Number.isFinite(n) ? n : 0);
-      } catch {
-        if (!cancelled) setPendingCount(0);
-      }
-    };
-    void tick();
-    const id = window.setInterval(tick, COUNT_POLL_MS);
-    return () => {
-      cancelled = true;
-      window.clearInterval(id);
-    };
-  }, [user]);
-
-  useEffect(() => {
-    if (!open) return;
-    let cancelled = false;
-    const load = async () => {
-      setLoading(true);
+    if (!user) {
+      setSnapshotReady(false);
+      setPendingCount(0);
+      setRows([]);
       setError('');
-      try {
-        const page = await fetchUsageHistory({ page: 0, size: 50, pendingOnly: true });
+      return;
+    }
+    let cancelled = false;
+    setSnapshotReady(false);
+    const stop = openPendingJobsSseStream({
+      onSnapshot: (page) => {
         if (cancelled) return;
-        setRows(Array.isArray(page.content) ? page.content : []);
-        const n =
-          typeof page.totalItems === 'number' ? Number(page.totalItems) : (page.content?.length ?? 0);
+        const content = Array.isArray(page.content) ? page.content : [];
+        const n = typeof page.totalItems === 'number' ? Number(page.totalItems) : content.length;
         setPendingCount(Number.isFinite(n) ? n : 0);
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : tAccount('usageHistory.loadError'));
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    };
-    void load();
-    const id = window.setInterval(load, MODAL_REFRESH_MS);
+        setRows(content);
+        setError('');
+        setSnapshotReady(true);
+
+        const pendingIds = new Set(
+          content.filter((r) => String(r.status ?? '').toUpperCase() === 'PENDING').map((r) => r.id),
+        );
+        streamAbortsRef.current.forEach((abort, gid) => {
+          if (!pendingIds.has(gid)) {
+            abort();
+            streamAbortsRef.current.delete(gid);
+            sseSubscribedIdsRef.current.delete(gid);
+          }
+        });
+        setPendingProgress((prev) => {
+          const next = { ...prev };
+          for (const k of Object.keys(next)) {
+            const id = Number(k);
+            if (!pendingIds.has(id)) delete next[id];
+          }
+          return next;
+        });
+      },
+      onError: (msg) => {
+        if (cancelled) return;
+        setError(msg || tAccount('usageHistory.loadError'));
+        void fetchUsageHistory({ page: 0, size: 50, pendingOnly: true })
+          .then((page) => {
+            if (cancelled) return;
+            const content = Array.isArray(page.content) ? page.content : [];
+            setRows(content);
+            const n =
+              typeof page.totalItems === 'number' ? Number(page.totalItems) : content.length;
+            setPendingCount(Number.isFinite(n) ? n : 0);
+            setSnapshotReady(true);
+          })
+          .catch(() => {});
+      },
+    });
     return () => {
       cancelled = true;
-      window.clearInterval(id);
+      stop();
     };
-  }, [open, tAccount]);
+  }, [user, tAccount]);
 
   useEffect(() => {
     if (!open) {
@@ -231,13 +240,13 @@ export default function PendingUsageHistoryTrigger() {
                   {error}
                 </p>
               ) : null}
-              {loading && rows.length === 0 ? (
+              {open && rows.length === 0 && !snapshotReady && !error ? (
                 <div className="space-y-2 py-2">
                   <div className="h-10 animate-pulse rounded-lg bg-surface" />
                   <div className="h-10 animate-pulse rounded-lg bg-surface" />
                 </div>
               ) : null}
-              {!loading && rows.length === 0 && !error ? (
+              {snapshotReady && rows.length === 0 && !error ? (
                 <p className="py-6 text-center text-sm text-muted">{tHeader('pendingJobsEmpty')}</p>
               ) : null}
               <ul className="space-y-2">
