@@ -11,9 +11,7 @@ export function SpeedProperties() {
   return (
     <div className="flex flex-col gap-4 p-3">
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-          Speed
-        </h3>
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">Speed</h3>
         <div className="flex items-center gap-3">
           <input
             type="range"
@@ -22,16 +20,16 @@ export function SpeedProperties() {
             step={0.25}
             value={playbackSpeed}
             onChange={(e) => setPlaybackSpeed(Number(e.target.value))}
-            className="min-w-0 flex-1 accent-[#534AB7]"
+            className="min-w-0 flex-1 accent-[#534AB7] dark:accent-violet-400"
           />
-          <span className="w-12 shrink-0 text-right text-xs tabular-nums text-zinc-300">
+          <span className="w-12 shrink-0 text-right text-xs tabular-nums text-foreground">
             {playbackSpeed}x
           </span>
         </div>
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Quick presets
         </h3>
         <div className="flex flex-wrap gap-1.5">
@@ -43,7 +41,7 @@ export function SpeedProperties() {
               className={`rounded-md px-2.5 py-1 text-[11px] font-medium tabular-nums transition-colors ${
                 Math.abs(playbackSpeed - p) < 1e-6
                   ? 'bg-[#534AB7] text-white'
-                  : 'bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                  : 'bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
               }`}
             >
               {p}x
@@ -52,9 +50,7 @@ export function SpeedProperties() {
         </div>
       </section>
 
-      <p className="text-[11px] leading-relaxed text-zinc-500">
-        Audio pitch correction applied on export
-      </p>
+      <p className="text-[11px] leading-relaxed text-muted">Audio pitch correction applied on export</p>
     </div>
   );
 }

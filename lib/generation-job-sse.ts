@@ -204,6 +204,19 @@ export function parseGenerationSseProgressPayload(
   return null;
 }
 
+export type JobProgressUi = { percent: number; label: string };
+
+/**
+ * Keeps the progress bar from jumping backwards when SSE repeats a stage or sends out-of-order percents.
+ */
+export function mergeMonotonicJobProgress(previous: JobProgressUi | null, incoming: JobProgressUi): JobProgressUi {
+  if (!previous) return incoming;
+  if (incoming.percent < previous.percent) {
+    return { percent: previous.percent, label: incoming.label.trim() ? incoming.label : previous.label };
+  }
+  return incoming;
+}
+
 /**
  * SSE for any {@code ai_generations} async job (transcribe, translate, voice-over, …).
  *

@@ -111,6 +111,11 @@ export type PointsEstimate = {
   fileSizeBytes?: number | null;
 };
 
+/**
+ * Starts a workspace export job. When the response includes {@code generationId}, the client should
+ * open {@code GET /api/v1/generations/:id/stream} (see {@code openGenerationJobSseStream} in {@code generation-job-sse.ts})
+ * until a terminal {@code completed} chunk arrives.
+ */
 export async function videoEditorExportWorkspace(payload: unknown): Promise<WorkspaceExportResponse> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set');

@@ -39,17 +39,17 @@ export function CropProperties(props: CropPropertiesProps = {}) {
   const aspectButtonClass = (active: boolean) =>
     `rounded-md border px-3 py-1.5 text-xs font-medium transition-colors ${
       active
-        ? 'border-[#534AB7] bg-[#534AB7]/20 text-zinc-100'
-        : 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+        ? 'border-violet-600 bg-violet-100 text-violet-900 dark:border-[#534AB7] dark:bg-[#534AB7]/20 dark:text-zinc-100'
+        : 'border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
     }`;
 
   return (
     <div className="flex flex-col gap-4 p-3">
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Zoom & rotation
         </h3>
-        <label className="mb-3 flex flex-col gap-1 text-xs text-zinc-400">
+        <label className="mb-3 flex flex-col gap-1 text-xs text-muted">
           <span className="flex justify-between tabular-nums">
             Zoom <span>{easyZoom.toFixed(2)}×</span>
           </span>
@@ -65,7 +65,7 @@ export function CropProperties(props: CropPropertiesProps = {}) {
             className="accent-[#534AB7]"
           />
         </label>
-        <label className="flex flex-col gap-1 text-xs text-zinc-400">
+        <label className="flex flex-col gap-1 text-xs text-muted">
           <span className="flex justify-between tabular-nums">
             Rotation <span>{Math.round(easyRotation)}°</span>
           </span>
@@ -84,7 +84,7 @@ export function CropProperties(props: CropPropertiesProps = {}) {
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Flip
         </h3>
         <div className="flex gap-2">
@@ -96,8 +96,8 @@ export function CropProperties(props: CropPropertiesProps = {}) {
             }
             className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
               flipHorizontal
-                ? 'border-[#534AB7] bg-[#534AB7]/20 text-zinc-100'
-                : 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+                ? 'border-violet-600 bg-violet-100 text-violet-900 dark:border-[#534AB7] dark:bg-[#534AB7]/20 dark:text-zinc-100'
+                : 'border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
             }`}
           >
             <FlipHorizontal className="size-4 shrink-0" strokeWidth={1.75} />
@@ -109,8 +109,8 @@ export function CropProperties(props: CropPropertiesProps = {}) {
             onClick={() => setCropSettings({ flipVertical: !flipVertical })}
             className={`flex flex-1 items-center justify-center gap-2 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
               flipVertical
-                ? 'border-[#534AB7] bg-[#534AB7]/20 text-zinc-100'
-                : 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+                ? 'border-violet-600 bg-violet-100 text-violet-900 dark:border-[#534AB7] dark:bg-[#534AB7]/20 dark:text-zinc-100'
+                : 'border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
             }`}
           >
             <FlipVertical className="size-4 shrink-0" strokeWidth={1.75} />
@@ -120,7 +120,7 @@ export function CropProperties(props: CropPropertiesProps = {}) {
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Aspect ratio
         </h3>
         <div className="flex flex-wrap gap-2">
@@ -160,22 +160,22 @@ export function CropProperties(props: CropPropertiesProps = {}) {
             4:3
           </button>
         </div>
-        <p className="mt-2 text-xs text-zinc-500">
+        <p className="mt-2 text-xs text-muted">
           Current ratio ≈ {(easyAspect > 0 ? easyAspect : originalAspect).toFixed(3)} : 1
         </p>
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Output
         </h3>
-        <p className="text-xs text-zinc-400">
+        <p className="text-xs text-muted">
           Frame hint: {resultW} × {resultH}px
           {croppedAreaPixels
             ? ` · crop rect ${croppedAreaPixels.width}×${croppedAreaPixels.height}px (source space)`
             : null}
         </p>
-        <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+        <p className="mt-1 text-[11px] leading-snug text-muted">
           With rotation or flip, edge values stay zero; export uses crop area, angle, and
           flip flags together.
         </p>
@@ -184,7 +184,7 @@ export function CropProperties(props: CropPropertiesProps = {}) {
       <button
         type="button"
         onClick={() => resetCrop()}
-        className="rounded-lg border border-zinc-600 bg-transparent px-3 py-2 text-xs font-medium text-zinc-400 transition-colors hover:border-zinc-500 hover:text-zinc-200"
+        className="rounded-lg border border-zinc-300 bg-transparent px-3 py-2 text-xs font-medium text-muted transition-colors hover:border-zinc-400 hover:text-foreground dark:border-zinc-600 dark:hover:border-zinc-500 dark:hover:text-zinc-200"
       >
         Reset
       </button>

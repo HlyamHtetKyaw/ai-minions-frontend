@@ -131,6 +131,11 @@ export async function uploadVideoEditorFile(file: File): Promise<VideoEditorUplo
   throw new Error('Upload failed after retry');
 }
 
+/**
+ * Starts a workspace export job. When the response includes {@code generationId}, follow
+ * {@code GET /api/v1/generations/:id/stream} (see {@code openGenerationJobSseStream} in {@code generation-job-sse.ts})
+ * until a terminal {@code completed} event.
+ */
 export async function exportVideoEditorWorkspace(payload: unknown): Promise<VideoEditorExportResult> {
   const base = getPublicApiBaseUrl();
   if (!base) throw new Error('API base URL is not set');

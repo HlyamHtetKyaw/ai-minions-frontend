@@ -25,7 +25,7 @@ export function BlurProperties() {
       <button
         type="button"
         onClick={() => addBlurLayer()}
-        className="rounded-lg bg-zinc-800 px-3 py-2 text-left text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700"
+        className="rounded-lg bg-zinc-200 px-3 py-2 text-left text-xs font-medium text-zinc-900 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
       >
         + Add blur region
       </button>
@@ -33,9 +33,7 @@ export function BlurProperties() {
       {layer != null && (
         <>
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Intensity
-            </h3>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">Intensity</h3>
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -49,18 +47,18 @@ export function BlurProperties() {
                 }
                 className="min-w-0 flex-1 accent-[#5DCAA5]"
               />
-              <span className="w-8 shrink-0 text-right text-xs tabular-nums text-zinc-300">
+              <span className="w-8 shrink-0 text-right text-xs tabular-nums text-foreground">
                 {layer.intensity}
               </span>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Position and size
             </h3>
             <div className="grid grid-cols-2 gap-2">
-              <label className="flex flex-col gap-1 text-xs text-zinc-400">
+              <label className="flex flex-col gap-1 text-xs text-muted">
                 <span>X</span>
                 <input
                   type="number"
@@ -70,10 +68,10 @@ export function BlurProperties() {
                     if (!Number.isFinite(v)) return;
                     updateBlurLayer(layer.id, { x: v });
                   }}
-                  className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs text-zinc-400">
+              <label className="flex flex-col gap-1 text-xs text-muted">
                 <span>Y</span>
                 <input
                   type="number"
@@ -83,10 +81,10 @@ export function BlurProperties() {
                     if (!Number.isFinite(v)) return;
                     updateBlurLayer(layer.id, { y: v });
                   }}
-                  className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs text-zinc-400">
+              <label className="flex flex-col gap-1 text-xs text-muted">
                 <span>W</span>
                 <input
                   type="number"
@@ -97,10 +95,10 @@ export function BlurProperties() {
                     if (!Number.isFinite(v)) return;
                     updateBlurLayer(layer.id, { width: Math.max(1, Math.round(v)) });
                   }}
-                  className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
-              <label className="flex flex-col gap-1 text-xs text-zinc-400">
+              <label className="flex flex-col gap-1 text-xs text-muted">
                 <span>H</span>
                 <input
                   type="number"
@@ -111,16 +109,14 @@ export function BlurProperties() {
                     if (!Number.isFinite(v)) return;
                     updateBlurLayer(layer.id, { height: Math.max(1, Math.round(v)) });
                   }}
-                  className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Opacity
-            </h3>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">Opacity</h3>
             <div className="flex items-center gap-3">
               <input
                 type="range"
@@ -134,18 +130,16 @@ export function BlurProperties() {
                 }
                 className="min-w-0 flex-1 accent-[#5DCAA5]"
               />
-              <span className="w-8 shrink-0 text-right text-xs tabular-nums text-zinc-300">
+              <span className="w-8 shrink-0 text-right text-xs tabular-nums text-foreground">
                 {layer.opacity}
               </span>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
-              Timing
-            </h3>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">Timing</h3>
             <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 text-xs text-zinc-400">
+              <label className="flex items-center gap-2 text-xs text-muted">
                 <span className="w-20 shrink-0">Start (s)</span>
                 <input
                   type="number"
@@ -159,10 +153,10 @@ export function BlurProperties() {
                     const endTime = Math.max(startTime, layer.endTime);
                     updateBlurLayer(layer.id, { startTime, endTime });
                   }}
-                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
-              <label className="flex items-center gap-2 text-xs text-zinc-400">
+              <label className="flex items-center gap-2 text-xs text-muted">
                 <span className="w-20 shrink-0">End (s)</span>
                 <input
                   type="number"
@@ -176,7 +170,7 @@ export function BlurProperties() {
                     const endTime = clamp(v, layer.startTime, maxEnd);
                     updateBlurLayer(layer.id, { endTime });
                   }}
-                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
             </div>
@@ -188,8 +182,7 @@ export function BlurProperties() {
               deleteBlurLayer(layer.id);
               setSelectedLayerId(null);
             }}
-            className="mt-2 rounded-lg px-3 py-2 text-xs font-medium"
-            style={{ background: '#3f1515', color: '#f87171' }}
+            className="mt-2 rounded-lg border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-700 dark:bg-[#3f1515] dark:text-rose-300"
           >
             Delete
           </button>
