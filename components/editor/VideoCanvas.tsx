@@ -70,6 +70,8 @@ export function VideoCanvas({
 }: VideoCanvasProps = {}) {
   const videoSrc = useEditorStore((s) => s.videoSrc);
   const currentTime = useEditorStore((s) => s.currentTime);
+  const canvasTransformingLayerId = useEditorStore((s) => s.canvasTransformingLayerId);
+  const canvasTransformVisibilityTime = useEditorStore((s) => s.canvasTransformVisibilityTime);
   const textLayers = useEditorStore((s) => s.textLayers);
   const blurLayers = useEditorStore((s) => s.blurLayers);
   const imageLayers = useEditorStore((s) => s.imageLayers);
@@ -282,11 +284,14 @@ export function VideoCanvas({
     }
   }, [clampVideoTime, currentTime, duration]);
 
+  const layerVisibilityTime =
+    canvasTransformingLayerId != null ? canvasTransformVisibilityTime : currentTime;
+
   const visibleTextLayers = textLayers.filter(
     (l) =>
       l.type === 'text' &&
-      currentTime >= l.startTime &&
-      currentTime <= l.endTime,
+      (l.id === canvasTransformingLayerId ||
+        (layerVisibilityTime >= l.startTime && layerVisibilityTime <= l.endTime)),
   );
 
   const frameReady = frameSize.w > 0 && frameSize.h > 0;
