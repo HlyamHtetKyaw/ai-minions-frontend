@@ -43,7 +43,7 @@ export function TextProperties() {
       <button
         type="button"
         onClick={() => addTextLayer()}
-        className="rounded-lg bg-zinc-800 px-3 py-2 text-left text-xs font-medium text-zinc-100 transition-colors hover:bg-zinc-700"
+        className="rounded-lg bg-zinc-200 px-3 py-2 text-left text-xs font-medium text-zinc-900 transition-colors hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:hover:bg-zinc-700"
       >
         + Add text
       </button>
@@ -51,12 +51,12 @@ export function TextProperties() {
       {layer != null && (
         <>
           {layer.srtImportBatchId != null && layer.srtImportBatchId !== '' ? (
-            <p className="rounded-md border border-white/10 bg-zinc-900/50 px-2 py-1.5 text-[10px] leading-relaxed text-zinc-400">
+            <p className="rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-[10px] leading-relaxed text-muted dark:border-white/10 dark:bg-zinc-900/50 dark:text-zinc-400">
               {tPanel('srtStyleSyncHint')}
             </p>
           ) : null}
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Content
             </h3>
             <textarea
@@ -67,7 +67,7 @@ export function TextProperties() {
                 updateTextLayer(layer.id, { content: e.target.value });
                 queueMicrotask(syncTextareaHeight);
               }}
-              className="w-full resize-none rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1.5 text-sm text-zinc-100 outline-none ring-zinc-600 focus:ring-1"
+              className="w-full resize-none rounded-md border border-zinc-200 bg-white px-2 py-1.5 text-sm text-foreground outline-none ring-zinc-300 focus:ring-1 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:ring-zinc-600"
               style={{
                 fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
                 whiteSpace: 'pre-wrap',
@@ -76,14 +76,14 @@ export function TextProperties() {
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Font
             </h3>
             <div className="flex flex-col gap-2">
-              <div className="w-full rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1.5 text-sm text-zinc-100">
+              <div className="w-full rounded-md border border-zinc-200 bg-zinc-50 px-2 py-1.5 text-sm text-foreground dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100">
                 Pyidaungsu (default)
               </div>
-              <label className="flex items-center gap-2 text-xs text-zinc-400">
+              <label className="flex items-center gap-2 text-xs text-muted">
                 <span className="w-16 shrink-0">Size</span>
                 <input
                   type="number"
@@ -97,14 +97,14 @@ export function TextProperties() {
                       fontSize: clamp(Math.round(v), 8, 200),
                     });
                   }}
-                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Color
             </h3>
             <div className="flex flex-wrap items-center gap-2">
@@ -114,7 +114,7 @@ export function TextProperties() {
                   type="button"
                   aria-label={`Color ${c}`}
                   onClick={() => updateTextLayer(layer.id, { color: c })}
-                  className="h-7 w-7 shrink-0 rounded border border-zinc-600 ring-offset-2 ring-offset-[#121212] focus:outline-none focus:ring-2 focus:ring-zinc-400"
+                  className="h-7 w-7 shrink-0 rounded border border-zinc-300 ring-offset-2 ring-offset-white focus:outline-none focus:ring-2 focus:ring-zinc-400 dark:border-zinc-600 dark:ring-offset-zinc-950"
                   style={{
                     backgroundColor: c,
                     boxShadow:
@@ -124,7 +124,7 @@ export function TextProperties() {
                   }}
                 />
               ))}
-              <label className="ml-1 flex items-center gap-2 text-xs text-zinc-400">
+              <label className="ml-1 flex items-center gap-2 text-xs text-muted">
                 <span>Custom</span>
                 <input
                   type="color"
@@ -134,14 +134,14 @@ export function TextProperties() {
                   onChange={(e) =>
                     updateTextLayer(layer.id, { color: e.target.value })
                   }
-                  className="h-8 w-12 cursor-pointer rounded border border-zinc-600 bg-transparent p-0"
+                  className="h-8 w-12 cursor-pointer rounded border border-zinc-300 bg-transparent p-0 dark:border-zinc-600"
                 />
               </label>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Opacity
             </h3>
             <div className="flex items-center gap-3">
@@ -157,18 +157,18 @@ export function TextProperties() {
                 }
                 className="min-w-0 flex-1 accent-[#5DCAA5]"
               />
-              <span className="w-8 shrink-0 text-right text-xs tabular-nums text-zinc-300">
+              <span className="w-8 shrink-0 text-right text-xs tabular-nums text-foreground">
                 {layer.opacity}
               </span>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Timing
             </h3>
             <div className="flex flex-col gap-2">
-              <label className="flex items-center gap-2 text-xs text-zinc-400">
+              <label className="flex items-center gap-2 text-xs text-muted">
                 <span className="w-20 shrink-0">Start (s)</span>
                 <input
                   type="number"
@@ -182,10 +182,10 @@ export function TextProperties() {
                     const endTime = Math.max(startTime, layer.endTime);
                     updateTextLayer(layer.id, { startTime, endTime });
                   }}
-                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
-              <label className="flex items-center gap-2 text-xs text-zinc-400">
+              <label className="flex items-center gap-2 text-xs text-muted">
                 <span className="w-20 shrink-0">End (s)</span>
                 <input
                   type="number"
@@ -199,7 +199,7 @@ export function TextProperties() {
                     const endTime = clamp(v, layer.startTime, maxEnd);
                     updateTextLayer(layer.id, { endTime });
                   }}
-                  className="min-w-0 flex-1 rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+                  className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
             </div>
@@ -211,8 +211,7 @@ export function TextProperties() {
               deleteTextLayer(layer.id);
               setSelectedLayerId(null);
             }}
-            className="mt-2 rounded-lg px-3 py-2 text-xs font-medium"
-            style={{ background: '#3f1515', color: '#f87171' }}
+            className="mt-2 rounded-lg border border-rose-500/35 bg-rose-500/10 px-3 py-2 text-xs font-medium text-rose-700 dark:bg-[#3f1515] dark:text-rose-300"
           >
             Delete text layer
           </button>

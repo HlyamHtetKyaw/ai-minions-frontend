@@ -59,7 +59,7 @@ export function AudioProperties() {
   return (
     <div className="flex flex-col gap-4 p-3">
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Upload
         </h3>
         <div className="flex gap-2">
@@ -74,7 +74,7 @@ export function AudioProperties() {
           <button
             type="button"
             onClick={() => audioInputRef.current?.click()}
-            className="flex-1 rounded-lg bg-[#0a1612] px-2 py-2 text-center text-[11px] font-medium text-[#1D9E75] ring-1 ring-[#1D9E75]/60 transition-colors hover:bg-[#0f2218]"
+            className="flex-1 rounded-lg border border-emerald-600/30 bg-emerald-50 px-2 py-2 text-center text-[11px] font-medium text-emerald-800 ring-1 ring-emerald-600/20 transition-colors hover:bg-emerald-100/90 dark:bg-[#0a1612] dark:text-[#1D9E75] dark:ring-[#1D9E75]/60 dark:hover:bg-[#0f2218]"
           >
             Add audio
           </button>
@@ -82,7 +82,7 @@ export function AudioProperties() {
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Original audio
         </h3>
         <div className="flex flex-col gap-3">
@@ -92,15 +92,13 @@ export function AudioProperties() {
             className={`rounded-lg px-3 py-2 text-left text-xs font-medium transition-colors ${
               originalAudioMuted
                 ? 'bg-red-950/50 text-red-300 ring-1 ring-red-800/80'
-                : 'bg-zinc-800 text-zinc-100 ring-1 ring-zinc-600 hover:bg-zinc-700'
+                : 'bg-zinc-200 text-zinc-900 ring-1 ring-zinc-300 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600 dark:hover:bg-zinc-700'
             }`}
           >
             {originalAudioMuted ? 'Unmute' : 'Mute'}
           </button>
           <label className="flex flex-col gap-1">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500">
-              Volume
-            </span>
+            <span className="text-[10px] font-medium uppercase tracking-wide text-muted">Volume</span>
             {selectedTrack == null ? (
               <div className="flex items-center gap-2">
                 <input
@@ -111,12 +109,12 @@ export function AudioProperties() {
                   onChange={(e) => setOriginalAudioVolume(Number(e.target.value))}
                   className="min-w-0 flex-1 accent-[#534AB7]"
                 />
-                <span className="w-8 tabular-nums text-right text-xs text-zinc-400">
+                <span className="w-8 tabular-nums text-right text-xs text-foreground">
                   {originalAudioVolume}
                 </span>
               </div>
             ) : (
-              <p className="text-xs text-zinc-500">
+              <p className="text-xs text-muted">
                 Original track volume hidden while editing a selected audio layer.
               </p>
             )}
@@ -128,14 +126,14 @@ export function AudioProperties() {
         <>
           <section>
             <div className="mb-2 flex items-start justify-between gap-2">
-              <p className="min-w-0 flex-1 truncate text-xs text-zinc-500" title={selectedTrack.name}>
+              <p className="min-w-0 flex-1 truncate text-xs text-muted" title={selectedTrack.name}>
                 {selectedTrack.name}
               </p>
               <span
                 className={`shrink-0 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase ${
                   selectedTrack.type === 'voiceover'
-                    ? 'bg-[#0a1a2a] text-[#378ADD]'
-                    : 'bg-[#0a1612] text-[#1D9E75]'
+                    ? 'bg-sky-100 text-sky-800 dark:bg-[#0a1a2a] dark:text-[#378ADD]'
+                    : 'bg-emerald-50 text-emerald-800 dark:bg-[#0a1612] dark:text-[#1D9E75]'
                 }`}
               >
                 {selectedTrack.type === 'voiceover' ? 'voiceover' : 'music'}
@@ -144,7 +142,7 @@ export function AudioProperties() {
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Volume
             </h3>
             <div className="flex items-center gap-2">
@@ -158,14 +156,14 @@ export function AudioProperties() {
                 }
                 className="min-w-0 flex-1 accent-[#534AB7]"
               />
-              <span className="w-8 tabular-nums text-right text-xs text-zinc-400">
+              <span className="w-8 tabular-nums text-right text-xs text-foreground">
                 {selectedTrack.volume}
               </span>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Fade in
             </h3>
             <div className="flex items-center gap-2">
@@ -180,14 +178,14 @@ export function AudioProperties() {
                 }
                 className="min-w-0 flex-1 accent-[#534AB7]"
               />
-              <span className="w-10 tabular-nums text-right text-xs text-zinc-400">
+              <span className="w-10 tabular-nums text-right text-xs text-foreground">
                 {selectedTrack.fadeIn}s
               </span>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Fade out
             </h3>
             <div className="flex items-center gap-2">
@@ -202,19 +200,19 @@ export function AudioProperties() {
                 }
                 className="min-w-0 flex-1 accent-[#534AB7]"
               />
-              <span className="w-10 tabular-nums text-right text-xs text-zinc-400">
+              <span className="w-10 tabular-nums text-right text-xs text-foreground">
                 {selectedTrack.fadeOut}s
               </span>
             </div>
           </section>
 
           <section>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
               Timing
             </h3>
             <div className="grid grid-cols-2 gap-2">
               <label className="flex flex-col gap-1">
-                <span className="text-[9px] text-zinc-500">Start (s)</span>
+                <span className="text-[9px] text-muted">Start (s)</span>
                 <input
                   type="number"
                   min={0}
@@ -229,11 +227,11 @@ export function AudioProperties() {
                       startTime: clamp(v, 0, d),
                     });
                   }}
-                  className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-xs text-zinc-100 outline-none"
+                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-foreground outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
               <label className="flex flex-col gap-1">
-                <span className="text-[9px] text-zinc-500">End (s)</span>
+                <span className="text-[9px] text-muted">End (s)</span>
                 <input
                   type="number"
                   min={0}
@@ -248,7 +246,7 @@ export function AudioProperties() {
                       endTime: clamp(v, 0, d),
                     });
                   }}
-                  className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-xs text-zinc-100 outline-none"
+                  className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-foreground outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
                 />
               </label>
             </div>
@@ -262,9 +260,9 @@ export function AudioProperties() {
               onChange={(e) =>
                 updateAudioTrack(selectedTrack.id, { isMuted: e.target.checked })
               }
-              className="rounded border-zinc-600"
+              className="rounded border-zinc-300 text-foreground dark:border-zinc-600"
             />
-            <label htmlFor="mute-track" className="text-xs text-zinc-300">
+            <label htmlFor="mute-track" className="text-xs text-foreground">
               Mute this track
             </label>
           </section>

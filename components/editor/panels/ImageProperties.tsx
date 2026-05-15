@@ -84,17 +84,17 @@ export function ImageProperties() {
           alt=""
           className="max-h-[60px] w-full object-contain"
         />
-        <p className="max-w-full truncate text-center text-[10px] text-zinc-500" title={displayName}>
+        <p className="max-w-full truncate text-center text-[10px] text-muted" title={displayName}>
           {displayName}
         </p>
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Transform
         </h3>
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             <span>X</span>
             <input
               type="number"
@@ -104,10 +104,10 @@ export function ImageProperties() {
                 if (!Number.isFinite(v)) return;
                 updateImageLayer(layer.id, { x: v });
               }}
-              className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+              className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             <span>Y</span>
             <input
               type="number"
@@ -117,19 +117,19 @@ export function ImageProperties() {
                 if (!Number.isFinite(v)) return;
                 updateImageLayer(layer.id, { y: v });
               }}
-              className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+              className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
             />
           </label>
         </div>
         <div className="mt-2 flex items-end gap-1">
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-muted">
             <span>W</span>
             <input
               type="number"
               min={8}
               value={Math.round(layer.width)}
               onChange={(e) => onWidthChange(Number(e.target.value))}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+              className="w-full rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
             />
           </label>
           <button
@@ -138,7 +138,7 @@ export function ImageProperties() {
             className={`mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
               layer.lockAspectRatio
                 ? 'border-[#534AB7] bg-[#534AB7] text-white'
-                : 'border-zinc-600 bg-zinc-800 text-zinc-300 hover:bg-zinc-700'
+                : 'border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700'
             }`}
             onClick={() =>
               updateImageLayer(layer.id, { lockAspectRatio: !layer.lockAspectRatio })
@@ -150,21 +150,21 @@ export function ImageProperties() {
               <Link2Off className="h-4 w-4" />
             )}
           </button>
-          <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex min-w-0 flex-1 flex-col gap-1 text-xs text-muted">
             <span>H</span>
             <input
               type="number"
               min={8}
               value={Math.round(layer.height)}
               onChange={(e) => onHeightChange(Number(e.target.value))}
-              className="w-full rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+              className="w-full rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
             />
           </label>
         </div>
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Rotation
         </h3>
         <div className="flex flex-col gap-2">
@@ -180,13 +180,13 @@ export function ImageProperties() {
               }
               className="min-w-0 flex-1 accent-[#534AB7]"
             />
-            <span className="w-12 shrink-0 text-right text-xs tabular-nums text-zinc-300">
+            <span className="w-12 shrink-0 text-right text-xs tabular-nums text-foreground">
               {Math.round(layer.rotation)}°
             </span>
           </div>
           <button
             type="button"
-            className="self-start rounded-md border border-zinc-600 bg-zinc-800 px-2 py-1 text-xs text-zinc-200 hover:bg-zinc-700"
+            className="self-start rounded-md border border-zinc-300 bg-zinc-100 px-2 py-1 text-xs text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
             onClick={() => updateImageLayer(layer.id, { rotation: 0 })}
           >
             Reset
@@ -195,7 +195,7 @@ export function ImageProperties() {
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Flip
         </h3>
         <div className="flex gap-2">
@@ -204,7 +204,7 @@ export function ImageProperties() {
             className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
               layer.flipX
                 ? 'border-[#534AB7] bg-[#534AB7] text-white'
-                : 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+                : 'border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
             }`}
             onClick={() => updateImageLayer(layer.id, { flipX: !layer.flipX })}
           >
@@ -215,7 +215,7 @@ export function ImageProperties() {
             className={`flex-1 rounded-md border px-2 py-1.5 text-xs font-medium transition-colors ${
               layer.flipY
                 ? 'border-[#534AB7] bg-[#534AB7] text-white'
-                : 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+                : 'border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
             }`}
             onClick={() => updateImageLayer(layer.id, { flipY: !layer.flipY })}
           >
@@ -225,7 +225,7 @@ export function ImageProperties() {
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Fit mode
         </h3>
         <div className="grid grid-cols-4 gap-1">
@@ -236,7 +236,7 @@ export function ImageProperties() {
               className={`rounded-md border px-1 py-1.5 text-[10px] font-medium capitalize ${
                 layer.fitMode === mode
                   ? 'border-[#534AB7] bg-[#534AB7] text-white'
-                  : 'border-zinc-600 bg-zinc-800 text-zinc-200 hover:bg-zinc-700'
+                  : 'border-zinc-300 bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700'
               }`}
               onClick={() => updateImageLayer(layer.id, { fitMode: mode })}
             >
@@ -247,7 +247,7 @@ export function ImageProperties() {
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Opacity
         </h3>
         <div className="flex items-center gap-3">
@@ -263,18 +263,18 @@ export function ImageProperties() {
             }
             className="min-w-0 flex-1 accent-[#534AB7]"
           />
-          <span className="w-8 shrink-0 text-right text-xs tabular-nums text-zinc-300">
+          <span className="w-8 shrink-0 text-right text-xs tabular-nums text-foreground">
             {layer.opacity}
           </span>
         </div>
       </section>
 
       <section>
-        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500">
+        <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
           Timing
         </h3>
         <div className="grid grid-cols-2 gap-2">
-          <label className="flex flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             <span>Start (s)</span>
             <input
               type="number"
@@ -295,10 +295,10 @@ export function ImageProperties() {
                 }
                 updateImageLayer(layer.id, { startTime: start, endTime: end });
               }}
-              className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+              className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
             />
           </label>
-          <label className="flex flex-col gap-1 text-xs text-zinc-400">
+          <label className="flex flex-col gap-1 text-xs text-muted">
             <span>End (s)</span>
             <input
               type="number"
@@ -318,7 +318,7 @@ export function ImageProperties() {
                 }
                 updateImageLayer(layer.id, { startTime: start, endTime: end });
               }}
-              className="rounded-md border border-zinc-700 bg-zinc-900/90 px-2 py-1 text-sm text-zinc-100 tabular-nums outline-none focus:ring-1 focus:ring-zinc-600"
+              className="rounded-md border border-zinc-200 bg-white px-2 py-1 text-sm text-foreground tabular-nums outline-none focus:ring-1 focus:ring-violet-400/40 dark:border-zinc-700 dark:bg-zinc-900/90 dark:text-zinc-100 dark:focus:ring-zinc-600"
             />
           </label>
         </div>
