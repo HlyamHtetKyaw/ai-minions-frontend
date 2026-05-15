@@ -23,7 +23,7 @@ function UploadIcon() {
       fill="none"
       stroke="currentColor"
       strokeWidth="1.5"
-      className="text-zinc-500"
+      className="text-muted"
       aria-hidden
     >
       <path d="M12 16V4m0 0l4 4m-4-4L8 8" strokeLinecap="round" strokeLinejoin="round" />
@@ -129,7 +129,7 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
   return (
     <div className="flex h-full min-h-0 flex-col gap-3">
       {developerSourceOnly ? (
-        <div className="rounded-lg border border-zinc-700/70 bg-zinc-900/40 px-3 py-2 text-[11px] text-zinc-400">
+        <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-[11px] text-muted dark:border-zinc-700/70 dark:bg-zinc-900/40 dark:text-zinc-400">
           Images are loaded from developer gallery.
         </div>
       ) : (
@@ -149,12 +149,12 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
             }}
             onDrop={onDrop}
             onClick={() => inputRef.current?.click()}
-            className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-600 bg-zinc-900/40 px-3 py-6 text-center transition-colors hover:border-zinc-500 hover:bg-zinc-900/70"
+            className="flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border border-dashed border-zinc-300 bg-zinc-50/90 px-3 py-6 text-center transition-colors hover:border-zinc-400 hover:bg-zinc-100 dark:border-zinc-600 dark:bg-zinc-900/40 dark:hover:border-zinc-500 dark:hover:bg-zinc-900/70"
           >
             <UploadIcon />
-            <span className="text-xs font-medium text-zinc-300">Drop images here</span>
-            <span className="text-[10px] text-zinc-500">PNG · JPG · WebP · SVG</span>
-            {busy && <span className="text-[10px] text-zinc-500">Uploading…</span>}
+            <span className="text-xs font-medium text-foreground">Drop images here</span>
+            <span className="text-[10px] text-muted">PNG · JPG · WebP · SVG</span>
+            {busy && <span className="text-[10px] text-muted">Uploading…</span>}
           </div>
           <input
             ref={inputRef}
@@ -182,15 +182,15 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
         {loadError ? (
           <p className="py-2 text-center text-xs text-rose-400">{loadError}</p>
         ) : busy && galleryImages.length === 0 ? (
-          <p className="py-2 text-center text-xs text-zinc-500">Loading images...</p>
+          <p className="py-2 text-center text-xs text-muted">Loading images...</p>
         ) : galleryImages.length === 0 ? (
-          <p className="py-2 text-center text-xs text-zinc-500">No images yet</p>
+          <p className="py-2 text-center text-xs text-muted">No images yet</p>
         ) : (
           <div className="grid grid-cols-2 gap-2 pb-1">
             {galleryImages.map((img) => (
               <div
                 key={img.id}
-                className="group relative overflow-hidden rounded-md border border-zinc-700/80 bg-zinc-900/60 p-1"
+                className="group relative overflow-hidden rounded-md border border-zinc-200 bg-white p-1 dark:border-zinc-700/80 dark:bg-zinc-900/60"
               >
                 <div
                   className="relative aspect-square w-full cursor-grab overflow-hidden rounded bg-black/40 active:cursor-grabbing"
@@ -216,7 +216,7 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
                       type="button"
                       title="Add to canvas"
                       draggable={false}
-                      className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-100 ring-1 ring-zinc-600 hover:bg-[#534AB7]"
+                      className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-800 ring-1 ring-zinc-300 hover:bg-[#534AB7] hover:text-white dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600"
                       onClick={(e) => {
                         e.stopPropagation();
                         onAddToCanvas(img);
@@ -229,7 +229,7 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
                         type="button"
                         title="Remove from gallery"
                         draggable={false}
-                        className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-zinc-100 ring-1 ring-zinc-600 hover:bg-red-900/80"
+                        className="pointer-events-auto flex h-8 w-8 items-center justify-center rounded-full bg-zinc-200 text-zinc-800 ring-1 ring-zinc-300 hover:bg-red-600 hover:text-white dark:bg-zinc-800 dark:text-zinc-100 dark:ring-zinc-600 dark:hover:bg-red-900/80"
                         onClick={(e) => {
                           e.stopPropagation();
                           onDeleteGallery(img.id);
@@ -240,7 +240,7 @@ export function ImageGalleryPanel({ developerSourceOnly = false }: ImageGalleryP
                     ) : null}
                   </div>
                 </div>
-                <p className="mt-1 truncate px-0.5 text-[9px] text-zinc-500" title={img.name}>
+                <p className="mt-1 truncate px-0.5 text-[9px] text-muted" title={img.name}>
                   {img.name}
                 </p>
               </div>

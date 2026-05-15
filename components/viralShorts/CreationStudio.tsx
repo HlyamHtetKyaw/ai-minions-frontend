@@ -40,6 +40,7 @@ import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
 import { previewSubtitleFontPxToFfmpegFontPx } from '@/lib/subtitle-export-font-map';
 import {
   extractTranscriptTextFromOutputData,
+  mergeMonotonicJobProgress,
   openGenerationJobSseStream,
   parseGenerationSseProgressPayload,
   type GenerationSseProgressLabelOverrides,
@@ -83,16 +84,29 @@ const MAX_SYNC_RATE_STRONG = 5;
  */
 const BALANCED_SYNC_SSE_FOR_UI: GenerationSseProgressLabelOverrides = {
   subscribedLabel: 'You’re in—we’re warming up the backstage.',
-  subscribedPercent: 8,
+  subscribedPercent: 6,
   stages: {
-    download: { percent: 18, label: 'Initializing your video and audio files...' },
-    gen_original_srt: { percent: 36, label: 'Generating the initial subtitles...' },
-    gen_voice_srt: { percent: 54, label: 'Refining the text for the voiceover...' },
-    parse_srt: { percent: 66, label: 'Aligning the subtitles with the timing...' },
-    ffmpeg_segments: { percent: 82, label: 'Stitching your video and audio together...' },
-    upload: { percent: 94, label: 'Uploading your finished video...' },
-}
+    download: { percent: 14, label: 'Initializing your video and audio files...' },
+    gen_original_srt: { percent: 28, label: 'Generating the initial subtitles...' },
+    gen_voice_srt: { percent: 42, label: 'Refining the text for the voiceover...' },
+    parse_srt: { percent: 56, label: 'Aligning the subtitles with the timing...' },
+    ffmpeg_segments: { percent: 72, label: 'Stitching your video and audio together...' },
+    upload: { percent: 86, label: 'Uploading your finished video...' },
+  },
 };
+
+/** SSE stage labels for viral-shorts workspace export (same worker keys as video editor export). */
+const VIRAL_SHORTS_EXPORT_SSE_UI: GenerationSseProgressLabelOverrides = {
+  subscribedLabel: 'Export queued',
+  subscribedPercent: 16,
+  stages: {
+    workspace_export_started: { percent: 30, label: 'Rendering timeline' },
+    workspace_export_encoding: { percent: 58, label: 'Encoding video' },
+    workspace_export_uploading: { percent: 84, label: 'Uploading result' },
+  },
+};
+
+const PROGRESS_COMPLETION_FLASH_MS = 560;
 
 type EditableSrtCue = SrtCue & { id: string };
 
@@ -483,6 +497,8 @@ export default function CreationStudio({
     return s;
   });
   const [showExportDownloadNotice, setShowExportDownloadNotice] = useState(false);
+  const [exportProgress, setExportProgress] = useState<{ percent: number; label: string } | null>(null);
+  const [translateProgress, setTranslateProgress] = useState<{ percent: number; label: string } | null>(null);
 
   const [balancedSyncProgress, setBalancedSyncProgress] = useState<{ percent: number; label: string } | null>(null);
   const [balancedSyncError, setBalancedSyncError] = useState<string | null>(null);
@@ -504,6 +520,8 @@ export default function CreationStudio({
     typeof initialBalancedSyncPreviewS3Key === 'string' ? initialBalancedSyncPreviewS3Key : '',
   );
   const balancedSyncStreamRef = useRef<number | null>(null);
+  const lastBalancedSseAtRef = useRef(Date.now());
+  const lastTranslateSseAtRef = useRef(Date.now());
   const [showBalancedPreview, setShowBalancedPreview] = useState(false);
   const prevAudioModeRef = useRef<{
     voiceOverEnabled: boolean;
@@ -915,6 +933,7 @@ export default function CreationStudio({
       setBalancedSyncPreviewS3Key(String(s3Key));
       setBalancedSyncProgress({ percent: 100, label: 'All set — your preview’s ready!' });
       setShowBalancedPreview(true);
+      window.setTimeout(() => setBalancedSyncProgress(null), PROGRESS_COMPLETION_FLASH_MS);
     },
     [originalAudioEnabled, voiceOverEnabled, voiceOverPlaybackRate],
   );
@@ -932,7 +951,8 @@ export default function CreationStudio({
       setTranscriptText(text);
       setTranslatedText('');
       setScriptText(text);
-      setTranscribeProgress(null);
+      setTranscribeProgress({ percent: 100, label: 'Transcript ready' });
+      window.setTimeout(() => setTranscribeProgress(null), PROGRESS_COMPLETION_FLASH_MS);
       setTranscribeError(null);
       transcribeStreamRef.current = null;
       setTranscribeGenerationId(null);
@@ -950,6 +970,7 @@ export default function CreationStudio({
       if (payload.status !== 'completed') {
         setExportError(payload.message || 'Export failed');
         setExporting(false);
+        setExportProgress(null);
         setExportGenerationId(null);
         return;
       }
@@ -957,6 +978,7 @@ export default function CreationStudio({
       if (!downloadUrl) {
         setExportError('Export completed but missing download URL');
         setExporting(false);
+        setExportProgress(null);
         setExportGenerationId(null);
         return;
       }
@@ -965,6 +987,8 @@ export default function CreationStudio({
       setExportError(null);
       setExporting(false);
       setExportGenerationId(null);
+      setExportProgress({ percent: 100, label: 'Export ready' });
+      window.setTimeout(() => setExportProgress(null), PROGRESS_COMPLETION_FLASH_MS);
       void onExportSuccess?.();
     },
     [onExportSuccess],
@@ -1003,6 +1027,7 @@ export default function CreationStudio({
         return;
       }
       setSubtitlesProgress({ percent: 100, label: 'Subtitles ready' });
+      window.setTimeout(() => setSubtitlesProgress(null), PROGRESS_COMPLETION_FLASH_MS);
       pullSubtitlesArtifacts(jobId);
     },
     [pullSubtitlesArtifacts],
@@ -1023,10 +1048,11 @@ export default function CreationStudio({
     openGenerationJobSseStream(transcribeGenerationId, {
       onStatus: (raw) => {
         const p = parseGenerationSseProgressPayload(raw);
-        if (p) setTranscribeProgress(p);
+        if (p) setTranscribeProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
         if (transcribeStreamRef.current === transcribeGenerationId) transcribeStreamRef.current = null;
+        setTranscribeProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (msg) => {
         setTranscribeError(msg);
@@ -1053,10 +1079,11 @@ export default function CreationStudio({
     openVoiceOverSse(voiceOverJobId, {
       onStatus: (raw) => {
         const p = parseGenerationSseProgressPayload(raw);
-        if (p) setVoiceOverProgress(p);
+        if (p) setVoiceOverProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
         if (voiceOverStreamRef.current === voiceOverJobId) voiceOverStreamRef.current = null;
+        setVoiceOverProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (msg) => {
         setVoiceOverError(msg);
@@ -1068,10 +1095,11 @@ export default function CreationStudio({
           const url = typeof d.audioUrl === 'string' ? d.audioUrl : '';
           const key = typeof d.s3Key === 'string' ? d.s3Key : '';
           if (url) {
+            setVoiceOverProgress({ percent: 100, label: tVo('progress.finished') });
+            window.setTimeout(() => setVoiceOverProgress(null), PROGRESS_COMPLETION_FLASH_MS);
             setVoiceOverAudioUrl(url);
             if (key) setVoiceOverS3Key(key);
             setIsGenerated(true);
-            setVoiceOverProgress(null);
             setVoiceOverEnabled(true);
             setOriginalAudioEnabled(false);
             setVoiceOverJobId(null);
@@ -1095,26 +1123,20 @@ export default function CreationStudio({
     exportStreamRef.current = exportGenerationId;
     setExportError(null);
     setExporting(true);
-    const exportSseOverrides = {
-      subscribedLabel: 'Export queued',
-      subscribedPercent: 18,
-      stages: {
-        workspace_export_started: { percent: 28, label: 'Rendering timeline' },
-        workspace_export_encoding: { percent: 62, label: 'Encoding video' },
-        workspace_export_uploading: { percent: 88, label: 'Uploading result' },
-      },
-    } as const;
+    setExportProgress((prev) => prev ?? { percent: 14, label: 'Reconnecting to export…' });
     openGenerationJobSseStream(exportGenerationId, {
       onStatus: (raw) => {
-        // Keep stream active; unified bar uses `exporting` flag.
-        parseGenerationSseProgressPayload(raw, exportSseOverrides);
+        const p = parseGenerationSseProgressPayload(raw, VIRAL_SHORTS_EXPORT_SSE_UI);
+        if (p) setExportProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
         if (exportStreamRef.current === exportGenerationId) exportStreamRef.current = null;
+        setExportProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (message) => {
         setExportError(message || 'Export stream failed');
         setExporting(false);
+        setExportProgress(null);
       },
       onTerminal: applyExportTerminalPayload,
     });
@@ -1135,10 +1157,11 @@ export default function CreationStudio({
     openGenerationJobSseStream(subtitlesGenerationId, {
       onStatus: (raw) => {
         const p = parseGenerationSseProgressPayload(raw);
-        if (p) setSubtitlesProgress(p);
+        if (p) setSubtitlesProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
         if (subtitlesStreamRef.current === subtitlesGenerationId) subtitlesStreamRef.current = null;
+        setSubtitlesProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (msg) => {
         setSubtitlesError(msg);
@@ -1160,6 +1183,8 @@ export default function CreationStudio({
 
     let cancelled = false;
     setTranslateRecoveryBusy(true);
+    lastTranslateSseAtRef.current = Date.now();
+    setTranslateProgress((prev) => prev ?? { percent: 15, label: 'Recovering translation…' });
 
     void (async () => {
       const intervalMs = 1500;
@@ -1171,6 +1196,7 @@ export default function CreationStudio({
           if (!cancelled) {
             setTranslateGenerationId(null);
             setTranslateRecoveryBusy(false);
+            setTranslateProgress(null);
           }
           return;
         }
@@ -1185,6 +1211,7 @@ export default function CreationStudio({
               setTranslateGenerationId(null);
               void onPersistWorkspaceSnapshot?.();
               setTranslateRecoveryBusy(false);
+              setTranslateProgress(null);
               return;
             }
           } catch {
@@ -1196,6 +1223,7 @@ export default function CreationStudio({
       if (!cancelled) {
         setTranslateRecoveryBusy(false);
         setTranslateGenerationId(null);
+        setTranslateProgress(null);
       }
     })();
 
@@ -1203,6 +1231,38 @@ export default function CreationStudio({
       cancelled = true;
     };
   }, [onPersistWorkspaceSnapshot, transcriptText, translateGenerationId, translatedText]);
+
+  const balancedSyncCreepActive = Boolean(
+    balancedSyncGenerationId != null && balancedSyncProgress != null && balancedSyncProgress.percent < 100,
+  );
+  useEffect(() => {
+    if (!balancedSyncCreepActive) return;
+    const id = window.setInterval(() => {
+      if (Date.now() - lastBalancedSseAtRef.current < 2000) return;
+      setBalancedSyncProgress((prev) => {
+        if (!prev || prev.percent >= 100) return prev;
+        return { ...prev, percent: Math.min(96, prev.percent + 1) };
+      });
+    }, 1100);
+    return () => window.clearInterval(id);
+  }, [balancedSyncCreepActive]);
+
+  const translateCreepActive = Boolean(
+    isTranslating ||
+      translateRecoveryBusy ||
+      (translateGenerationId != null && !translatedText.trim()),
+  );
+  useEffect(() => {
+    if (!translateCreepActive) return;
+    const id = window.setInterval(() => {
+      if (Date.now() - lastTranslateSseAtRef.current < 1900) return;
+      setTranslateProgress((prev) => {
+        if (!prev || prev.percent >= 94) return prev;
+        return { ...prev, percent: Math.min(92, prev.percent + 1) };
+      });
+    }, 1200);
+    return () => window.clearInterval(id);
+  }, [translateCreepActive]);
 
   // Resume balanced sync after refresh / navigation:
   // - If the job is still running, reconnect to SSE and keep showing progress.
@@ -1216,6 +1276,7 @@ export default function CreationStudio({
     balancedSyncStreamRef.current = balancedSyncGenerationId;
     setBalancedSyncError(null);
     if (!balancedSyncProgress) {
+      lastBalancedSseAtRef.current = Date.now();
       setBalancedSyncProgress({
         percent: BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8,
         label: 'Picking back up where we left off…',
@@ -1224,6 +1285,7 @@ export default function CreationStudio({
 
     openGenerationJobSseStream(balancedSyncGenerationId, {
       onOpen: () => {
+        lastBalancedSseAtRef.current = Date.now();
         setBalancedSyncProgress((prev) =>
           prev ?? {
             percent: BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8,
@@ -1233,7 +1295,10 @@ export default function CreationStudio({
       },
       onStatus: (raw) => {
         const p = parseGenerationSseProgressPayload(raw, BALANCED_SYNC_SSE_FOR_UI);
-        if (p) setBalancedSyncProgress(p);
+        if (p) {
+          lastBalancedSseAtRef.current = Date.now();
+          setBalancedSyncProgress((prev) => mergeMonotonicJobProgress(prev, p));
+        }
       },
       onTerminal: (payload) => {
         applyBalancedSyncTerminalPayload(payload);
@@ -1243,10 +1308,10 @@ export default function CreationStudio({
         setBalancedSyncProgress(null);
       },
       onDone: () => {
-        // allow retry/resume if needed
         if (balancedSyncStreamRef.current === balancedSyncGenerationId) {
           balancedSyncStreamRef.current = null;
         }
+        setBalancedSyncProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
     });
   }, [applyBalancedSyncTerminalPayload, balancedSyncGenerationId, balancedSyncProgress, isBalancedPreviewMode]);
@@ -1790,6 +1855,7 @@ export default function CreationStudio({
 
   const handleStartBalancedSync = async () => {
     setBalancedSyncError(null);
+    lastBalancedSseAtRef.current = Date.now();
     setBalancedSyncProgress({ percent: 4, label: 'Saving your seat in line—we’ll start shortly.' });
     try {
       if (!workspaceS3Key) {
@@ -1817,13 +1883,17 @@ export default function CreationStudio({
 
       openGenerationJobSseStream(started.generationId, {
         onOpen: () => {
+          lastBalancedSseAtRef.current = Date.now();
           const pct = BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8;
           const lbl = BALANCED_SYNC_SSE_FOR_UI.subscribedLabel ?? 'Connecting…';
           setBalancedSyncProgress({ percent: pct, label: lbl });
         },
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw, BALANCED_SYNC_SSE_FOR_UI);
-          if (p) setBalancedSyncProgress(p);
+          if (p) {
+            lastBalancedSseAtRef.current = Date.now();
+            setBalancedSyncProgress((prev) => mergeMonotonicJobProgress(prev, p));
+          }
         },
         onTerminal: (payload) => {
           if (payload.status !== 'completed') {
@@ -1871,13 +1941,14 @@ export default function CreationStudio({
           setBalancedSyncPreviewS3Key(String(s3Key));
           setBalancedSyncProgress({ percent: 100, label: 'All set — your preview’s ready!' });
           setShowBalancedPreview(true);
+          window.setTimeout(() => setBalancedSyncProgress(null), PROGRESS_COMPLETION_FLASH_MS);
         },
         onError: (message) => {
           setBalancedSyncError(message || 'Balanced sync stream error');
           setBalancedSyncProgress(null);
         },
         onDone: () => {
-          // no-op
+          setBalancedSyncProgress((prev) => (prev && prev.percent < 100 ? null : prev));
         },
       });
     } catch (e) {
@@ -2031,10 +2102,11 @@ export default function CreationStudio({
       openGenerationJobSseStream(complete.jobId, {
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw);
-          if (p) setSubtitlesProgress(p);
+          if (p) setSubtitlesProgress((prev) => mergeMonotonicJobProgress(prev, p));
         },
         onDone: () => {
           if (subtitlesStreamRef.current === complete.jobId) subtitlesStreamRef.current = null;
+          setSubtitlesProgress((prev) => (prev && prev.percent < 100 ? null : prev));
         },
         onError: (msg) => {
           setSubtitlesError(msg);
@@ -2093,10 +2165,11 @@ export default function CreationStudio({
       openGenerationJobSseStream(complete.jobId, {
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw);
-          if (p) setTranscribeProgress(p);
+          if (p) setTranscribeProgress((prev) => mergeMonotonicJobProgress(prev, p));
         },
         onDone: () => {
           if (transcribeStreamRef.current === complete.jobId) transcribeStreamRef.current = null;
+          setTranscribeProgress((prev) => (prev && prev.percent < 100 ? null : prev));
         },
         onError: (msg) => {
           setTranscribeError(msg);
@@ -2112,7 +2185,8 @@ export default function CreationStudio({
             setTranscriptText(text);
             setTranslatedText('');
             setScriptText(text);
-            setTranscribeProgress(null);
+            setTranscribeProgress({ percent: 100, label: 'Transcript ready' });
+            window.setTimeout(() => setTranscribeProgress(null), PROGRESS_COMPLETION_FLASH_MS);
             if (transcribeStreamRef.current === complete.jobId) transcribeStreamRef.current = null;
             setTranscribeGenerationId(null);
           } else {
@@ -2149,8 +2223,9 @@ export default function CreationStudio({
     setIsTranslating(true);
     setIsGenerated(false);
     setTranslateGenerationId(null);
+    setTranslateProgress({ percent: 12, label: 'Starting translation…' });
+    lastTranslateSseAtRef.current = Date.now();
     try {
-      // Begin returns generationId before the long model call so we can persist it and recover after refresh.
       const beginId = await translateBegin({
         text: transcriptText.trim(),
         sourceLanguage: 'English',
@@ -2159,12 +2234,35 @@ export default function CreationStudio({
       });
       setTranslateGenerationId(beginId);
       void onPersistWorkspaceSnapshot?.();
+      openGenerationJobSseStream(beginId, {
+        onStatus: (raw) => {
+          const p = parseGenerationSseProgressPayload(raw);
+          if (p) {
+            lastTranslateSseAtRef.current = Date.now();
+            setTranslateProgress((prev) => mergeMonotonicJobProgress(prev, p));
+          }
+        },
+        onError: () => {
+          setTranslateProgress((prev) => (prev && prev.percent < 100 ? null : prev));
+        },
+        onTerminal: () => {
+          lastTranslateSseAtRef.current = Date.now();
+          setTranslateProgress({ percent: 100, label: 'Translation complete' });
+          window.setTimeout(() => setTranslateProgress(null), PROGRESS_COMPLETION_FLASH_MS);
+        },
+        onDone: () => {
+          setTranslateProgress((prev) => (prev && prev.percent < 100 ? null : prev));
+        },
+      });
       const result = await translateExecute(beginId);
       const out = result.translatedText ?? '';
       setTranslatedText(out);
       setScriptText(out);
       setIsTranslated(Boolean(out.trim()));
       void onPersistWorkspaceSnapshot?.();
+    } catch (e) {
+      setTranslateProgress(null);
+      throw e;
     } finally {
       setIsTranslating(false);
     }
@@ -2300,26 +2398,17 @@ export default function CreationStudio({
       const res = await exportVideoEditorWorkspace(payload);
       if (res.generationId != null) {
         setExportGenerationId(res.generationId);
+        setExportProgress({ percent: 12, label: 'Queuing export…' });
         void onPersistWorkspaceSnapshot?.();
-        const exportSseOverrides = {
-          subscribedLabel: 'Export queued',
-          subscribedPercent: 18,
-          stages: {
-            workspace_export_started: { percent: 28, label: 'Rendering timeline' },
-            workspace_export_encoding: { percent: 62, label: 'Encoding video' },
-            workspace_export_uploading: { percent: 88, label: 'Uploading result' },
-          },
-        } as const;
         const sseResult = await new Promise<{ downloadUrl: string; s3Key: string }>((resolve, reject) => {
           openGenerationJobSseStream(res.generationId!, {
             onStatus: (raw) => {
-              const p = parseGenerationSseProgressPayload(raw, exportSseOverrides);
-              if (p) {
-                // keep stream active and parse progress, but avoid adding new UI state
-                void p;
-              }
+              const p = parseGenerationSseProgressPayload(raw, VIRAL_SHORTS_EXPORT_SSE_UI);
+              if (p) setExportProgress((prev) => mergeMonotonicJobProgress(prev, p));
             },
-            onDone: () => {},
+            onDone: () => {
+              setExportProgress((prev) => (prev && prev.percent < 100 ? null : prev));
+            },
             onError: (message) => {
               reject(new Error(message || 'Export stream failed'));
             },
@@ -2336,6 +2425,8 @@ export default function CreationStudio({
                 reject(new Error('Export completed but missing download URL'));
                 return;
               }
+              setExportProgress({ percent: 100, label: 'Export ready' });
+              window.setTimeout(() => setExportProgress(null), PROGRESS_COMPLETION_FLASH_MS);
               resolve({ downloadUrl, s3Key });
             },
           });
@@ -2346,6 +2437,8 @@ export default function CreationStudio({
         await triggerWorkspaceExportDownload(sseResult.downloadUrl, sseResult.s3Key);
         setShowExportDownloadNotice(true);
       } else {
+        setExportProgress({ percent: 100, label: 'Export ready' });
+        window.setTimeout(() => setExportProgress(null), PROGRESS_COMPLETION_FLASH_MS);
         setExportedVideoUrl(res.downloadUrl);
         setExportedVideoKey(res.s3Key);
         await triggerWorkspaceExportDownload(res.downloadUrl, res.s3Key);
@@ -2356,6 +2449,7 @@ export default function CreationStudio({
       const msg = e instanceof Error ? e.message : String(e);
       setExportError(msg || 'Export failed');
       setShowExportDownloadNotice(false);
+      setExportProgress(null);
     } finally {
       setExporting(false);
     }
@@ -2378,9 +2472,11 @@ export default function CreationStudio({
       openVoiceOverSse(started.jobId, {
         onStatus: (raw) => {
           const p = parseGenerationSseProgressPayload(raw);
-          if (p) setVoiceOverProgress(p);
+          if (p) setVoiceOverProgress((prev) => mergeMonotonicJobProgress(prev, p));
         },
-        onDone: () => {},
+        onDone: () => {
+          setVoiceOverProgress((prev) => (prev && prev.percent < 100 ? null : prev));
+        },
         onError: (msg) => {
           setVoiceOverError(msg);
           setVoiceOverProgress(null);
@@ -2391,10 +2487,11 @@ export default function CreationStudio({
             const url = typeof d.audioUrl === 'string' ? d.audioUrl : '';
             const key = typeof d.s3Key === 'string' ? d.s3Key : '';
             if (url) {
+              setVoiceOverProgress({ percent: 100, label: tVo('progress.finished') });
+              window.setTimeout(() => setVoiceOverProgress(null), PROGRESS_COMPLETION_FLASH_MS);
               setVoiceOverAudioUrl(url);
               if (key) setVoiceOverS3Key(key);
               setIsGenerated(true);
-              setVoiceOverProgress(null);
               setVoiceOverEnabled(true);
               setOriginalAudioEnabled(false);
               setVoiceOverJobId(null);
@@ -2416,7 +2513,16 @@ export default function CreationStudio({
 
   /** Single status strip for transcribe / translate / voice / balanced sync / subtitles / export / media buffer. */
   const viralUnifiedJobBar = useMemo(() => {
-    // Completed jobs often leave progress at 100% — ignore so later steps (e.g. voice over) still show.
+    if (transcribeProgress != null && transcribeProgress.percent >= 100) {
+      return {
+        key: 'transcribe',
+        title: 'Transcription',
+        label: transcribeProgress.label,
+        percent: 100,
+        done: true,
+        barClass: 'bg-violet-500',
+      };
+    }
     if (transcribeProgress != null && transcribeProgress.percent < 100) {
       const pct = transcribeProgress.percent;
       return {
@@ -2429,13 +2535,24 @@ export default function CreationStudio({
       };
     }
     if (isTranscribing) {
+      const tp = transcribeProgress;
       return {
         key: 'transcribe',
         title: 'Transcription',
-        label: 'Preparing…',
-        percent: -1,
+        label: tp?.label ?? 'Preparing…',
+        percent: typeof tp?.percent === 'number' && Number.isFinite(tp.percent) ? tp.percent : 22,
         done: false,
         barClass: 'bg-violet-500',
+      };
+    }
+    if (translateProgress != null && translateProgress.percent >= 100) {
+      return {
+        key: 'translate',
+        title: 'Translation',
+        label: translateProgress.label,
+        percent: 100,
+        done: true,
+        barClass: 'bg-sky-500',
       };
     }
     const translateStripActive =
@@ -2446,13 +2563,34 @@ export default function CreationStudio({
       let label = 'Translation in progress…';
       if (translateRecoveryBusy) label = 'Recovering translation…';
       else if (isTranslating) label = 'Translating script…';
+      if (translateProgress?.label?.trim()) {
+        label = translateProgress.label;
+      }
+      const pct =
+        translateProgress != null
+          ? translateProgress.percent
+          : translateRecoveryBusy
+            ? 20
+            : isTranslating
+              ? 16
+              : 14;
       return {
         key: 'translate',
         title: 'Translation',
         label,
-        percent: -1,
+        percent: pct,
         done: false,
         barClass: 'bg-sky-500',
+      };
+    }
+    if (voiceOverProgress != null && voiceOverProgress.percent >= 100) {
+      return {
+        key: 'voice',
+        title: 'Voice over',
+        label: voiceOverProgress.label,
+        percent: 100,
+        done: true,
+        barClass: 'bg-violet-500',
       };
     }
     if (voiceOverProgress != null && voiceOverProgress.percent < 100) {
@@ -2471,9 +2609,19 @@ export default function CreationStudio({
         key: 'voice',
         title: 'Voice over',
         label: 'Starting…',
-        percent: -1,
+        percent: 14,
         done: false,
         barClass: 'bg-violet-500',
+      };
+    }
+    if (balancedSyncProgress != null && balancedSyncProgress.percent >= 100) {
+      return {
+        key: 'balanced',
+        title: 'Balanced sync',
+        label: balancedSyncProgress.label,
+        percent: 100,
+        done: true,
+        barClass: 'bg-amber-500',
       };
     }
     if (balancedSyncProgress != null && balancedSyncProgress.percent < 100) {
@@ -2487,13 +2635,27 @@ export default function CreationStudio({
         barClass: 'bg-amber-500',
       };
     }
+    if (subtitlesProgress != null && subtitlesProgress.percent >= 100) {
+      return {
+        key: 'subtitles',
+        title: 'Subtitles',
+        label: subtitlesProgress.label,
+        percent: 100,
+        done: true,
+        barClass: 'bg-cyan-500',
+      };
+    }
     const subtitlesWorkPending =
       subtitlesGenerationId != null && (!subtitlesSrtText.trim() || !subtitlesDownloadUrl.trim());
     const subtitlesBarActive =
       (subtitlesProgress != null && subtitlesProgress.percent < 100) || subtitlesWorkPending;
     if (subtitlesBarActive) {
       const pctFromStream =
-        subtitlesProgress != null && subtitlesProgress.percent < 100 ? subtitlesProgress.percent : -1;
+        subtitlesProgress != null && subtitlesProgress.percent < 100
+          ? subtitlesProgress.percent
+          : subtitlesWorkPending
+            ? 22
+            : 10;
       const labelFromStream =
         subtitlesProgress != null && subtitlesProgress.percent < 100 ? subtitlesProgress.label : null;
       return {
@@ -2505,12 +2667,23 @@ export default function CreationStudio({
         barClass: 'bg-cyan-500',
       };
     }
-    if (exporting || (Boolean(exportGenerationId) && !exportedVideoUrl)) {
+    if (exportProgress != null && exportProgress.percent >= 100) {
       return {
         key: 'export',
         title: 'Export',
-        label: 'Rendering final video…',
-        percent: -1,
+        label: exportProgress.label,
+        percent: 100,
+        done: true,
+        barClass: 'bg-emerald-500',
+      };
+    }
+    if (exporting || (Boolean(exportGenerationId) && !exportedVideoUrl)) {
+      const ep = exportProgress;
+      return {
+        key: 'export',
+        title: 'Export',
+        label: ep?.label ?? 'Rendering final video…',
+        percent: ep != null ? ep.percent : -1,
         done: false,
         barClass: 'bg-emerald-500',
       };
@@ -2538,6 +2711,7 @@ export default function CreationStudio({
     translateRecoveryBusy,
     translateGenerationId,
     translatedText,
+    translateProgress,
     voiceOverProgress,
     isGenerating,
     balancedSyncProgress,
@@ -2547,6 +2721,7 @@ export default function CreationStudio({
     subtitlesDownloadUrl,
     exporting,
     exportGenerationId,
+    exportProgress,
     exportedVideoUrl,
     videoMetadataReady,
     voiceMetadataReady,

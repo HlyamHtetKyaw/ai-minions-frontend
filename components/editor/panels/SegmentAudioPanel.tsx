@@ -25,17 +25,17 @@ export function SegmentAudioPanel() {
     segment.volume === 0 ? 'accent-red-500' : segment.volume === 100 ? 'accent-[#534AB7]' : 'accent-[#7F77DD]';
 
   return (
-    <div className="flex flex-col gap-4 border-t border-zinc-800 p-3">
+    <div className="flex flex-col gap-4 border-t border-zinc-200 p-3 dark:border-zinc-800">
       <section>
-        <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-300">Segment audio</h3>
-        <p className="mt-1 text-[11px] text-zinc-500">
+        <h3 className="text-xs font-semibold uppercase tracking-wide text-muted">Segment audio</h3>
+        <p className="mt-1 text-[11px] text-muted">
           {segment.startTime.toFixed(1)}s — {segment.endTime.toFixed(1)}s
         </p>
-        <p className="text-[11px] text-zinc-500">{segmentDuration.toFixed(1)}s</p>
+        <p className="text-[11px] text-muted">{segmentDuration.toFixed(1)}s</p>
       </section>
 
       <section>
-        <div className="mb-1 flex items-center justify-between text-xs text-zinc-300">
+        <div className="mb-1 flex items-center justify-between text-xs text-foreground">
           <span>Volume</span>
           <span>{segment.volume}%</span>
         </div>
@@ -56,14 +56,14 @@ export function SegmentAudioPanel() {
         className={`w-full rounded-lg px-3 py-2 text-xs font-medium ${
           segment.isMuted
             ? 'bg-red-700 text-white'
-            : 'border border-zinc-600 bg-zinc-900 text-zinc-100 hover:bg-zinc-800'
+            : 'border border-zinc-300 bg-zinc-100 text-zinc-900 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800'
         }`}
       >
         {segment.isMuted ? 'Unmute segment' : 'Mute segment'}
       </button>
 
       <section>
-        <div className="mb-1 flex items-center justify-between text-xs text-zinc-300">
+        <div className="mb-1 flex items-center justify-between text-xs text-foreground">
           <span>Fade in</span>
           <span>{segment.fadeIn.toFixed(1)}s</span>
         </div>
@@ -83,7 +83,7 @@ export function SegmentAudioPanel() {
       </section>
 
       <section>
-        <div className="mb-1 flex items-center justify-between text-xs text-zinc-300">
+        <div className="mb-1 flex items-center justify-between text-xs text-foreground">
           <span>Fade out</span>
           <span>{segment.fadeOut.toFixed(1)}s</span>
         </div>
@@ -115,7 +115,7 @@ export function SegmentAudioPanel() {
             })),
           }));
         }}
-        className="rounded-lg border border-zinc-600 bg-zinc-900 px-3 py-2 text-xs font-medium text-zinc-200 hover:bg-zinc-800"
+        className="rounded-lg border border-zinc-300 bg-zinc-100 px-3 py-2 text-xs font-medium text-zinc-900 hover:bg-zinc-200 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-200 dark:hover:bg-zinc-800"
       >
         Apply to all segments
       </button>
@@ -130,7 +130,7 @@ export function SegmentAudioPanel() {
             fadeOut: 0,
           })
         }
-        className="rounded-lg bg-zinc-800 px-3 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-700"
+        className="rounded-lg bg-zinc-200 px-3 py-2 text-xs font-medium text-zinc-900 hover:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
       >
         Reset
       </button>

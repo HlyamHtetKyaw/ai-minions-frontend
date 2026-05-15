@@ -248,6 +248,10 @@ export type EditorState = {
   videoNaturalWidth: number;
   videoNaturalHeight: number;
   selectedLayerId: string | null;
+  /** Layer id while drag/resize is in progress (freezes timeline visibility). */
+  canvasTransformingLayerId: string | null;
+  /** Playhead time frozen when `canvasTransformingLayerId` was set. */
+  canvasTransformVisibilityTime: number;
   activeTool: EditorTool;
   audioTracks: AudioTrack[];
   originalAudioMuted: boolean;
@@ -295,6 +299,7 @@ export type EditorState = {
   resetCrop: () => void;
   setPlaybackSpeed: (speed: number) => void;
   setSelectedLayerId: (id: string | null) => void;
+  setCanvasTransformingLayerId: (id: string | null) => void;
   setActiveTool: (tool: EditorTool) => void;
   addAudioTrack: (type: 'music' | 'voiceover', file: File) => string;
   updateAudioTrack: (id: string, patch: Partial<AudioTrack>) => void;
@@ -348,6 +353,8 @@ export const useEditorStore = create<EditorState>((set) => ({
   videoNaturalWidth: 0,
   videoNaturalHeight: 0,
   selectedLayerId: null,
+  canvasTransformingLayerId: null,
+  canvasTransformVisibilityTime: 0,
   activeTool: 'pointer',
   audioTracks: [],
   originalAudioMuted: false,
@@ -419,6 +426,7 @@ export const useEditorStore = create<EditorState>((set) => ({
               selectedSegmentId: null,
               textLayers: [],
               blurLayers: [],
+              canvasTransformingLayerId: null,
               galleryImages: [],
               imageLayers: [],
               selectedLayerId: null,
@@ -1034,6 +1042,11 @@ export const useEditorStore = create<EditorState>((set) => ({
       playbackSpeed: Number.isFinite(speed) && speed > 0 ? speed : 1,
     }),
   setSelectedLayerId: (id) => set({ selectedLayerId: id }),
+  setCanvasTransformingLayerId: (id) =>
+    set((state) => ({
+      canvasTransformingLayerId: id,
+      ...(id == null ? {} : { canvasTransformVisibilityTime: state.currentTime }),
+    })),
   setActiveTool: (tool) =>
     set((state) => {
       const prev = state.activeTool;
