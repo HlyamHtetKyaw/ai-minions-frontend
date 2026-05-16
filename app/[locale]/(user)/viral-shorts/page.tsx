@@ -14,6 +14,7 @@ import { uploadFileToPresignedUrl, videoEditorPrepareUploadUrl } from '@/lib/vid
 import { viralShortsClearWorkspace, viralShortsGetWorkspace, viralShortsSaveSnapshot } from '@/lib/viral-shorts-workspace-api';
 import { parseViralWorkspacePayloadForRestore } from '@/lib/viral-workspace-persistence';
 import { normalizePersistedVoiceId } from '@/lib/voice-over-api';
+import type { BlurLayer, TextLayer } from '@/store/editorStore';
 
 type PageStep = 'upload' | 'uploading' | 'preparing_workspace' | 'studio';
 
@@ -55,6 +56,8 @@ export default function ViralShortsPage() {
   const [subtitlesFontSize, setSubtitlesFontSize] = useState(22);
   const [subtitlesBackgroundBlur, setSubtitlesBackgroundBlur] = useState(0);
   const [subtitlesBackgroundOpacity, setSubtitlesBackgroundOpacity] = useState(65);
+  const [viralTextLayers, setViralTextLayers] = useState<TextLayer[]>([]);
+  const [viralBlurLayers, setViralBlurLayers] = useState<BlurLayer[]>([]);
   const [error, setError] = useState<string | null>(null);
   /** After first signed-in workspace fetch (empty or restored). Until then, avoid flashing the upload UI. */
   const [workspaceHydrated, setWorkspaceHydrated] = useState(false);
@@ -119,6 +122,8 @@ export default function ViralShortsPage() {
           subtitlesFontSize?: number | null;
           subtitlesBackgroundBlur?: number | null;
           subtitlesBackgroundOpacity?: number | null;
+          textLayers?: unknown;
+          blurLayers?: unknown;
           transcript?: string | null; // legacy
           scriptText?: string | null; // legacy
         };
@@ -221,6 +226,24 @@ export default function ViralShortsPage() {
             ? Math.max(0, Math.min(100, Math.round(parsed.subtitlesBackgroundOpacity)))
             : 65,
         );
+          const rawTextLayers = parsed.textLayers;
+          const rawBlurLayers = parsed.blurLayers;
+          setViralTextLayers(
+            Array.isArray(rawTextLayers)
+              ? rawTextLayers.filter(
+                  (x): x is TextLayer =>
+                    Boolean(x) && typeof x === 'object' && (x as TextLayer).type === 'text',
+                )
+              : [],
+          );
+          setViralBlurLayers(
+            Array.isArray(rawBlurLayers)
+              ? rawBlurLayers.filter(
+                  (x): x is BlurLayer =>
+                    Boolean(x) && typeof x === 'object' && (x as BlurLayer).type === 'blur',
+                )
+              : [],
+          );
           const t = (typeof parsed.tone === 'string' ? parsed.tone : '').toLowerCase();
           if (t === 'casual_social_media' || t === 'polite_educational' || t === 'formal_corporate' || t === 'youthful_trendy') {
             setTranslateTone(t);
@@ -273,6 +296,8 @@ export default function ViralShortsPage() {
       setSubtitlesSrtKey('');
       setSubtitlesDownloadUrl('');
       setSubtitlesSrtText('');
+      setViralTextLayers([]);
+      setViralBlurLayers([]);
       setStep('preparing_workspace');
 
       const viralPayload = {
@@ -307,6 +332,8 @@ export default function ViralShortsPage() {
         subtitlesFontSize: 22,
         subtitlesBackgroundBlur: 0,
         subtitlesBackgroundOpacity: 65,
+        textLayers: [] as TextLayer[],
+        blurLayers: [] as BlurLayer[],
         step: 'studio',
       };
       await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
@@ -360,6 +387,8 @@ export default function ViralShortsPage() {
             subtitlesFontSize,
             subtitlesBackgroundBlur,
             subtitlesBackgroundOpacity,
+            textLayers: viralTextLayers,
+            blurLayers: viralBlurLayers,
             step: 'studio',
           };
           await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
@@ -405,6 +434,8 @@ export default function ViralShortsPage() {
     subtitlesFontSize,
     subtitlesBackgroundBlur,
     subtitlesBackgroundOpacity,
+    viralTextLayers,
+    viralBlurLayers,
     videoName,
     videoUrl,
   ]);
@@ -433,6 +464,8 @@ export default function ViralShortsPage() {
     setSubtitlesSrtKey('');
     setSubtitlesDownloadUrl('');
     setSubtitlesSrtText('');
+    setViralTextLayers([]);
+    setViralBlurLayers([]);
     setStep('upload');
   }, []);
 
@@ -479,6 +512,8 @@ export default function ViralShortsPage() {
         subtitlesFontSize,
         subtitlesBackgroundBlur,
         subtitlesBackgroundOpacity,
+        textLayers: viralTextLayers,
+        blurLayers: viralBlurLayers,
         step: 'studio',
       };
       await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
@@ -515,6 +550,8 @@ export default function ViralShortsPage() {
     subtitlesFontSize,
     subtitlesBackgroundBlur,
     subtitlesBackgroundOpacity,
+    viralTextLayers,
+    viralBlurLayers,
   ]);
 
   return (
@@ -654,6 +691,8 @@ export default function ViralShortsPage() {
                 initialSubtitlesFontSize={subtitlesFontSize}
                 initialSubtitlesBackgroundBlur={subtitlesBackgroundBlur}
                 initialSubtitlesBackgroundOpacity={subtitlesBackgroundOpacity}
+                initialViralTextLayers={viralTextLayers}
+                initialViralBlurLayers={viralBlurLayers}
                 onTranscriptTextChange={setTranscriptText}
                 onTranscribeGenerationIdChange={setTranscribeGenerationId}
                 onTranslateGenerationIdChange={setTranslateGenerationId}
@@ -688,6 +727,10 @@ export default function ViralShortsPage() {
                 onDiscardWorkspace={() => void handleDiscardWorkspace()}
                 onExportSuccess={() => void flushViralWorkspaceToServer()}
                 onPersistWorkspaceSnapshot={() => void flushViralWorkspaceToServer()}
+                onViralOverlayLayersChange={(p) => {
+                  setViralTextLayers(p.textLayers);
+                  setViralBlurLayers(p.blurLayers);
+                }}
               />
             ) : null}
 

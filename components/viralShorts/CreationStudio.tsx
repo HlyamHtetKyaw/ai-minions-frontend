@@ -60,6 +60,17 @@ import {
   voicesForToneGroup,
   type VoiceToneGroupId,
 } from '@/lib/voice-over-tone-groups';
+import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
+import { ViralBlurLayer } from '@/features/viral-shorts/viral-blur-layer';
+import { ViralTextLayer } from '@/features/viral-shorts/viral-text-layer';
+import { ViralTimelineDock } from '@/features/viral-shorts/viral-timeline-dock';
+import { ViralOverlayInspector } from '@/features/viral-shorts/viral-overlay-inspector';
+import type { BlurLayer as ViralBlurLayerType, TextLayer as ViralTextLayerType } from '@/store/editorStore';
+import {
+  mapBlurLayersForWorkspaceExport,
+  mapTextLayersForWorkspaceExport,
+  viralDisplayToNaturalScale,
+} from '@/lib/map-viral-layers-for-export';
 
 type TranslateTone =
   | 'casual_social_media'
@@ -382,6 +393,9 @@ type Props = {
   onExportSuccess?: () => void | Promise<void>;
   /** Best-effort immediate snapshot (debounced auto-save may lag behind active jobs). */
   onPersistWorkspaceSnapshot?: () => void | Promise<void>;
+  initialViralTextLayers?: ViralTextLayerType[];
+  initialViralBlurLayers?: ViralBlurLayerType[];
+  onViralOverlayLayersChange?: (payload: { textLayers: ViralTextLayerType[]; blurLayers: ViralBlurLayerType[] }) => void;
 };
 
 export default function CreationStudio({
@@ -450,10 +464,14 @@ export default function CreationStudio({
   onDiscardWorkspace,
   onExportSuccess,
   onPersistWorkspaceSnapshot,
+  initialViralTextLayers,
+  initialViralBlurLayers,
+  onViralOverlayLayersChange,
 }: Props) {
   const tVo = useTranslations('voice-over');
   const tViral = useTranslations('viralShorts.voiceStudio');
   const tEditor = useTranslations('viralShorts.editor');
+  const tOverlays = useTranslations('viralShorts.overlays');
   const [showTranscribeConfirm, setShowTranscribeConfirm] = useState(false);
   const [estimate, setEstimate] = useState<PointsEstimate | null>(null);
   const [estimateError, setEstimateError] = useState<string | null>(null);
@@ -858,6 +876,127 @@ export default function CreationStudio({
     const scale = previewFramePx.h / vh;
     return Math.max(4, subtitlesFontSize * scale);
   }, [previewIntrinsicPx, previewFramePx.h, subtitlesFontSize]);
+
+  const overlayTextLayers = useViralOverlayStore((s) => s.textLayers);
+  const overlayBlurLayers = useViralOverlayStore((s) => s.blurLayers);
+  const overlaySelectedId = useViralOverlayStore((s) => s.selectedLayerId);
+  const overlayActiveTool = useViralOverlayStore((s) => s.activeTool);
+  const overlayPreviewDuration = useViralOverlayStore((s) => s.previewDuration);
+  const setOverlayPreviewDuration = useViralOverlayStore((s) => s.setPreviewDuration);
+  const setOverlaySelectedId = useViralOverlayStore((s) => s.setSelectedLayerId);
+  const setOverlayActiveTool = useViralOverlayStore((s) => s.setActiveTool);
+  const addOverlayTextAtPlayhead = useViralOverlayStore((s) => s.addTextLayerAtPlayhead);
+  const addOverlayBlurAtPlayhead = useViralOverlayStore((s) => s.addBlurLayerAtPlayhead);
+  const updateOverlayText = useViralOverlayStore((s) => s.updateTextLayer);
+  const updateOverlayBlur = useViralOverlayStore((s) => s.updateBlurLayer);
+  const deleteOverlaySelected = useViralOverlayStore((s) => s.deleteSelectedLayer);
+  const hydrateOverlays = useViralOverlayStore((s) => s.hydrate);
+  const resetOverlays = useViralOverlayStore((s) => s.reset);
+
+  const [previewPlaybackTime, setPreviewPlaybackTime] = useState(0);
+  const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
+  const overlayHydratedRef = useRef(false);
+  const previewFingerprintRef = useRef<string | null>(null);
+  const overlayNotifyTimerRef = useRef<number | null>(null);
+
+  const selectedOverlayText = useMemo(
+    () => overlayTextLayers.find((l) => l.id === overlaySelectedId) ?? null,
+    [overlayTextLayers, overlaySelectedId],
+  );
+  const selectedOverlayBlur = useMemo(
+    () => overlayBlurLayers.find((l) => l.id === overlaySelectedId) ?? null,
+    [overlayBlurLayers, overlaySelectedId],
+  );
+
+  useEffect(() => {
+    const fp = activePreviewSrc;
+    if (previewFingerprintRef.current === null) {
+      previewFingerprintRef.current = fp;
+      return;
+    }
+    if (previewFingerprintRef.current === fp) return;
+    previewFingerprintRef.current = fp;
+    overlayHydratedRef.current = false;
+    resetOverlays();
+    onViralOverlayLayersChange?.({ textLayers: [], blurLayers: [] });
+  }, [activePreviewSrc, onViralOverlayLayersChange, resetOverlays]);
+
+  useEffect(() => {
+    if (overlayHydratedRef.current) return;
+    if (overlayPreviewDuration <= 0) return;
+    const t = initialViralTextLayers ?? [];
+    const b = initialViralBlurLayers ?? [];
+    if (t.length === 0 && b.length === 0) {
+      overlayHydratedRef.current = true;
+      return;
+    }
+    hydrateOverlays({ textLayers: t, blurLayers: b });
+    overlayHydratedRef.current = true;
+  }, [overlayPreviewDuration, initialViralTextLayers, initialViralBlurLayers, hydrateOverlays]);
+
+  useEffect(() => {
+    if (!onViralOverlayLayersChange) return;
+    const unsubscribe = useViralOverlayStore.subscribe((state, prev) => {
+      if (state.textLayers === prev.textLayers && state.blurLayers === prev.blurLayers) return;
+      if (overlayNotifyTimerRef.current != null) window.clearTimeout(overlayNotifyTimerRef.current);
+      overlayNotifyTimerRef.current = window.setTimeout(() => {
+        onViralOverlayLayersChange({
+          textLayers: useViralOverlayStore.getState().textLayers,
+          blurLayers: useViralOverlayStore.getState().blurLayers,
+        });
+      }, 400);
+    });
+    return () => {
+      unsubscribe();
+      if (overlayNotifyTimerRef.current != null) window.clearTimeout(overlayNotifyTimerRef.current);
+    };
+  }, [onViralOverlayLayersChange]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const t = e.target as HTMLElement | null;
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+      deleteOverlaySelected();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [deleteOverlaySelected]);
+
+  useEffect(() => {
+    setPreviewPlaybackTime(0);
+  }, [activePreviewSrc]);
+
+  const seekPreviewRatio = useCallback(
+    (ratio: number) => {
+      const v = videoRef.current;
+      const d = overlayPreviewDuration;
+      if (!v || !Number.isFinite(d) || d <= 0) return;
+      const t = Math.min(d, Math.max(0, ratio * d));
+      v.currentTime = t;
+      setPreviewPlaybackTime(t);
+    },
+    [overlayPreviewDuration],
+  );
+
+  const seekPreviewBy = useCallback(
+    (deltaSec: number) => {
+      const v = videoRef.current;
+      const d = overlayPreviewDuration;
+      if (!v || !Number.isFinite(d) || d <= 0) return;
+      const t = Math.min(d, Math.max(0, v.currentTime + deltaSec));
+      v.currentTime = t;
+      setPreviewPlaybackTime(t);
+    },
+    [overlayPreviewDuration],
+  );
+
+  const togglePreviewPlayback = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    if (v.paused) void v.play().catch(() => {});
+    else v.pause();
+  }, []);
 
   useEffect(() => {
     setPreviewIntrinsicPx(null);
@@ -2327,6 +2466,11 @@ export default function CreationStudio({
       const canvasH = Math.max(1, Math.round(previewFramePx.h));
       const intrinsicW = previewIntrinsicPx?.w ?? v.videoWidth ?? 0;
       const intrinsicH = previewIntrinsicPx?.h ?? v.videoHeight ?? 0;
+      if (intrinsicW <= 0 || intrinsicH <= 0) {
+        throw new Error('Video dimensions not ready. Play the preview once, then try Export again.');
+      }
+      const displayToNaturalScale = viralDisplayToNaturalScale(canvasW, canvasH, intrinsicW, intrinsicH);
+
       const canMapPreviewFont =
         intrinsicW > 0 &&
         intrinsicH > 0 &&
@@ -2366,6 +2510,7 @@ export default function CreationStudio({
         };
       }
 
+      // Same POST /api/v1/video-editor/workspace/export → processing WorkspaceExportService (FFmpeg) as full editor.
       const payload = {
         videoUrl: noFrag,
         videoSrcKey,
@@ -2374,8 +2519,11 @@ export default function CreationStudio({
         trimStart: 0,
         trimEnd: 0,
         speed: 1,
-        displayToNaturalScale: { x: 1, y: 1 },
-        textLayers: [],
+        displayToNaturalScale,
+        textLayers: mapTextLayersForWorkspaceExport(overlayTextLayers),
+        blurLayers: mapBlurLayersForWorkspaceExport(overlayBlurLayers),
+        canvasFrame: { width: canvasW, height: canvasH },
+        naturalVideo: { width: intrinsicW, height: intrinsicH },
         imageLayers: [],
         originalAudio: voiceMixForExport?.originalAudio ?? { muted: false, volume: 100 },
         ...(voiceMixForExport?.audioTracks ? { audioTracks: voiceMixForExport.audioTracks } : {}),
@@ -3184,8 +3332,23 @@ export default function CreationStudio({
                   const iw = el.videoWidth;
                   const ih = el.videoHeight;
                   if (iw > 0 && ih > 0) setPreviewIntrinsicPx({ w: iw, h: ih });
+                  const dur = el.duration;
+                  if (Number.isFinite(dur) && dur > 0) {
+                    setOverlayPreviewDuration(dur);
+                  }
                 }}
+                onTimeUpdate={(e) => setPreviewPlaybackTime(e.currentTarget.currentTime)}
+                onPlay={() => setPreviewIsPlaying(true)}
+                onPause={() => setPreviewIsPlaying(false)}
               />
+              {overlayBlurLayers.map((layer, i) => (
+                <ViralBlurLayer
+                  key={layer.id}
+                  layer={layer}
+                  currentTimeSec={previewPlaybackTime}
+                  stackIndex={i}
+                />
+              ))}
               {showSubtitlesOverlay && activeSubtitleText.trim() ? (
                 <div
                   className="absolute"
@@ -3194,6 +3357,7 @@ export default function CreationStudio({
                     top: `${Math.round(subtitlesPosition.y * 1000) / 10}%`,
                     transform: 'translate(-50%, -50%)',
                     pointerEvents: subtitlesEditPosition ? 'auto' : 'none',
+                    zIndex: 35,
                   }}
                   onPointerDown={(e) => {
                     if (!subtitlesEditPosition) return;
@@ -3256,6 +3420,14 @@ export default function CreationStudio({
                   ) : null}
                 </div>
               ) : null}
+              {overlayTextLayers.map((layer, i) => (
+                <ViralTextLayer
+                  key={layer.id}
+                  layer={layer}
+                  currentTimeSec={previewPlaybackTime}
+                  stackIndex={i}
+                />
+              ))}
               {isBalancedPreviewMode ? (
                 <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
                   <span className="font-semibold">All set — synced preview on deck</span>
@@ -3270,6 +3442,48 @@ export default function CreationStudio({
                 </div>
               ) : null}
             </div>
+          </div>
+
+          <ViralOverlayInspector
+            activeTool={overlayActiveTool}
+            onActiveTool={setOverlayActiveTool}
+            selectedText={selectedOverlayText}
+            selectedBlur={selectedOverlayBlur}
+            durationReady={overlayPreviewDuration > 0}
+            onAddText={() => addOverlayTextAtPlayhead(previewPlaybackTime)}
+            onAddBlur={() => addOverlayBlurAtPlayhead(previewPlaybackTime)}
+            onUpdateText={updateOverlayText}
+            onUpdateBlur={updateOverlayBlur}
+            onDelete={() => deleteOverlaySelected()}
+          />
+
+          <div className="flex min-h-[220px] min-w-0 shrink-0 flex-col border-b border-card-border lg:min-h-[200px] lg:flex-1">
+            <p className="border-b border-card-border px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              {tOverlays('timelineTitle')}
+            </p>
+            <ViralTimelineDock
+              phase={overlayPreviewDuration > 0 ? 'ready' : 'loading'}
+              durationSec={overlayPreviewDuration}
+              currentTimeSec={previewPlaybackTime}
+              isPlaying={previewIsPlaying}
+              textLayers={overlayTextLayers}
+              blurLayers={overlayBlurLayers}
+              selectedLayerId={overlaySelectedId}
+              videoLabel={videoName.trim() || tOverlays('videoClip')}
+              emptyLabel={tOverlays('timelineEmpty')}
+              loadingLabel={tOverlays('timelineLoading')}
+              playLabel={tOverlays('play')}
+              pauseLabel={tOverlays('pause')}
+              prevLabel={tOverlays('skipBack')}
+              nextLabel={tOverlays('skipForward')}
+              onTogglePlay={togglePreviewPlayback}
+              onSeekBy={seekPreviewBy}
+              onSeekRatio={seekPreviewRatio}
+              onSelectClip={(id) => setOverlaySelectedId(id)}
+              onDeselect={() => setOverlaySelectedId(null)}
+              onUpdateTextTiming={(id, patch) => updateOverlayText(id, patch)}
+              onUpdateBlurTiming={(id, patch) => updateOverlayBlur(id, patch)}
+            />
           </div>
 
           {!isBalancedPreviewMode ? (
