@@ -1020,6 +1020,33 @@ declare const messages: {
         "backgroundOpacity": "Background opacity",
         "generateSubtitlesFirst": "Generate subtitles first to populate cues."
       }
+    },
+    "overlays": {
+      "sectionTitle": "Text & blur",
+      "pointer": "Select",
+      "textTool": "Text",
+      "blurTool": "Blur",
+      "addText": "Add text",
+      "addBlur": "Add blur",
+      "remove": "Remove",
+      "inspectorText": "Text overlay",
+      "inspectorBlur": "Blur overlay",
+      "content": "Text",
+      "fontSize": "Font size",
+      "color": "Color",
+      "opacity": "Opacity",
+      "intensity": "Strength",
+      "blurOpacity": "Region opacity",
+      "timelineTitle": "Overlay timeline",
+      "timelineEmpty": "Load the preview (metadata) to use the timeline.",
+      "timelineLoading": "Loading video…",
+      "play": "Play",
+      "pause": "Pause",
+      "skipBack": "Back 5s",
+      "skipForward": "Forward 5s",
+      "videoClip": "Video",
+      "keyboardHint": "Delete removes the selected overlay.",
+      "timelineNeedsDuration": "Wait for video duration."
     }
   },
   "transcribe": {

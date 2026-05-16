@@ -132,9 +132,13 @@ export async function uploadVideoEditorFile(file: File): Promise<VideoEditorUplo
 }
 
 /**
- * Starts a workspace export job. When the response includes {@code generationId}, follow
- * {@code GET /api/v1/generations/:id/stream} (see {@code openGenerationJobSseStream} in {@code generation-job-sse.ts})
- * until a terminal {@code completed} event.
+ * Starts a workspace export job. Main-service enqueues processing-service
+ * {@code WorkspaceExportService} (FFmpeg) — the **same** HTTP job for the full video editor and
+ * Viral Shorts “Final Export”; the JSON shape matches {@code buildExportPayload} overlay fields
+ * ({@code textLayers}, {@code blurLayers}, {@code canvasFrame}, {@code displayToNaturalScale}, etc.).
+ * When the response includes {@code generationId}, follow {@code GET /api/v1/generations/:id/stream}
+ * (see {@code openGenerationJobSseStream} in {@code generation-job-sse.ts}) until a terminal
+ * {@code completed} event.
  */
 export async function exportVideoEditorWorkspace(payload: unknown): Promise<VideoEditorExportResult> {
   const base = getPublicApiBaseUrl();

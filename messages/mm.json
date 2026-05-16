@@ -1017,6 +1017,33 @@
         "backgroundOpacity": "နောက်ခံဖျော့မှန်မှု",
         "generateSubtitlesFirst": "Cue များထည့်သွင်းရန် အရင် subtitles ထုတ်ပေးပါ။"
       }
+    },
+    "overlays": {
+      "sectionTitle": "စာသားနှင့် ဝိုင်းပုတ်",
+      "pointer": "ရွေးချယ်",
+      "textTool": "စာသား",
+      "blurTool": "ဝိုင်းပုတ်",
+      "addText": "စာသား ထည့်ရန်",
+      "addBlur": "ဝိုင်းပုတ် ထည့်ရန်",
+      "remove": "ဖျက်ရန်",
+      "inspectorText": "စာသား အလွှာတွင်",
+      "inspectorBlur": "ဝိုင်း အလွှာတွင်",
+      "content": "စာသား",
+      "fontSize": "ဖောင့်အရွယ်",
+      "color": "အရောင်",
+      "opacity": "ဖျော့မှန်မှု",
+      "intensity": "အင်တန်းစီး",
+      "blurOpacity": "နေရာ ဖျော့မှန်မှု",
+      "timelineTitle": "အလွှာ အချိန်မျဉ်း",
+      "timelineEmpty": "မျဉ်းတန်ကို သုံးရန် ဗီဒီယို ကြိုကြည့်ခြင်းနဲ့ ကြာချိန် ဖတ်ပါ။",
+      "timelineLoading": "ဗီဒီယို ဖတ်နေသည်…",
+      "play": "ဖွင့်",
+      "pause": "ခဏရပ်",
+      "skipBack": "၅ စက္ကန့် ပြန်",
+      "skipForward": "၅ စက္ကန့် ရှေ့",
+      "videoClip": "ဗီဒီယို",
+      "keyboardHint": "Delete ဖြင့် ရွေးထားသော အလွှာကို ဖျက်နိုင်သည်။",
+      "timelineNeedsDuration": "ကြာချိန် မလာမချင်း စောင့်ပါ။"
     }
   },
   "transcribe": {
