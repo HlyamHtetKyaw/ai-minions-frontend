@@ -63,7 +63,7 @@ import {
 import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
 import { ViralBlurLayer } from '@/features/viral-shorts/viral-blur-layer';
 import { ViralTextLayer } from '@/features/viral-shorts/viral-text-layer';
-import { ViralTimelineDock } from '@/features/viral-shorts/viral-timeline-dock';
+import { ViralTimelineDock, type SrtCueForTimeline } from '@/features/viral-shorts/viral-timeline-dock';
 import { ViralOverlayInspector } from '@/features/viral-shorts/viral-overlay-inspector';
 import type { BlurLayer as ViralBlurLayerType, TextLayer as ViralTextLayerType } from '@/store/editorStore';
 import {
@@ -264,8 +264,8 @@ function extractExportResult(
     pickTrimmedString(resultNode?.storageUrl) ||
     (output
       ? pickTrimmedString(output.readUrl) ||
-        pickTrimmedString(output.downloadUrl) ||
-        pickTrimmedString(output.storageUrl)
+      pickTrimmedString(output.downloadUrl) ||
+      pickTrimmedString(output.storageUrl)
       : '') ||
     pickTrimmedString(fallback?.downloadUrl) ||
     '';
@@ -567,7 +567,7 @@ export default function CreationStudio({
   const [subtitlesSrtText, setSubtitlesSrtText] = useState(() =>
     typeof initialSubtitlesSrtText === 'string' ? initialSubtitlesSrtText : '',
   );
-  const [subtitlesEditPosition, setSubtitlesEditPosition] = useState(false);
+  const [subtitlesEditPosition, setSubtitlesEditPosition] = useState(true);
   const [subtitlesPosition, setSubtitlesPosition] = useState<{ x: number; y: number }>(() => {
     const p = initialSubtitlesPosition;
     const x = p && typeof p.x === 'number' && Number.isFinite(p.x) ? Math.max(0, Math.min(1, p.x)) : 0.5;
@@ -609,6 +609,7 @@ export default function CreationStudio({
       return [];
     }
   });
+  const [selectedSrtCueId, setSelectedSrtCueId] = useState<string | null>(null);
 
   useEffect(() => {
     if (srtSyncFromTableRef.current) {
@@ -618,6 +619,7 @@ export default function CreationStudio({
     try {
       const base = subtitlesSrtText ? parseSrt(subtitlesSrtText) : [];
       setEditableCues(base.map((c, i) => ({ ...c, id: `c_${i}_${Math.random().toString(16).slice(2)}` })));
+      setSelectedSrtCueId(null);
     } catch {
       setEditableCues([]);
     }
@@ -879,6 +881,7 @@ export default function CreationStudio({
 
   const overlayTextLayers = useViralOverlayStore((s) => s.textLayers);
   const overlayBlurLayers = useViralOverlayStore((s) => s.blurLayers);
+  const overlayLayerOrder = useViralOverlayStore((s) => s.layerOrder);
   const overlaySelectedId = useViralOverlayStore((s) => s.selectedLayerId);
   const overlayActiveTool = useViralOverlayStore((s) => s.activeTool);
   const overlayPreviewDuration = useViralOverlayStore((s) => s.previewDuration);
@@ -890,6 +893,8 @@ export default function CreationStudio({
   const updateOverlayText = useViralOverlayStore((s) => s.updateTextLayer);
   const updateOverlayBlur = useViralOverlayStore((s) => s.updateBlurLayer);
   const deleteOverlaySelected = useViralOverlayStore((s) => s.deleteSelectedLayer);
+  const moveOverlayLayerUp = useViralOverlayStore((s) => s.moveLayerUp);
+  const moveOverlayLayerDown = useViralOverlayStore((s) => s.moveLayerDown);
   const hydrateOverlays = useViralOverlayStore((s) => s.hydrate);
   const resetOverlays = useViralOverlayStore((s) => s.reset);
 
@@ -994,7 +999,7 @@ export default function CreationStudio({
   const togglePreviewPlayback = useCallback(() => {
     const v = videoRef.current;
     if (!v) return;
-    if (v.paused) void v.play().catch(() => {});
+    if (v.paused) void v.play().catch(() => { });
     else v.pause();
   }, []);
 
@@ -1388,8 +1393,8 @@ export default function CreationStudio({
 
   const translateCreepActive = Boolean(
     isTranslating ||
-      translateRecoveryBusy ||
-      (translateGenerationId != null && !translatedText.trim()),
+    translateRecoveryBusy ||
+    (translateGenerationId != null && !translatedText.trim()),
   );
   useEffect(() => {
     if (!translateCreepActive) return;
@@ -1406,21 +1411,23 @@ export default function CreationStudio({
   // Resume balanced sync after refresh / navigation:
   // - If the job is still running, reconnect to SSE and keep showing progress.
   // - If the job already finished, the SSE stream returns a terminal chunk immediately.
+  // IMPORTANT: balancedSyncProgress must NOT be in the dep array — every progress tick
+  // would re-run the effect, reset balancedSyncStreamRef in onDone, and cause an infinite reconnect loop.
   useEffect(() => {
     if (!balancedSyncGenerationId) return;
     if (isBalancedPreviewMode) return;
     if (balancedSyncStreamRef.current === balancedSyncGenerationId) return;
-    if (balancedSyncProgress && balancedSyncProgress.percent >= 100) return;
 
     balancedSyncStreamRef.current = balancedSyncGenerationId;
     setBalancedSyncError(null);
-    if (!balancedSyncProgress) {
+    setBalancedSyncProgress((prev) => {
+      if (prev && prev.percent >= 100) return prev;
       lastBalancedSseAtRef.current = Date.now();
-      setBalancedSyncProgress({
+      return prev ?? {
         percent: BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8,
         label: 'Picking back up where we left off…',
-      });
-    }
+      };
+    });
 
     openGenerationJobSseStream(balancedSyncGenerationId, {
       onOpen: () => {
@@ -1428,7 +1435,7 @@ export default function CreationStudio({
         setBalancedSyncProgress((prev) =>
           prev ?? {
             percent: BALANCED_SYNC_SSE_FOR_UI.subscribedPercent ?? 8,
-            label: 'Back online—we’re syncing the signal.',
+            label: "Back online—we're syncing the signal.",
           },
         );
       },
@@ -1444,16 +1451,22 @@ export default function CreationStudio({
       },
       onError: (message) => {
         setBalancedSyncError(message || 'Balanced sync stream error');
+        // Reset the ref so user can retry, but do NOT set progress to null here —
+        // that would cause the effect to re-run and open another connection.
+        balancedSyncStreamRef.current = null;
         setBalancedSyncProgress(null);
       },
       onDone: () => {
+        // Only clear the ref — do NOT touch progress here.
+        // Setting progress to null would change the dep array trigger and cause a re-subscription loop.
         if (balancedSyncStreamRef.current === balancedSyncGenerationId) {
           balancedSyncStreamRef.current = null;
         }
-        setBalancedSyncProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
     });
-  }, [applyBalancedSyncTerminalPayload, balancedSyncGenerationId, balancedSyncProgress, isBalancedPreviewMode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyBalancedSyncTerminalPayload, balancedSyncGenerationId, isBalancedPreviewMode]);
+
 
   useEffect(() => {
     if (typeof onBalancedSyncGenerationIdChange === 'function') {
@@ -1520,6 +1533,17 @@ export default function CreationStudio({
   useEffect(() => {
     onSubtitlesFontSizeChange?.(subtitlesFontSize);
   }, [onSubtitlesFontSizeChange, subtitlesFontSize]);
+
+  // When a subtitle cue is selected from the timeline, auto-scroll it into view in the SRT table.
+  useEffect(() => {
+    if (!selectedSrtCueId) return;
+    // Small delay to let the leftTab state update + re-render finish
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector(`[data-cue-id="${selectedSrtCueId}"]`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [selectedSrtCueId]);
 
   useEffect(() => {
     onSubtitlesBackgroundBlurChange?.(subtitlesBackgroundBlur);
@@ -1597,7 +1621,7 @@ export default function CreationStudio({
       setIsGenerated(
         Boolean(
           (typeof initialVoiceOverS3Key === 'string' && initialVoiceOverS3Key.trim()) ||
-            (typeof initialVoiceOverAudioUrl === 'string' && initialVoiceOverAudioUrl.trim()),
+          (typeof initialVoiceOverAudioUrl === 'string' && initialVoiceOverAudioUrl.trim()),
         ),
       );
       setVoiceOverEnabled(Boolean(initialVoiceOverEnabled));
@@ -1836,7 +1860,7 @@ export default function CreationStudio({
       applyVoiceRate();
       // Don't spam play() calls — only try when paused.
       if (a.paused) {
-        void a.play().catch(() => {});
+        void a.play().catch(() => { });
       }
     };
     const onPause = () => {
@@ -1849,7 +1873,7 @@ export default function CreationStudio({
     const onSeeked = () => {
       hardSyncToVideo();
       applyVoiceRate();
-      if (!v.paused && a.paused) void a.play().catch(() => {});
+      if (!v.paused && a.paused) void a.play().catch(() => { });
     };
     const onEnded = () => {
       // Ensure voice-over doesn't keep playing after video completes.
@@ -1983,7 +2007,7 @@ export default function CreationStudio({
       } catch {
         /* ignore */
       }
-      void a.play().catch(() => {});
+      void a.play().catch(() => { });
     }
 
     // Auto-clear the message after a bit.
@@ -2229,9 +2253,9 @@ export default function CreationStudio({
         translatedText: subtitleTranslatedText,
         ...(useSyncedVoiceSubs && voiceOverS3Key.trim()
           ? {
-              voiceOverS3Key: voiceOverS3Key.trim(),
-              voiceOverPlaybackRate: voiceOverPlaybackRate,
-            }
+            voiceOverS3Key: voiceOverS3Key.trim(),
+            voiceOverPlaybackRate: voiceOverPlaybackRate,
+          }
           : {}),
         ...(useOriginalAudioSyncRateForSubs ? { voiceOverPlaybackRate: voiceOverPlaybackRate } : {}),
       });
@@ -2510,6 +2534,17 @@ export default function CreationStudio({
         };
       }
 
+      // Export layers in the user-defined z-order: split by type but preserve relative order.
+      // blurLayers in order → FFmpeg applies bottom-first; textLayers in order → ASS dialogue order.
+      const orderedBlurForExport = overlayLayerOrder
+        .filter((e) => e.type === 'blur')
+        .map((e) => overlayBlurLayers.find((l) => l.id === e.id))
+        .filter((l): l is NonNullable<typeof l> => l != null);
+      const orderedTextForExport = overlayLayerOrder
+        .filter((e) => e.type === 'text')
+        .map((e) => overlayTextLayers.find((l) => l.id === e.id))
+        .filter((l): l is NonNullable<typeof l> => l != null);
+
       // Same POST /api/v1/video-editor/workspace/export → processing WorkspaceExportService (FFmpeg) as full editor.
       const payload = {
         videoUrl: noFrag,
@@ -2520,8 +2555,8 @@ export default function CreationStudio({
         trimEnd: 0,
         speed: 1,
         displayToNaturalScale,
-        textLayers: mapTextLayersForWorkspaceExport(overlayTextLayers),
-        blurLayers: mapBlurLayersForWorkspaceExport(overlayBlurLayers),
+        textLayers: mapTextLayersForWorkspaceExport(orderedTextForExport),
+        blurLayers: mapBlurLayersForWorkspaceExport(orderedBlurForExport),
         canvasFrame: { width: canvasW, height: canvasH },
         naturalVideo: { width: intrinsicW, height: intrinsicH },
         imageLayers: [],
@@ -2535,10 +2570,10 @@ export default function CreationStudio({
         subtitlesFontSize: subtitlesFontSize,
         ...(canMapPreviewFont
           ? {
-              subtitlesPreviewFontPx: previewBurnedSubtitleFontPx,
-              subtitlesPreviewCanvasW: canvasW,
-              subtitlesPreviewCanvasH: canvasH,
-            }
+            subtitlesPreviewFontPx: previewBurnedSubtitleFontPx,
+            subtitlesPreviewCanvasW: canvasW,
+            subtitlesPreviewCanvasH: canvasH,
+          }
           : {}),
         subtitlesBackgroundBlur: subtitlesBackgroundBlur,
         subtitlesBackgroundOpacity: subtitlesBackgroundOpacity,
@@ -2881,8 +2916,8 @@ export default function CreationStudio({
   const isBalancedSyncRunning = Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100);
   const isSubtitlesRunning = Boolean(
     (subtitlesProgress && subtitlesProgress.percent < 100) ||
-      (subtitlesGenerationId != null &&
-        (!subtitlesSrtText.trim() || !subtitlesDownloadUrl.trim())),
+    (subtitlesGenerationId != null &&
+      (!subtitlesSrtText.trim() || !subtitlesDownloadUrl.trim())),
   );
   const isExportPipelineBusy = exporting || (exportGenerationId != null && !exportedVideoUrl);
   const isAnyTaskRunning =
@@ -2910,7 +2945,6 @@ export default function CreationStudio({
             <button
               type="button"
               onClick={onDiscardWorkspace}
-              disabled={isAnyTaskRunning}
               className="h-8 rounded-md border border-red-500/30 bg-transparent px-3 text-xs font-semibold text-red-300 transition-colors hover:border-red-400/60 hover:bg-red-500/10"
             >
               {tEditor('buttons.discardWorkspace')}
@@ -2939,9 +2973,8 @@ export default function CreationStudio({
               {viralUnifiedJobBar.title}
             </p>
             <p
-              className={`text-[11px] font-semibold tabular-nums ${
-                viralUnifiedJobBar.done ? 'text-emerald-400' : 'text-muted-foreground'
-              }`}
+              className={`text-[11px] font-semibold tabular-nums ${viralUnifiedJobBar.done ? 'text-emerald-400' : 'text-muted-foreground'
+                }`}
             >
               {viralUnifiedJobBar.percent >= 0 ? `${viralUnifiedJobBar.percent}%` : '…'}
             </p>
@@ -2960,8 +2993,8 @@ export default function CreationStudio({
         </div>
       ) : null}
 
-      <div className="grid min-h-[640px] grid-cols-1 auto-rows-auto lg:grid-cols-[minmax(300px,420px)_1fr] lg:grid-rows-[auto_1fr] 2xl:grid-cols-[minmax(272px,360px)_minmax(0,1fr)_minmax(296px,400px)] 2xl:grid-rows-1">
-        <aside className="scrollbar-themed flex min-h-0 flex-col border-b border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto">
+      <div className="grid min-h-[640px] grid-cols-1 auto-rows-auto lg:grid-cols-[minmax(300px,420px)_1fr] lg:grid-rows-[auto_1fr]">
+        <aside className="scrollbar-themed flex min-h-0 flex-col border-b border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4">
           <div className="space-y-2">
             <button
               type="button"
@@ -2992,9 +3025,8 @@ export default function CreationStudio({
                 type="button"
                 onClick={() => setLeftTab('script')}
                 disabled={isAnyTaskRunning}
-                className={`rounded px-2 py-1 text-center transition-colors ${
-                  leftTab === 'script' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
-                }`}
+                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'script' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
+                  }`}
               >
                 {tEditor('buttons.scriptTab')}
               </button>
@@ -3002,9 +3034,8 @@ export default function CreationStudio({
                 type="button"
                 onClick={() => setLeftTab('srt')}
                 disabled={isAnyTaskRunning}
-                className={`rounded px-2 py-1 text-center transition-colors ${
-                  leftTab === 'srt' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
-                }`}
+                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'srt' ? 'bg-subtle text-foreground' : 'bg-subtle/60 text-muted hover:bg-subtle'
+                  }`}
               >
                 {tEditor('buttons.srtEditorTab')}
               </button>
@@ -3166,7 +3197,15 @@ export default function CreationStudio({
                       ) : (
                         <div className="space-y-1.5">
                           {editableCues.slice(0, 80).map((c) => (
-                            <div key={c.id} className="rounded-md border border-card-border bg-card px-2 py-1.5">
+                            <div
+                              key={c.id}
+                              data-cue-id={c.id}
+                              onClick={() => setSelectedSrtCueId((prev) => (prev === c.id ? null : c.id))}
+                              className={`rounded-md border px-2 py-1.5 cursor-pointer transition-colors ${selectedSrtCueId === c.id
+                                ? 'border-amber-500/60 bg-amber-950/30 ring-1 ring-amber-500/30'
+                                : 'border-card-border bg-card hover:border-card-border/80 hover:bg-card/80'
+                                }`}
+                            >
                               <div className="flex flex-wrap items-start gap-2">
                                 <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
                                   Start
@@ -3299,7 +3338,7 @@ export default function CreationStudio({
           </div>
         </aside>
 
-        <div className="flex min-h-0 flex-col border-b border-card-border bg-background/20 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0 2xl:col-start-2 2xl:row-span-1 2xl:border-r 2xl:border-card-border">
+        <div className="flex min-h-0 flex-col border-b border-card-border bg-background/20 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0">
 
           <div className="flex items-center justify-between border-b border-card-border px-3 py-2 text-[11px] text-muted">
             <span>Editing Mode</span>
@@ -3307,7 +3346,7 @@ export default function CreationStudio({
           </div>
           <div
             ref={previewSlotRef}
-            className="flex min-h-[420px] w-full items-center justify-center border-b border-card-border bg-subtle/20 px-5 py-4"
+            className="flex w-full items-center justify-center border-b border-card-border bg-subtle/20"
           >
             <div
               className="relative shrink-0 overflow-hidden rounded-lg border border-card-border bg-black"
@@ -3341,14 +3380,35 @@ export default function CreationStudio({
                 onPlay={() => setPreviewIsPlaying(true)}
                 onPause={() => setPreviewIsPlaying(false)}
               />
-              {overlayBlurLayers.map((layer, i) => (
-                <ViralBlurLayer
-                  key={layer.id}
-                  layer={layer}
-                  currentTimeSec={previewPlaybackTime}
-                  stackIndex={i}
-                />
-              ))}
+              {/* Render all overlay layers (blur + text) in unified z-order so preview matches timeline order */}
+              {overlayLayerOrder.map((entry, i) => {
+                if (entry.type === 'blur') {
+                  const layer = overlayBlurLayers.find((l) => l.id === entry.id);
+                  if (!layer) return null;
+                  return (
+                    <ViralBlurLayer
+                      key={layer.id}
+                      layer={layer}
+                      currentTimeSec={previewPlaybackTime}
+                      stackIndex={i}
+                    />
+                  );
+                }
+                if (entry.type === 'text') {
+                  const layer = overlayTextLayers.find((l) => l.id === entry.id);
+                  if (!layer) return null;
+                  return (
+                    <ViralTextLayer
+                      key={layer.id}
+                      layer={layer}
+                      currentTimeSec={previewPlaybackTime}
+                      stackIndex={i}
+                    />
+                  );
+                }
+                return null;
+              })}
+              {/* SRT subtitle overlay — always on top of blur/text overlays (highest z) */}
               {showSubtitlesOverlay && activeSubtitleText.trim() ? (
                 <div
                   className="absolute"
@@ -3357,13 +3417,12 @@ export default function CreationStudio({
                     top: `${Math.round(subtitlesPosition.y * 1000) / 10}%`,
                     transform: 'translate(-50%, -50%)',
                     pointerEvents: subtitlesEditPosition ? 'auto' : 'none',
-                    zIndex: 35,
+                    zIndex: 200,
                   }}
                   onPointerDown={(e) => {
                     if (!subtitlesEditPosition) return;
                     const el = e.currentTarget.parentElement;
                     if (!el) return;
-                    const rect = el.getBoundingClientRect();
                     subtitleDragRef.current = {
                       active: true,
                       startX: e.clientX,
@@ -3404,12 +3463,12 @@ export default function CreationStudio({
                     title={
                       previewIntrinsicPx
                         ? `Preview ${Math.round(previewBurnedSubtitleFontPx)}px → burn ~${previewSubtitleFontPxToFfmpegFontPx(
-                            previewBurnedSubtitleFontPx,
-                            Math.max(1, Math.round(previewFramePx.w)),
-                            Math.max(1, Math.round(previewFramePx.h)),
-                            previewIntrinsicPx.w,
-                            previewIntrinsicPx.h,
-                          )}px at ${previewIntrinsicPx.w}×${previewIntrinsicPx.h}`
+                          previewBurnedSubtitleFontPx,
+                          Math.max(1, Math.round(previewFramePx.w)),
+                          Math.max(1, Math.round(previewFramePx.h)),
+                          previewIntrinsicPx.w,
+                          previewIntrinsicPx.h,
+                        )}px at ${previewIntrinsicPx.w}×${previewIntrinsicPx.h}`
                         : `Burn-in (slider): ${subtitlesFontSize}px — load preview to map to output`
                     }
                   >
@@ -3420,14 +3479,6 @@ export default function CreationStudio({
                   ) : null}
                 </div>
               ) : null}
-              {overlayTextLayers.map((layer, i) => (
-                <ViralTextLayer
-                  key={layer.id}
-                  layer={layer}
-                  currentTimeSec={previewPlaybackTime}
-                  stackIndex={i}
-                />
-              ))}
               {isBalancedPreviewMode ? (
                 <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
                   <span className="font-semibold">All set — synced preview on deck</span>
@@ -3469,6 +3520,11 @@ export default function CreationStudio({
               textLayers={overlayTextLayers}
               blurLayers={overlayBlurLayers}
               selectedLayerId={overlaySelectedId}
+              srtCues={editableCues.length > 0 ? (editableCues as SrtCueForTimeline[]) : undefined}
+              selectedSrtCueId={selectedSrtCueId}
+              layerOrder={overlayLayerOrder}
+              onMoveLayerUp={moveOverlayLayerUp}
+              onMoveLayerDown={moveOverlayLayerDown}
               videoLabel={videoName.trim() || tOverlays('videoClip')}
               emptyLabel={tOverlays('timelineEmpty')}
               loadingLabel={tOverlays('timelineLoading')}
@@ -3483,11 +3539,33 @@ export default function CreationStudio({
               onDeselect={() => setOverlaySelectedId(null)}
               onUpdateTextTiming={(id, patch) => updateOverlayText(id, patch)}
               onUpdateBlurTiming={(id, patch) => updateOverlayBlur(id, patch)}
+              onSelectSrtCue={(id) => {
+                setSelectedSrtCueId(id);
+                // Switch to SRT tab so the user sees the cue highlighted
+                setLeftTab('srt');
+              }}
+              onUpdateSrtCueTiming={(id, patch) => {
+                setEditableCues((prev) => {
+                  const next = prev.map((c) =>
+                    c.id === id
+                      ? {
+                        ...c,
+                        startTime: patch.startTime ?? c.startTime,
+                        endTime: patch.endTime ?? c.endTime,
+                      }
+                      : c,
+                  );
+                  // Sync back to the SRT text so export/burn uses updated times
+                  srtSyncFromTableRef.current = true;
+                  setSubtitlesSrtText(cuesToSrt(next));
+                  return next;
+                });
+              }}
             />
           </div>
 
           {!isBalancedPreviewMode ? (
-            <div className="border-b border-card-border px-3 py-3 text-[11px] text-muted">
+            <div className="border-b border-card-border px-3 py-10 text-[11px] text-muted">
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2">
                   <input
@@ -3597,7 +3675,7 @@ export default function CreationStudio({
           </div>
         </div>
 
-        <aside className="scrollbar-themed flex min-h-0 flex-col border-t border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 2xl:col-start-3 2xl:row-start-1 2xl:max-h-[min(100vh-12rem,900px)] 2xl:overflow-y-auto 2xl:border-t-0 2xl:border-l 2xl:border-card-border">
+        <aside className="scrollbar-themed flex min-h-0 flex-col border-t border-card-border bg-subtle/20 p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4">
           <div className="space-y-4 pt-1">
             <div className="rounded-xl border border-card-border bg-card/45 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -3748,13 +3826,12 @@ export default function CreationStudio({
                 </button>
                 {syncUi.kind !== 'idle' ? (
                   <div
-                    className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${
-                      syncUi.kind === 'error'
-                        ? 'border-red-500/30 bg-red-500/10 text-red-200'
-                        : syncUi.kind === 'warn'
-                          ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                          : 'border-card-border bg-subtle/20 text-muted'
-                    }`}
+                    className={`rounded-lg border px-3 py-2 text-xs leading-relaxed ${syncUi.kind === 'error'
+                      ? 'border-red-500/30 bg-red-500/10 text-red-200'
+                      : syncUi.kind === 'warn'
+                        ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
+                        : 'border-card-border bg-subtle/20 text-muted'
+                      }`}
                   >
                     {syncUi.message}
                   </div>
@@ -3833,379 +3910,379 @@ export default function CreationStudio({
         </aside>
       </div>
 
-        {showTranscribeConfirm ? (
+      {showTranscribeConfirm ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm transcription"
+          onMouseDown={() => setShowTranscribeConfirm(false)}
+        >
           <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm transcription"
-            onMouseDown={() => setShowTranscribeConfirm(false)}
+            className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div
-              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Transcribe this video?</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This will use{' '}
-                <span className="font-semibold text-foreground">{estimate?.reserveCostPoints ?? '—'}</span> points to
-                generate a transcript for your viral workspace.
-              </p>
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => setShowTranscribeConfirm(false)}
-                >
-                  {tEditor('buttons.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={
-                    isAnyTaskRunning ||
-                    isTranscribing ||
-                    Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
-                    !workspaceS3Key ||
-                    !videoMetadataReady
-                  }
-                  onClick={() => {
-                    setShowTranscribeConfirm(false);
-                    void startTranscribe();
-                  }}
-                >
-                  {tEditor('buttons.continue')}
-                </button>
-              </div>
+            <p className="text-sm font-semibold text-foreground">Transcribe this video?</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will use{' '}
+              <span className="font-semibold text-foreground">{estimate?.reserveCostPoints ?? '—'}</span> points to
+              generate a transcript for your viral workspace.
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => setShowTranscribeConfirm(false)}
+              >
+                {tEditor('buttons.cancel')}
+              </button>
+              <button
+                type="button"
+                className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                disabled={
+                  isAnyTaskRunning ||
+                  isTranscribing ||
+                  Boolean(transcribeProgress && transcribeProgress.percent < 100) ||
+                  !workspaceS3Key ||
+                  !videoMetadataReady
+                }
+                onClick={() => {
+                  setShowTranscribeConfirm(false);
+                  void startTranscribe();
+                }}
+              >
+                {tEditor('buttons.continue')}
+              </button>
             </div>
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {showTranslateConfirm ? (
+      {showTranslateConfirm ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm translation"
+          onMouseDown={() => setShowTranslateConfirm(false)}
+        >
           <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm translation"
-            onMouseDown={() => setShowTranslateConfirm(false)}
+            className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div
-              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Translate this transcript?</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This will translate your transcript and use{' '}
-                <span className="font-semibold text-foreground">
-                  {translateEstimateLoading ? '…' : translateEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {translateEstimateError ? (
-                <p className="mt-2 text-sm text-red-300">{translateEstimateError}</p>
-              ) : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => setShowTranslateConfirm(false)}
-                >
-                  {tEditor('buttons.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={!isTranscribed || isTranslating || translateEstimateLoading || isAnyTaskRunning}
-                  onClick={() => {
-                    setShowTranslateConfirm(false);
-                    void handleTranslate();
-                  }}
-                >
-                  {tEditor('buttons.continue')}
-                </button>
-              </div>
+            <p className="text-sm font-semibold text-foreground">Translate this transcript?</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will translate your transcript and use{' '}
+              <span className="font-semibold text-foreground">
+                {translateEstimateLoading ? '…' : translateEstimate?.reserveCostPoints ?? '—'}
+              </span>{' '}
+              points.
+            </p>
+            {translateEstimateError ? (
+              <p className="mt-2 text-sm text-red-300">{translateEstimateError}</p>
+            ) : null}
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => setShowTranslateConfirm(false)}
+              >
+                {tEditor('buttons.cancel')}
+              </button>
+              <button
+                type="button"
+                className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                disabled={!isTranscribed || isTranslating || translateEstimateLoading || isAnyTaskRunning}
+                onClick={() => {
+                  setShowTranslateConfirm(false);
+                  void handleTranslate();
+                }}
+              >
+                {tEditor('buttons.continue')}
+              </button>
             </div>
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {showSubtitlesConfirm ? (
+      {showSubtitlesConfirm ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm subtitles"
+          onMouseDown={() => setShowSubtitlesConfirm(false)}
+        >
           <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm subtitles"
-            onMouseDown={() => setShowSubtitlesConfirm(false)}
+            className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div
-              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Generate subtitles?</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This will generate subtitles for your video and use{' '}
-                <span className="font-semibold text-foreground">
-                  {subtitlesEstimateLoading ? '…' : subtitlesEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {subtitlesEstimateError ? <p className="mt-2 text-sm text-red-300">{subtitlesEstimateError}</p> : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => setShowSubtitlesConfirm(false)}
-                >
-                  {tEditor('buttons.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={subtitlesEstimateLoading || isSubtitlesRunning || isAnyTaskRunning}
-                  onClick={() => {
-                    setShowSubtitlesConfirm(false);
-                    void startSubtitles();
-                  }}
-                >
-                  {isSubtitlesRunning ? tEditor('buttons.generatingSubtitles') : tEditor('buttons.confirm')}
-                </button>
-              </div>
+            <p className="text-sm font-semibold text-foreground">Generate subtitles?</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will generate subtitles for your video and use{' '}
+              <span className="font-semibold text-foreground">
+                {subtitlesEstimateLoading ? '…' : subtitlesEstimate?.reserveCostPoints ?? '—'}
+              </span>{' '}
+              points.
+            </p>
+            {subtitlesEstimateError ? <p className="mt-2 text-sm text-red-300">{subtitlesEstimateError}</p> : null}
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => setShowSubtitlesConfirm(false)}
+              >
+                {tEditor('buttons.cancel')}
+              </button>
+              <button
+                type="button"
+                className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                disabled={subtitlesEstimateLoading || isSubtitlesRunning || isAnyTaskRunning}
+                onClick={() => {
+                  setShowSubtitlesConfirm(false);
+                  void startSubtitles();
+                }}
+              >
+                {isSubtitlesRunning ? tEditor('buttons.generatingSubtitles') : tEditor('buttons.confirm')}
+              </button>
             </div>
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {showExportConfirm ? (
+      {showExportConfirm ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm export"
+          onMouseDown={() => setShowExportConfirm(false)}
+        >
           <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm export"
-            onMouseDown={() => setShowExportConfirm(false)}
+            className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div
-              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Export final video?</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This will export your current edits (protection + subtitles if enabled) and use{' '}
-                <span className="font-semibold text-foreground">
-                  {exportEstimateLoading ? '…' : exportEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {exportEstimateError ? <p className="mt-2 text-sm text-red-300">{exportEstimateError}</p> : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => setShowExportConfirm(false)}
-                >
-                  {tEditor('buttons.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
-                  disabled={exportEstimateLoading || isAnyTaskRunning}
-                  onClick={() => {
-                    setShowExportConfirm(false);
-                    void startFinalExport();
-                  }}
-                >
-                  {tEditor('buttons.confirm')}
-                </button>
-              </div>
+            <p className="text-sm font-semibold text-foreground">Export final video?</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will export your current edits (protection + subtitles if enabled) and use{' '}
+              <span className="font-semibold text-foreground">
+                {exportEstimateLoading ? '…' : exportEstimate?.reserveCostPoints ?? '—'}
+              </span>{' '}
+              points.
+            </p>
+            {exportEstimateError ? <p className="mt-2 text-sm text-red-300">{exportEstimateError}</p> : null}
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => setShowExportConfirm(false)}
+              >
+                {tEditor('buttons.cancel')}
+              </button>
+              <button
+                type="button"
+                className="h-9 rounded-md bg-emerald-600 px-3 text-xs font-semibold text-white transition-colors hover:bg-emerald-500 disabled:opacity-50"
+                disabled={exportEstimateLoading || isAnyTaskRunning}
+                onClick={() => {
+                  setShowExportConfirm(false);
+                  void startFinalExport();
+                }}
+              >
+                {tEditor('buttons.confirm')}
+              </button>
             </div>
           </div>
-        ) : null}
+        </div>
+      ) : null}
 
-        {showVoiceStyleModal ? (
+      {showVoiceStyleModal ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="voice-style-modal-title"
+          onMouseDown={() => setShowVoiceStyleModal(false)}
+        >
           <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="voice-style-modal-title"
-            onMouseDown={() => setShowVoiceStyleModal(false)}
+            className="viral-modal-panel flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col rounded-2xl"
+            onMouseDown={(e) => e.stopPropagation()}
           >
-            <div
-              className="viral-modal-panel flex max-h-[min(90vh,720px)] w-full max-w-lg flex-col rounded-2xl"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <div className="viral-modal-divider border-b px-4 py-3">
-                <p id="voice-style-modal-title" className="text-sm font-semibold text-foreground">
-                  {tViral('voiceStyleModalTitle')}
+            <div className="viral-modal-divider border-b px-4 py-3">
+              <p id="voice-style-modal-title" className="text-sm font-semibold text-foreground">
+                {tViral('voiceStyleModalTitle')}
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">{tViral('voiceStyleModalSubtitle')}</p>
+            </div>
+            <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto bg-subtle px-4 py-4">
+              <VoiceToneVoicePicker
+                catalog={voiceModelCatalog}
+                loading={voiceModelsLoading}
+                error={voiceModelsError}
+                toneGroupId={voiceToneGroupId}
+                onToneGroupChange={setVoiceToneGroupId}
+                selectedVoiceId={selectedVoiceId}
+                onVoiceIdChange={setSelectedVoiceId}
+                disabled={isGenerating || isAnyTaskRunning}
+              />
+            </div>
+            <div className="viral-modal-divider flex justify-end border-t px-4 py-3">
+              <button
+                type="button"
+                className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                onClick={() => setShowVoiceStyleModal(false)}
+              >
+                {tViral('voiceStyleModalDone')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showVoiceOverConfirm ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm voice over"
+          onMouseDown={() => setShowVoiceOverConfirm(false)}
+        >
+          <div
+            className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold text-foreground">Generate voice over?</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will generate an audio voice over for your script and use{' '}
+              <span className="font-semibold text-foreground">
+                {voiceOverEstimateLoading ? '…' : voiceOverPointsEstimate?.reserveCostPoints ?? '—'}
+              </span>{' '}
+              points.
+            </p>
+            {voiceOverEstimateError ? (
+              <p className="mt-2 text-sm text-red-300">{voiceOverEstimateError}</p>
+            ) : null}
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => setShowVoiceOverConfirm(false)}
+              >
+                {tEditor('buttons.cancel')}
+              </button>
+              <button
+                type="button"
+                className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                disabled={!isTranslated || isGenerating || isAnyTaskRunning}
+                onClick={() => {
+                  setShowVoiceOverConfirm(false);
+                  void startVoiceOver();
+                }}
+              >
+                {tEditor('buttons.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBalancedSyncConfirm ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Confirm balanced sync"
+          onMouseDown={() => setShowBalancedSyncConfirm(false)}
+        >
+          <div
+            className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
+            onMouseDown={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-semibold text-foreground">Render balanced sync?</p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              This will create a combined video preview and use{' '}
+              <span className="font-semibold text-foreground">
+                {balancedSyncEstimateLoading ? '…' : balancedSyncPointsEstimate?.reserveCostPoints ?? '—'}
+              </span>{' '}
+              points.
+            </p>
+            {balancedSyncEstimateError ? (
+              <p className="mt-2 text-sm text-red-300">{balancedSyncEstimateError}</p>
+            ) : null}
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => setShowBalancedSyncConfirm(false)}
+              >
+                {tEditor('buttons.cancel')}
+              </button>
+              <button
+                type="button"
+                className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
+                disabled={balancedSyncEstimateLoading || isBalancedSyncRunning || isAnyTaskRunning}
+                onClick={() => {
+                  setShowBalancedSyncConfirm(false);
+                  void handleStartBalancedSync();
+                }}
+              >
+                {isBalancedSyncRunning ? tEditor('buttons.renderingBalancedSync') : tEditor('buttons.confirm')}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {showBalancedPreview && isBalancedPreviewMode ? (
+        <div
+          className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Balanced sync preview"
+        >
+          <div className="viral-modal-panel w-full max-w-3xl overflow-hidden rounded-2xl">
+            <div className="viral-modal-divider flex items-center justify-between border-b px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Balanced sync preview</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Listen carefully — accept only if it feels aligned.
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">{tViral('voiceStyleModalSubtitle')}</p>
               </div>
-              <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto bg-subtle px-4 py-4">
-                <VoiceToneVoicePicker
-                  catalog={voiceModelCatalog}
-                  loading={voiceModelsLoading}
-                  error={voiceModelsError}
-                  toneGroupId={voiceToneGroupId}
-                  onToneGroupChange={setVoiceToneGroupId}
-                  selectedVoiceId={selectedVoiceId}
-                  onVoiceIdChange={setSelectedVoiceId}
-                  disabled={isGenerating || isAnyTaskRunning}
-                />
-              </div>
-              <div className="viral-modal-divider flex justify-end border-t px-4 py-3">
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                  onClick={() => setShowVoiceStyleModal(false)}
-                >
-                  {tViral('voiceStyleModalDone')}
-                </button>
-              </div>
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => setShowBalancedPreview(false)}
+              >
+                {tEditor('buttons.close')}
+              </button>
+            </div>
+            <div className="bg-black p-3">
+              <video
+                src={balancedSyncPreviewUrl}
+                controls
+                playsInline
+                preload="auto"
+                className="mx-auto h-[420px] w-full max-w-[900px] rounded-lg object-contain"
+              />
+            </div>
+            <div className="viral-modal-divider flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
+              <button
+                type="button"
+                className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
+                onClick={() => void handleRejectBalancedSync()}
+              >
+                {tEditor('buttons.reject')}
+              </button>
+              <button
+                type="button"
+                className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
+                onClick={() => void handleAcceptBalancedSync()}
+              >
+                {tEditor('buttons.accept')}
+              </button>
             </div>
           </div>
-        ) : null}
-
-        {showVoiceOverConfirm ? (
-          <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm voice over"
-            onMouseDown={() => setShowVoiceOverConfirm(false)}
-          >
-            <div
-              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Generate voice over?</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This will generate an audio voice over for your script and use{' '}
-                <span className="font-semibold text-foreground">
-                  {voiceOverEstimateLoading ? '…' : voiceOverPointsEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {voiceOverEstimateError ? (
-                <p className="mt-2 text-sm text-red-300">{voiceOverEstimateError}</p>
-              ) : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => setShowVoiceOverConfirm(false)}
-                >
-                  {tEditor('buttons.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={!isTranslated || isGenerating || isAnyTaskRunning}
-                  onClick={() => {
-                    setShowVoiceOverConfirm(false);
-                    void startVoiceOver();
-                  }}
-                >
-                  {tEditor('buttons.confirm')}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showBalancedSyncConfirm ? (
-          <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Confirm balanced sync"
-            onMouseDown={() => setShowBalancedSyncConfirm(false)}
-          >
-            <div
-              className="viral-modal-panel w-full max-w-md rounded-2xl p-4"
-              onMouseDown={(e) => e.stopPropagation()}
-            >
-              <p className="text-sm font-semibold text-foreground">Render balanced sync?</p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                This will create a combined video preview and use{' '}
-                <span className="font-semibold text-foreground">
-                  {balancedSyncEstimateLoading ? '…' : balancedSyncPointsEstimate?.reserveCostPoints ?? '—'}
-                </span>{' '}
-                points.
-              </p>
-              {balancedSyncEstimateError ? (
-                <p className="mt-2 text-sm text-red-300">{balancedSyncEstimateError}</p>
-              ) : null}
-              <div className="mt-4 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => setShowBalancedSyncConfirm(false)}
-                >
-                  {tEditor('buttons.cancel')}
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff] disabled:opacity-50"
-                  disabled={balancedSyncEstimateLoading || isBalancedSyncRunning || isAnyTaskRunning}
-                  onClick={() => {
-                    setShowBalancedSyncConfirm(false);
-                    void handleStartBalancedSync();
-                  }}
-                >
-                  {isBalancedSyncRunning ? tEditor('buttons.renderingBalancedSync') : tEditor('buttons.confirm')}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
-
-        {showBalancedPreview && isBalancedPreviewMode ? (
-          <div
-            className="fixed inset-0 z-120 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Balanced sync preview"
-          >
-            <div className="viral-modal-panel w-full max-w-3xl overflow-hidden rounded-2xl">
-              <div className="viral-modal-divider flex items-center justify-between border-b px-4 py-3">
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Balanced sync preview</p>
-                  <p className="mt-0.5 text-xs text-muted-foreground">
-                    Listen carefully — accept only if it feels aligned.
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => setShowBalancedPreview(false)}
-                >
-                  {tEditor('buttons.close')}
-                </button>
-              </div>
-              <div className="bg-black p-3">
-                <video
-                  src={balancedSyncPreviewUrl}
-                  controls
-                  playsInline
-                  preload="auto"
-                  className="mx-auto h-[420px] w-full max-w-[900px] rounded-lg object-contain"
-                />
-              </div>
-              <div className="viral-modal-divider flex flex-wrap items-center justify-end gap-2 border-t px-4 py-3">
-                <button
-                  type="button"
-                  className="h-9 rounded-md border border-zinc-300 bg-zinc-100 px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-zinc-200 dark:border-white/20 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-slate-700"
-                  onClick={() => void handleRejectBalancedSync()}
-                >
-                  {tEditor('buttons.reject')}
-                </button>
-                <button
-                  type="button"
-                  className="h-9 rounded-md bg-[#7c5cff] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                  onClick={() => void handleAcceptBalancedSync()}
-                >
-                  {tEditor('buttons.accept')}
-                </button>
-              </div>
-            </div>
-          </div>
-        ) : null}
+        </div>
+      ) : null}
 
     </section>
   );
