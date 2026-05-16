@@ -863,14 +863,32 @@ export default function CreationStudio({
 
   const activePreviewSrc = isBalancedPreviewMode ? String(balancedSyncPreviewUrl ?? '') : String(videoUrl ?? '');
 
+  /**
+   * Fixed canvas size for the preview frame.
+   * The DOM dimensions stay constant so overlay layers (blur, text, SRT) never drift.
+   * A CSS `transform: scale(previewScale)` is applied to fit the canvas within the
+   * available slot — exactly like a real video editor's zoom-to-fit.
+   */
+  const PREVIEW_FIXED_MAX_W = 800;
   const previewFramePx = useMemo(() => {
-    const maxW = Math.max(1, previewSlotPx.w);
-    const maxH = Math.max(1, Math.min(previewSlotPx.h, STUDIO_PREVIEW_MAX_VIDEO_HEIGHT_PX));
+    const maxW = PREVIEW_FIXED_MAX_W;
+    const maxH = STUDIO_PREVIEW_MAX_VIDEO_HEIGHT_PX;
     if (!previewIntrinsicPx || previewIntrinsicPx.w <= 0 || previewIntrinsicPx.h <= 0) {
       return fitVideoDisplayRect(16, 9, maxW, maxH);
     }
     return fitVideoDisplayRect(previewIntrinsicPx.w, previewIntrinsicPx.h, maxW, maxH);
-  }, [previewSlotPx, previewIntrinsicPx]);
+  }, [previewIntrinsicPx]);
+
+  /** CSS scale factor to fit the fixed canvas within the measured slot (zoom-to-fit). */
+  const previewScale = useMemo(() => {
+    const fw = previewFramePx.w;
+    const fh = previewFramePx.h;
+    const padding = 16; // leave some breathing room (matches p-2 on slot)
+    const slotW = Math.max(1, previewSlotPx.w - padding);
+    const slotH = Math.max(1, previewSlotPx.h - padding);
+    const scale = Math.min(slotW / fw, slotH / fh, 1); // never upscale beyond 1
+    return Math.max(0.1, scale);
+  }, [previewFramePx, previewSlotPx]);
 
   /** ASS burn-in uses FontSize in video pixel space (PlayResY = frame height). Match preview CSS px to that. */
   const previewBurnedSubtitleFontPx = useMemo(() => {
@@ -1204,8 +1222,8 @@ export default function CreationStudio({
       },
       onTerminal: applyTranscribeTerminalPayload,
     });
-  // transcribeProgress, transcriptText, isTranscribed excluded — use functional updaters / not needed to decide whether to open.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // transcribeProgress, transcriptText, isTranscribed excluded — use functional updaters / not needed to decide whether to open.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyTranscribeTerminalPayload, isTranscribing, transcribeGenerationId]);
 
   // Resume voice over after refresh (voice-over SSE uses a string jobId).
@@ -1259,8 +1277,8 @@ export default function CreationStudio({
         setVoiceOverProgress(null);
       },
     });
-  // voiceOverProgress intentionally excluded — using functional setVoiceOverProgress so it doesn't trigger re-runs.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // voiceOverProgress intentionally excluded — using functional setVoiceOverProgress so it doesn't trigger re-runs.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isGenerating, tVo, voiceOverAudioUrl, voiceOverJobId]);
 
   // Resume export after refresh (do NOT auto-download; just show link when ready).
@@ -1289,8 +1307,8 @@ export default function CreationStudio({
       },
       onTerminal: applyExportTerminalPayload,
     });
-  // exportedVideoUrl excluded — applyExportTerminalPayload already clears jobId on completion.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // exportedVideoUrl excluded — applyExportTerminalPayload already clears jobId on completion.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applyExportTerminalPayload, exportGenerationId]);
 
   // Resume subtitles after refresh: reconnect SSE until SRT + download URL are present.
@@ -1317,8 +1335,8 @@ export default function CreationStudio({
       },
       onTerminal: (payload) => applySubtitlesJobTerminal(subtitlesGenerationId, payload),
     });
-  // subtitlesSrtText and subtitlesDownloadUrl excluded — applySubtitlesJobTerminal clears jobId on completion.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // subtitlesSrtText and subtitlesDownloadUrl excluded — applySubtitlesJobTerminal clears jobId on completion.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applySubtitlesJobTerminal, subtitlesGenerationId]);
 
   // Recover translate text by generation id when the HTTP response was lost (e.g. refresh).
@@ -2940,8 +2958,8 @@ export default function CreationStudio({
     isExportPipelineBusy;
 
   return (
-    <section className="viral-studio-shell overflow-hidden rounded-2xl border border-zinc-200/90 shadow-[0_8px_30px_rgba(15,23,42,0.06)] dark:border-white/10 dark:shadow-[0_24px_56px_rgba(0,0,0,0.45)]">
-      <header className="viral-studio-header flex items-center justify-between border-b border-zinc-200/90 bg-white px-3 py-2.5 dark:border-white/10 dark:bg-zinc-900/70">
+    <section className="viral-studio-shell overflow-hidden rounded-2xl border border-zinc-200/90 shadow-[0_8px_30px_rgba(15,23,42,0.06)] dark:border-violet-500/15 dark:shadow-[0_24px_56px_rgba(0,0,0,0.45)]">
+      <header className="viral-studio-header flex items-center justify-between border-b border-violet-200/50 bg-violet-50/30 px-3 py-2.5 dark:border-violet-500/15 dark:bg-zinc-900/70">
         <div className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-foreground">
           <Subtitles className="h-4 w-4 text-[#b9a4ff]" aria-hidden />
           AI Video Editor
@@ -2969,7 +2987,7 @@ export default function CreationStudio({
 
       {viralUnifiedJobBar ? (
         <div
-          className="viral-studio-job-bar border-b border-zinc-200/90 bg-white px-3 py-2.5 lg:px-4 dark:border-white/10 dark:bg-zinc-900/40"
+          className="viral-studio-job-bar border-b border-violet-200/50 bg-violet-50/30 px-3 py-2.5 lg:px-4 dark:border-violet-500/15 dark:bg-zinc-900/40"
           role="status"
           aria-live="polite"
           aria-label={`${viralUnifiedJobBar.title}: ${viralUnifiedJobBar.label}`}
@@ -3001,7 +3019,7 @@ export default function CreationStudio({
       ) : null}
 
       <div className="grid min-h-[640px] grid-cols-1 auto-rows-auto lg:grid-cols-[minmax(300px,420px)_1fr] lg:grid-rows-[auto_1fr]">
-        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-b border-zinc-200/90 bg-white p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 dark:border-white/10 dark:bg-zinc-950/50">
+        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-b border-violet-200/50 bg-violet-50/30 p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 dark:border-violet-500/15 dark:bg-zinc-950/50">
           <div className="space-y-2">
             <button
               type="button"
@@ -3067,7 +3085,7 @@ export default function CreationStudio({
                     }
                   }}
                   placeholder={tEditor('labels.scriptPlaceholder')}
-                  className="min-h-[220px] w-full resize-y rounded border border-zinc-200 bg-white px-2 py-2 text-[11px] leading-snug text-foreground outline-none dark:border-white/10 dark:bg-zinc-900/40"
+                  className="min-h-[220px] w-full resize-y rounded border border-violet-200/50 bg-violet-50/20 px-2 py-2 text-[11px] leading-snug text-foreground outline-none dark:border-violet-500/15 dark:bg-zinc-900/40"
                 />
               ) : (
                 <>
@@ -3104,7 +3122,7 @@ export default function CreationStudio({
                           Preview scales this to your clip so on-screen size matches burned export.
                         </p>
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="inline-flex items-center overflow-hidden rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40">
+                          <div className="inline-flex items-center overflow-hidden rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40">
                             <button
                               type="button"
                               className="h-7 w-7 border-r border-card-border text-[13px] font-semibold text-foreground hover:bg-violet-50/50 dark:hover:bg-white/5 disabled:opacity-50"
@@ -3148,7 +3166,7 @@ export default function CreationStudio({
                               const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
                               setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
                             }}
-                            className="h-7 rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 px-1.5 text-[10px] font-semibold text-foreground outline-none hover:bg-violet-50/50 dark:hover:bg-white/5"
+                            className="h-7 rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 px-1.5 text-[10px] font-semibold text-foreground outline-none hover:bg-violet-100/60 dark:hover:bg-white/5"
                             aria-label="Preset subtitle sizes"
                           >
                             {[14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 60].map((n) => (
@@ -3198,7 +3216,7 @@ export default function CreationStudio({
                     </div>
                   </div>
                   <div className="flex min-h-0 max-h-[min(420px,48vh)] flex-col gap-2">
-                    <div className="viral-studio-muted-surface scrollbar-themed min-h-0 flex-1 overflow-auto rounded border p-1.5">
+                    <div className="viral-studio-muted-surface scrollbar-themed min-h-0 flex-1 overflow-auto rounded border border-violet-500/15 p-1.5 dark:border-violet-400/10">
                       {editableCues.length === 0 ? (
                         <p className="px-1 py-2 text-xs text-muted">{tEditor('labels.generateSubtitlesFirst')}</p>
                       ) : (
@@ -3210,7 +3228,7 @@ export default function CreationStudio({
                               onClick={() => setSelectedSrtCueId((prev) => (prev === c.id ? null : c.id))}
                               className={`rounded-md border px-2 py-1.5 cursor-pointer transition-colors ${selectedSrtCueId === c.id
                                 ? 'border-violet-500/50 bg-violet-500/10 ring-1 ring-violet-500/25 dark:bg-violet-500/15'
-                                : 'border-zinc-200/90 bg-white/80 hover:border-zinc-300 hover:bg-violet-50/40 dark:border-white/10 dark:bg-zinc-900/40 dark:hover:bg-zinc-900/60'
+                                : 'border-violet-500/15 bg-white/80 hover:border-violet-500/30 hover:bg-violet-50/40 dark:border-violet-400/10 dark:bg-zinc-900/40 dark:hover:border-violet-400/25 dark:hover:bg-zinc-900/60'
                                 }`}
                             >
                               <div className="flex flex-wrap items-start gap-2">
@@ -3228,7 +3246,7 @@ export default function CreationStudio({
                                         ),
                                       );
                                     }}
-                                    className="mt-0.5 h-7 w-full rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-foreground"
+                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-[#7c5cff]/70"
                                   />
                                 </label>
                                 <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
@@ -3245,13 +3263,13 @@ export default function CreationStudio({
                                         ),
                                       );
                                     }}
-                                    className="mt-0.5 h-7 w-full rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-foreground"
+                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-[#7c5cff]/70"
                                   />
                                 </label>
                                 <div className="ml-auto flex shrink-0 gap-1">
                                   <button
                                     type="button"
-                                    className="h-7 rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 px-2 text-[10px] font-semibold text-foreground hover:bg-violet-50/50 dark:hover:bg-white/5"
+                                    className="h-7 rounded border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-2 text-[10px] font-semibold text-foreground hover:bg-violet-50/50 dark:hover:bg-white/5"
                                     disabled={isAnyTaskRunning}
                                     onClick={() => {
                                       const nextStart = Math.max(0, c.endTime);
@@ -3299,7 +3317,7 @@ export default function CreationStudio({
                                     );
                                   }}
                                   rows={3}
-                                  className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none ring-0 transition-shadow focus:border-[#7c5cff]/70 focus:shadow-[0_0_0_1px_rgba(124,92,255,0.35)]"
+                                  className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none ring-0 transition-shadow focus:border-[#7c5cff]/70 focus:shadow-[0_0_0_1px_rgba(124,92,255,0.35)]"
                                 />
                               </div>
                             </div>
@@ -3311,7 +3329,7 @@ export default function CreationStudio({
                       )}
                     </div>
                     {editableCues.length > 0 ? (
-                      <div className="shrink-0 rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 px-2 py-1.5">
+                      <div className="shrink-0 rounded border border-violet-500/20 bg-white dark:border-violet-400/15 dark:bg-zinc-900/40 px-2 py-1.5">
                         <button
                           type="button"
                           className="h-8 w-full rounded-md bg-[#7c5cff] text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
@@ -3329,14 +3347,14 @@ export default function CreationStudio({
                       </div>
                     ) : null}
                   </div>
-                  <details className="rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 p-2">
+                  <details className="rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 p-2">
                     <summary className="cursor-pointer text-[10px] font-semibold text-muted">Advanced: edit raw .srt</summary>
                     <textarea
                       value={subtitlesSrtText}
                       disabled={isAnyTaskRunning}
                       onChange={(e) => setSubtitlesSrtText(e.target.value)}
                       placeholder="Raw .srt text…"
-                      className="mt-2 min-h-[160px] w-full resize-y rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 p-2 text-[11px] leading-snug text-foreground outline-none focus:border-foreground"
+                      className="mt-2 min-h-[160px] w-full resize-y rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 p-2 text-[11px] leading-snug text-foreground outline-none focus:border-violet-400"
                     />
                   </details>
                 </>
@@ -3345,160 +3363,174 @@ export default function CreationStudio({
           </div>
         </aside>
 
-        <div className="viral-studio-stage flex min-h-0 flex-col border-b border-zinc-200/90 bg-white lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0 dark:border-white/10 dark:bg-zinc-950/40">
+        <div className="viral-studio-stage flex min-h-0 flex-col border-b border-violet-200/50 bg-violet-50/30 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0 dark:border-violet-500/15 dark:bg-zinc-950/40">
 
-          <div className="viral-studio-preview-bar flex shrink-0 items-center justify-between border-b border-zinc-200/90 px-3 py-2 text-[11px] text-zinc-600 dark:border-white/10 dark:text-zinc-400">
+          <div className="viral-studio-preview-bar flex shrink-0 items-center justify-between border-b border-violet-200/50 px-3 py-2 text-[11px] text-zinc-600 dark:border-violet-500/15 dark:text-zinc-400">
             <span>Editing Mode</span>
             <span>{isGenerated ? `Voiceover ready: ${voiceLabel}` : 'No Project Loaded'}</span>
           </div>
           <div
             ref={previewSlotRef}
-            className="viral-studio-preview-slot flex min-h-[min(320px,42vh)] w-full flex-1 items-center justify-center border-b border-zinc-200/90 bg-white dark:border-white/10 dark:bg-black/30"
+            className="viral-studio-preview-slot flex min-h-[min(320px,42vh)] w-full flex-1 items-center justify-center overflow-hidden border-b border-violet-200/50 bg-violet-50/30 p-2 dark:border-violet-500/15 dark:bg-black/30"
           >
+            {/* Wrapper absorbs the scaled size so the slot doesn't collapse */}
             <div
-              className="relative shrink-0 overflow-hidden rounded-lg border border-card-border bg-black"
               style={{
-                width: Math.round(previewFramePx.w),
-                height: Math.round(previewFramePx.h),
+                width: Math.round(previewFramePx.w * previewScale),
+                height: Math.round(previewFramePx.h * previewScale),
               }}
+              className="flex shrink-0 items-center justify-center"
             >
-              <video
-                ref={videoRef}
-                src={isBalancedPreviewMode ? balancedSyncPreviewUrl : videoUrl}
-                controls
-                playsInline
-                preload="auto"
-                className="block h-full w-full object-contain"
+              <div
+                className="relative shrink-0 overflow-hidden rounded-lg border border-violet-500/20 bg-black dark:border-violet-400/15"
                 style={{
-                  transform: protectFlip ? 'scaleX(-1)' : undefined,
-                  filter: protectHueDeg ? `hue-rotate(${protectHueDeg}deg)` : undefined,
+                  width: Math.round(previewFramePx.w),
+                  height: Math.round(previewFramePx.h),
+                  isolation: 'isolate',
+                  transform: `scale(${previewScale})`,
+                  transformOrigin: 'center center',
                 }}
-                onLoadedMetadata={(e) => {
-                  const el = e.currentTarget;
-                  const iw = el.videoWidth;
-                  const ih = el.videoHeight;
-                  if (iw > 0 && ih > 0) setPreviewIntrinsicPx({ w: iw, h: ih });
-                  const dur = el.duration;
-                  if (Number.isFinite(dur) && dur > 0) {
-                    setOverlayPreviewDuration(dur);
-                  }
-                }}
-                onTimeUpdate={(e) => setPreviewPlaybackTime(e.currentTarget.currentTime)}
-                onPlay={() => setPreviewIsPlaying(true)}
-                onPause={() => setPreviewIsPlaying(false)}
-              />
-              {/* Render all overlay layers (blur + text) in unified z-order so preview matches timeline order */}
-              {overlayLayerOrder.map((entry, i) => {
-                if (entry.type === 'blur') {
-                  const layer = overlayBlurLayers.find((l) => l.id === entry.id);
-                  if (!layer) return null;
-                  return (
-                    <ViralBlurLayer
-                      key={layer.id}
-                      layer={layer}
-                      currentTimeSec={previewPlaybackTime}
-                      stackIndex={i}
-                    />
-                  );
-                }
-                if (entry.type === 'text') {
-                  const layer = overlayTextLayers.find((l) => l.id === entry.id);
-                  if (!layer) return null;
-                  return (
-                    <ViralTextLayer
-                      key={layer.id}
-                      layer={layer}
-                      currentTimeSec={previewPlaybackTime}
-                      stackIndex={i}
-                    />
-                  );
-                }
-                return null;
-              })}
-              {/* SRT subtitle overlay — always on top of blur/text overlays (highest z) */}
-              {showSubtitlesOverlay && activeSubtitleText.trim() ? (
-                <div
-                  className="absolute"
+              >
+                <video
+                  ref={videoRef}
+                  src={isBalancedPreviewMode ? balancedSyncPreviewUrl : videoUrl}
+                  controls
+                  playsInline
+                  preload="auto"
+                  className="block h-full w-full object-contain"
                   style={{
-                    left: `${Math.round(subtitlesPosition.x * 1000) / 10}%`,
-                    top: `${Math.round(subtitlesPosition.y * 1000) / 10}%`,
-                    transform: 'translate(-50%, -50%)',
-                    pointerEvents: subtitlesEditPosition ? 'auto' : 'none',
-                    zIndex: 200,
+                    transform: protectFlip ? 'scaleX(-1)' : undefined,
+                    filter: protectHueDeg ? `hue-rotate(${protectHueDeg}deg)` : undefined,
                   }}
-                  onPointerDown={(e) => {
-                    if (!subtitlesEditPosition) return;
-                    const el = e.currentTarget.parentElement;
-                    if (!el) return;
-                    subtitleDragRef.current = {
-                      active: true,
-                      startX: e.clientX,
-                      startY: e.clientY,
-                      baseX: subtitlesPosition.x,
-                      baseY: subtitlesPosition.y,
-                    };
-                    (e.currentTarget as HTMLDivElement).setPointerCapture?.(e.pointerId);
-                    e.preventDefault();
-                    e.stopPropagation();
-                  }}
-                  onPointerMove={(e) => {
-                    const d = subtitleDragRef.current;
-                    if (!subtitlesEditPosition || !d?.active) return;
-                    const el = e.currentTarget.parentElement;
-                    if (!el) return;
-                    const rect = el.getBoundingClientRect();
-                    const dx = (e.clientX - d.startX) / Math.max(1, rect.width);
-                    const dy = (e.clientY - d.startY) / Math.max(1, rect.height);
-                    setSubtitlesPosition({
-                      x: Math.max(0, Math.min(1, d.baseX + dx)),
-                      y: Math.max(0, Math.min(1, d.baseY + dy)),
-                    });
-                    e.preventDefault();
-                  }}
-                  onPointerUp={() => {
-                    if (!subtitleDragRef.current) return;
-                    subtitleDragRef.current.active = false;
-                  }}
-                >
-                  <div
-                    className="max-w-[92%] rounded-lg px-3 py-2 text-center font-semibold text-white"
-                    style={{
-                      fontSize: `${previewBurnedSubtitleFontPx}px`,
-                      lineHeight: 1.25,
-                      backgroundColor: `rgba(0, 0, 0, ${subtitlesBackgroundOpacity / 100})`,
-                    }}
-                    title={
-                      previewIntrinsicPx
-                        ? `Preview ${Math.round(previewBurnedSubtitleFontPx)}px → burn ~${previewSubtitleFontPxToFfmpegFontPx(
-                          previewBurnedSubtitleFontPx,
-                          Math.max(1, Math.round(previewFramePx.w)),
-                          Math.max(1, Math.round(previewFramePx.h)),
-                          previewIntrinsicPx.w,
-                          previewIntrinsicPx.h,
-                        )}px at ${previewIntrinsicPx.w}×${previewIntrinsicPx.h}`
-                        : `Burn-in (slider): ${subtitlesFontSize}px — load preview to map to output`
+                  onLoadedMetadata={(e) => {
+                    const el = e.currentTarget;
+                    const iw = el.videoWidth;
+                    const ih = el.videoHeight;
+                    if (iw > 0 && ih > 0) setPreviewIntrinsicPx({ w: iw, h: ih });
+                    const dur = el.duration;
+                    if (Number.isFinite(dur) && dur > 0) {
+                      setOverlayPreviewDuration(dur);
                     }
+                  }}
+                  onTimeUpdate={(e) => setPreviewPlaybackTime(e.currentTarget.currentTime)}
+                  onPlay={() => setPreviewIsPlaying(true)}
+                  onPause={() => setPreviewIsPlaying(false)}
+                />
+                {/* Render all overlay layers (blur + text) in unified z-order so preview matches timeline order */}
+                {overlayLayerOrder.map((entry, i) => {
+                  if (entry.type === 'blur') {
+                    const layer = overlayBlurLayers.find((l) => l.id === entry.id);
+                    if (!layer) return null;
+                    return (
+                      <ViralBlurLayer
+                        key={layer.id}
+                        layer={layer}
+                        currentTimeSec={previewPlaybackTime}
+                        stackIndex={i}
+                        scale={previewScale}
+                      />
+                    );
+                  }
+                  if (entry.type === 'text') {
+                    const layer = overlayTextLayers.find((l) => l.id === entry.id);
+                    if (!layer) return null;
+                    return (
+                      <ViralTextLayer
+                        key={layer.id}
+                        layer={layer}
+                        currentTimeSec={previewPlaybackTime}
+                        stackIndex={i}
+                        scale={previewScale}
+                      />
+                    );
+                  }
+                  return null;
+                })}
+                {/* SRT subtitle overlay — always on top of blur/text overlays (highest z) */}
+                {showSubtitlesOverlay && activeSubtitleText.trim() ? (
+                  <div
+                    className="absolute"
+                    style={{
+                      left: `${Math.round(subtitlesPosition.x * 1000) / 10}%`,
+                      top: `${Math.round(subtitlesPosition.y * 1000) / 10}%`,
+                      transform: 'translate(-50%, -50%)',
+                      pointerEvents: subtitlesEditPosition ? 'auto' : 'none',
+                      zIndex: 95,
+                    }}
+                    onPointerDown={(e) => {
+                      if (!subtitlesEditPosition) return;
+                      const el = e.currentTarget.parentElement;
+                      if (!el) return;
+                      subtitleDragRef.current = {
+                        active: true,
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        baseX: subtitlesPosition.x,
+                        baseY: subtitlesPosition.y,
+                      };
+                      (e.currentTarget as HTMLDivElement).setPointerCapture?.(e.pointerId);
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onPointerMove={(e) => {
+                      const d = subtitleDragRef.current;
+                      if (!subtitlesEditPosition || !d?.active) return;
+                      const el = e.currentTarget.parentElement;
+                      if (!el) return;
+                      const rect = el.getBoundingClientRect();
+                      const dx = (e.clientX - d.startX) / Math.max(1, rect.width);
+                      const dy = (e.clientY - d.startY) / Math.max(1, rect.height);
+                      setSubtitlesPosition({
+                        x: Math.max(0, Math.min(1, d.baseX + dx)),
+                        y: Math.max(0, Math.min(1, d.baseY + dy)),
+                      });
+                      e.preventDefault();
+                    }}
+                    onPointerUp={() => {
+                      if (!subtitleDragRef.current) return;
+                      subtitleDragRef.current.active = false;
+                    }}
                   >
-                    {activeSubtitleText}
-                  </div>
-                  {subtitlesEditPosition ? (
+                    <div
+                      className="max-w-[92%] rounded-lg px-3 py-2 text-center font-semibold text-white"
+                      style={{
+                        fontSize: `${previewBurnedSubtitleFontPx}px`,
+                        lineHeight: 1.25,
+                        backgroundColor: `rgba(0, 0, 0, ${subtitlesBackgroundOpacity / 100})`,
+                      }}
+                      title={
+                        previewIntrinsicPx
+                          ? `Preview ${Math.round(previewBurnedSubtitleFontPx)}px → burn ~${previewSubtitleFontPxToFfmpegFontPx(
+                            previewBurnedSubtitleFontPx,
+                            Math.max(1, Math.round(previewFramePx.w)),
+                            Math.max(1, Math.round(previewFramePx.h)),
+                            previewIntrinsicPx.w,
+                            previewIntrinsicPx.h,
+                          )}px at ${previewIntrinsicPx.w}×${previewIntrinsicPx.h}`
+                          : `Burn-in (slider): ${subtitlesFontSize}px — load preview to map to output`
+                      }
+                    >
+                      {activeSubtitleText}
+                    </div>
+                    {/* {subtitlesEditPosition ? (
                     <div className="mt-1 text-center text-[10px] font-semibold text-white/80">Drag to move</div>
-                  ) : null}
-                </div>
-              ) : null}
-              {isBalancedPreviewMode ? (
-                <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
-                  <span className="font-semibold">All set — synced preview on deck</span>
-                  <button
-                    type="button"
-                    onClick={() => setShowBalancedPreview(true)}
-                    disabled={isAnyTaskRunning}
-                    className="h-7 rounded-md bg-[#7c5cff] px-2 font-semibold text-white hover:bg-[#6b4bff]"
-                  >
-                    {tEditor('buttons.previewAndAccept')}
-                  </button>
-                </div>
-              ) : null}
+                  ) : null} */}
+                  </div>
+                ) : null}
+                {isBalancedPreviewMode ? (
+                  <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
+                    <span className="font-semibold">All set — synced preview on deck</span>
+                    <button
+                      type="button"
+                      onClick={() => setShowBalancedPreview(true)}
+                      disabled={isAnyTaskRunning}
+                      className="h-7 rounded-md bg-[#7c5cff] px-2 font-semibold text-white hover:bg-[#6b4bff]"
+                    >
+                      {tEditor('buttons.previewAndAccept')}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
             </div>
           </div>
 
@@ -3515,8 +3547,8 @@ export default function CreationStudio({
             onDelete={() => deleteOverlaySelected()}
           />
 
-          <div className="viral-studio-timeline-section flex min-h-[220px] min-w-0 shrink-0 flex-col border-b border-zinc-200/90 bg-white lg:min-h-[200px] lg:flex-1 dark:border-white/10 dark:bg-zinc-950/30">
-            <p className="viral-studio-timeline-heading border-b border-zinc-200/90 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:border-white/10 dark:text-zinc-400">
+          <div className="viral-studio-timeline-section flex min-h-[220px] min-w-0 shrink-0 flex-col border-b border-violet-200/50 bg-violet-50/30 lg:min-h-[200px] lg:flex-1 dark:border-violet-500/15 dark:bg-zinc-950/30">
+            <p className="viral-studio-timeline-heading border-b border-violet-200/50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:border-violet-500/15 dark:text-zinc-400">
               {tOverlays('timelineTitle')}
             </p>
             <ViralTimelineDock
@@ -3542,7 +3574,14 @@ export default function CreationStudio({
               onTogglePlay={togglePreviewPlayback}
               onSeekBy={seekPreviewBy}
               onSeekRatio={seekPreviewRatio}
-              onSelectClip={(id) => setOverlaySelectedId(id)}
+              onSelectClip={(id) => {
+                setOverlaySelectedId(id);
+                // Auto-switch tool to match the selected layer type (CapCut-style)
+                const isText = overlayTextLayers.some((l) => l.id === id);
+                const isBlur = overlayBlurLayers.some((l) => l.id === id);
+                if (isText) setOverlayActiveTool('text');
+                else if (isBlur) setOverlayActiveTool('blur');
+              }}
               onDeselect={() => setOverlaySelectedId(null)}
               onUpdateTextTiming={(id, patch) => updateOverlayText(id, patch)}
               onUpdateBlurTiming={(id, patch) => updateOverlayBlur(id, patch)}
@@ -3572,7 +3611,7 @@ export default function CreationStudio({
           </div>
 
           {!isBalancedPreviewMode ? (
-            <div className="viral-studio-stage-foot border-b border-zinc-200/90 px-3 py-10 text-[11px] text-muted dark:border-white/10">
+            <div className="viral-studio-stage-foot border-b border-violet-200/50 px-3 py-10 text-[11px] text-muted dark:border-violet-500/15">
               <div className="flex flex-wrap items-center gap-4">
                 <label className="flex items-center gap-2">
                   <input
@@ -3641,7 +3680,7 @@ export default function CreationStudio({
             </div>
           ) : null}
 
-          <div className="viral-studio-stage-foot border-b border-zinc-200/90 px-3 py-3 text-[11px] text-muted dark:border-white/10">
+          <div className="viral-studio-stage-foot border-b border-violet-200/50 px-3 py-3 text-[11px] text-muted dark:border-violet-500/15">
             Edit the script in the left column (Script / SRT).
           </div>
 
@@ -3667,7 +3706,7 @@ export default function CreationStudio({
               </div>
             ) : null}
             {exportedVideoUrl && showExportDownloadNotice ? (
-              <div className="mb-2 rounded border border-zinc-200 bg-white dark:border-white/10 dark:bg-zinc-900/40 px-2 py-1.5 text-[10px] text-muted">
+              <div className="mb-2 rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 px-2 py-1.5 text-[10px] text-muted">
                 Export saved — your browser should have downloaded the file.{' '}
                 <button
                   type="button"
@@ -3682,7 +3721,7 @@ export default function CreationStudio({
           </div>
         </div>
 
-        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-t border-zinc-200/90 bg-white p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 dark:border-white/10 dark:bg-zinc-950/50">
+        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-t border-violet-200/50 bg-violet-50/30 p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 dark:border-violet-500/15 dark:bg-zinc-950/50">
           <div className="space-y-4 pt-1">
             <div className="viral-studio-panel rounded-xl border p-4 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
@@ -3693,7 +3732,7 @@ export default function CreationStudio({
                   <select
                     value={tone}
                     onChange={(e) => setTone(e.target.value as TranslateTone)}
-                    className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-zinc-200 bg-white px-3 pr-9 text-sm text-zinc-900 outline-none dark:border-white/10 dark:bg-zinc-900/40 dark:text-foreground"
+                    className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-violet-200/50 bg-violet-50/20 px-3 pr-9 text-sm text-zinc-900 outline-none dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground"
                   >
                     <option value="casual_social_media">Casual / Social Media (spoken)</option>
                     <option value="polite_educational">Polite & Educational (spoken)</option>
@@ -3715,7 +3754,7 @@ export default function CreationStudio({
             <div className="viral-studio-panel space-y-4 rounded-xl border p-4 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{tViral('sectionTitle')}</p>
 
-              <div className="viral-studio-voice-row flex items-stretch gap-3 rounded-lg border px-3 py-2.5 dark:border-white/10 dark:bg-zinc-900/40">
+              <div className="viral-studio-voice-row flex items-stretch gap-3 rounded-lg border border-violet-200/50 bg-violet-50/20 px-3 py-2.5 dark:border-violet-500/15 dark:bg-zinc-900/40">
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tViral('voiceStyleKicker')}
@@ -3728,7 +3767,7 @@ export default function CreationStudio({
                 </div>
                 <button
                   type="button"
-                  className="viral-studio-secondary-btn shrink-0 self-center rounded-lg border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed dark:border-white/10 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
+                  className="viral-studio-secondary-btn shrink-0 self-center rounded-lg border px-3 py-2 text-xs font-semibold transition-colors disabled:cursor-not-allowed dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
                   onClick={() => setShowVoiceStyleModal(true)}
                   disabled={voiceModelsLoading || isGenerating || isAnyTaskRunning}
                 >
@@ -3752,7 +3791,7 @@ export default function CreationStudio({
                 <p className="text-xs leading-relaxed text-red-400">{voiceOverError}</p>
               ) : null}
 
-              <div className="space-y-3 border-t border-zinc-200/90 pt-4 dark:border-white/10">
+              <div className="space-y-3 border-t border-violet-200/50 pt-4 dark:border-violet-500/15">
                 <button
                   type="button"
                   onClick={() => void handleSyncVoiceToVideo()}
@@ -3760,7 +3799,7 @@ export default function CreationStudio({
                     isAnyTaskRunning ||
                     isSyncingVoice || !videoMetadataReady || (Boolean(voiceOverAudioUrl) && !voiceMetadataReady)
                   }
-                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors disabled:cursor-not-allowed dark:border-white/10 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
+                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors disabled:cursor-not-allowed dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
                 >
                   <span className="inline-flex items-center gap-1.5">
                     {isSyncingVoice ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
@@ -3780,7 +3819,7 @@ export default function CreationStudio({
                     isBalancedSyncRunning ||
                     balancedSyncEstimateLoading
                   }
-                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors disabled:cursor-not-allowed dark:border-white/10 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
+                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors disabled:cursor-not-allowed dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
                 >
                   <span className="inline-flex items-center gap-1.5">
                     {isBalancedSyncRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
@@ -3827,7 +3866,7 @@ export default function CreationStudio({
                     setProtectHueDeg(next ? 25 : 0);
                   }}
                   disabled={isAnyTaskRunning}
-                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors dark:border-white/10 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
+                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
                 >
                   {tEditor('buttons.protectionFlipHue')}
                 </button>
@@ -3837,7 +3876,7 @@ export default function CreationStudio({
                       ? 'border-red-500/30 bg-red-500/10 text-red-200'
                       : syncUi.kind === 'warn'
                         ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                        : 'border-zinc-200 bg-white text-muted dark:border-white/10 dark:bg-zinc-900/40'
+                        : 'border-violet-200/50 bg-violet-50/20 text-muted dark:border-violet-500/15 dark:bg-zinc-900/40'
                       }`}
                   >
                     {syncUi.message}
@@ -3849,7 +3888,7 @@ export default function CreationStudio({
                   onFocus={() => void ensureSubtitlesEstimate()}
                   onClick={handleSubtitlesClick}
                   disabled={!workspaceS3Key || isSubtitlesRunning || isAnyTaskRunning}
-                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors disabled:cursor-not-allowed dark:border-white/10 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
+                  className="viral-studio-secondary-btn flex min-h-11 w-full items-center justify-center rounded-lg border px-3 py-2.5 text-center text-[11px] font-semibold leading-snug transition-colors disabled:cursor-not-allowed dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
                 >
                   <span className="inline-flex items-center gap-1.5">
                     {isSubtitlesRunning ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
@@ -3903,7 +3942,7 @@ export default function CreationStudio({
                     </button>
                     <button
                       type="button"
-                      className="viral-studio-secondary-btn flex min-h-10 w-full items-center justify-center rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors dark:border-white/10 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
+                      className="viral-studio-secondary-btn flex min-h-10 w-full items-center justify-center rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
                       disabled={isAnyTaskRunning}
                       onClick={() => setLeftTab('srt')}
                     >
