@@ -1219,17 +1219,20 @@ export default function CreationStudio({
     }
     voiceOverStreamRef.current = voiceOverJobId;
     setVoiceOverError(null);
-    if (!voiceOverProgress) setVoiceOverProgress({ percent: 10, label: tVo('progress.starting') });
+    // Only show "starting" progress if there is no existing progress — use functional read to avoid adding voiceOverProgress to deps.
+    setVoiceOverProgress((prev) => prev ?? { percent: 10, label: tVo('progress.starting') });
     openVoiceOverSse(voiceOverJobId, {
       onStatus: (raw) => {
         const p = parseGenerationSseProgressPayload(raw);
         if (p) setVoiceOverProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
-        if (voiceOverStreamRef.current === voiceOverJobId) voiceOverStreamRef.current = null;
+        // Do NOT reset voiceOverStreamRef here — keep it set so the guard on re-runs prevents re-opening.
         setVoiceOverProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (msg) => {
+        // Clear jobId immediately so the useEffect cannot re-trigger and open another SSE connection.
+        setVoiceOverJobId(null);
         setVoiceOverError(msg);
         setVoiceOverProgress(null);
       },
@@ -1250,11 +1253,15 @@ export default function CreationStudio({
             return;
           }
         }
+        // Terminal failure — clear jobId to stop retrying.
+        setVoiceOverJobId(null);
         setVoiceOverError(payload.message ?? 'Voice over failed');
         setVoiceOverProgress(null);
       },
     });
-  }, [isGenerating, tVo, voiceOverAudioUrl, voiceOverJobId, voiceOverProgress]);
+  // voiceOverProgress intentionally excluded — using functional setVoiceOverProgress so it doesn't trigger re-runs.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isGenerating, tVo, voiceOverAudioUrl, voiceOverJobId]);
 
   // Resume export after refresh (do NOT auto-download; just show link when ready).
   useEffect(() => {
