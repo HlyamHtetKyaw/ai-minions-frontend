@@ -18,16 +18,18 @@ type ViralTextLayerProps = {
   layer: TextLayerType;
   currentTimeSec: number;
   stackIndex?: number;
+  scale?: number;
 };
 
-export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralTextLayerProps) {
+export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 1 }: ViralTextLayerProps) {
   const activeTool = useViralOverlayStore((s) => s.activeTool);
   const selectedLayerId = useViralOverlayStore((s) => s.selectedLayerId);
   const updateTextLayer = useViralOverlayStore((s) => s.updateTextLayer);
   const setSelectedLayerId = useViralOverlayStore((s) => s.setSelectedLayerId);
+  const setActiveTool = useViralOverlayStore((s) => s.setActiveTool);
 
   const selected = layer.id === selectedLayerId;
-  const interactiveOnCanvas = selected && activeTool === 'text';
+  const interactiveOnCanvas = selected;
 
   const storedBounds = {
     x: layer.x,
@@ -86,6 +88,7 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralT
   return (
     <Rnd
       bounds="parent"
+      scale={scale}
       size={{ width: bounds.width, height: bounds.height }}
       position={{ x: bounds.x, y: bounds.y }}
       onDragStart={onDragStart}
@@ -113,11 +116,12 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralT
       style={{
         zIndex,
         willChange: isLive ? 'transform' : undefined,
-        pointerEvents: interactiveOnCanvas ? 'auto' : 'none',
+        pointerEvents: 'auto',
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
+        setActiveTool('text');
       }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();

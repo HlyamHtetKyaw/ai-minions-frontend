@@ -17,13 +17,15 @@ type ViralBlurLayerProps = {
   layer: BlurLayerType;
   currentTimeSec: number;
   stackIndex?: number;
+  scale?: number;
 };
 
-export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralBlurLayerProps) {
+export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 1 }: ViralBlurLayerProps) {
   const activeTool = useViralOverlayStore((s) => s.activeTool);
   const selectedLayerId = useViralOverlayStore((s) => s.selectedLayerId);
   const updateBlurLayer = useViralOverlayStore((s) => s.updateBlurLayer);
   const setSelectedLayerId = useViralOverlayStore((s) => s.setSelectedLayerId);
+  const setActiveTool = useViralOverlayStore((s) => s.setActiveTool);
 
   const selected = layer.id === selectedLayerId;
   const supportsBackdropBlur = useMemo(() => {
@@ -34,7 +36,7 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralB
     );
   }, []);
 
-  const interactiveOnCanvas = selected && activeTool === 'blur';
+  const interactiveOnCanvas = selected;
 
   const onDragStop = useCallback(
     (_e: unknown, d: { x: number; y: number }) => {
@@ -70,6 +72,7 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralB
   return (
     <Rnd
       bounds="parent"
+      scale={scale}
       size={{ width: layer.width, height: layer.height }}
       position={{ x: layer.x, y: layer.y }}
       onDragStop={onDragStop}
@@ -91,11 +94,12 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralB
       disableDragging={!interactiveOnCanvas}
       style={{
         zIndex,
-        pointerEvents: interactiveOnCanvas ? 'auto' : 'none',
+        pointerEvents: 'auto',
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
+        setActiveTool('blur');
       }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();
