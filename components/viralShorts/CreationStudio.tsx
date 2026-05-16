@@ -1182,31 +1182,30 @@ export default function CreationStudio({
     if (!transcribeGenerationId) return;
     if (transcribeStreamRef.current === transcribeGenerationId) return;
     if (isTranscribing) return;
-    if (isTranscribed && transcriptText.trim()) {
-      setTranscribeGenerationId(null);
-      return;
-    }
     transcribeStreamRef.current = transcribeGenerationId;
     setTranscribeError(null);
-    if (!transcribeProgress) setTranscribeProgress({ percent: 10, label: 'Resuming transcription…' });
+    // Functional updater — avoids adding transcribeProgress to deps.
+    setTranscribeProgress((prev) => prev ?? { percent: 10, label: 'Resuming transcription…' });
     openGenerationJobSseStream(transcribeGenerationId, {
       onStatus: (raw) => {
         const p = parseGenerationSseProgressPayload(raw);
         if (p) setTranscribeProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
-        if (transcribeStreamRef.current === transcribeGenerationId) transcribeStreamRef.current = null;
+        // Do NOT reset transcribeStreamRef — keeps the ref guard effective on any spurious dep re-runs.
         setTranscribeProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (msg) => {
+        // Clear jobId so the first guard kills any future re-run; keep ref set as a second safety net.
+        setTranscribeGenerationId(null);
         setTranscribeError(msg);
         setTranscribeProgress(null);
-        transcribeStreamRef.current = null;
-        setTranscribeGenerationId(null);
       },
       onTerminal: applyTranscribeTerminalPayload,
     });
-  }, [applyTranscribeTerminalPayload, isTranscribed, isTranscribing, transcriptText, transcribeGenerationId, transcribeProgress]);
+  // transcribeProgress, transcriptText, isTranscribed excluded — use functional updaters / not needed to decide whether to open.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyTranscribeTerminalPayload, isTranscribing, transcribeGenerationId]);
 
   // Resume voice over after refresh (voice-over SSE uses a string jobId).
   useEffect(() => {
@@ -1267,10 +1266,6 @@ export default function CreationStudio({
   useEffect(() => {
     if (!exportGenerationId) return;
     if (exportStreamRef.current === exportGenerationId) return;
-    if (exportedVideoUrl) {
-      setExportGenerationId(null);
-      return;
-    }
     exportStreamRef.current = exportGenerationId;
     setExportError(null);
     setExporting(true);
@@ -1281,46 +1276,49 @@ export default function CreationStudio({
         if (p) setExportProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
-        if (exportStreamRef.current === exportGenerationId) exportStreamRef.current = null;
+        // Do NOT reset exportStreamRef — keeps ref guard effective on spurious re-runs.
         setExportProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (message) => {
+        // Clear jobId so the first guard kills re-runs; keep ref set as secondary guard.
+        setExportGenerationId(null);
         setExportError(message || 'Export stream failed');
         setExporting(false);
         setExportProgress(null);
       },
       onTerminal: applyExportTerminalPayload,
     });
-  }, [applyExportTerminalPayload, exportGenerationId, exportedVideoUrl]);
+  // exportedVideoUrl excluded — applyExportTerminalPayload already clears jobId on completion.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applyExportTerminalPayload, exportGenerationId]);
 
   // Resume subtitles after refresh: reconnect SSE until SRT + download URL are present.
   useEffect(() => {
     if (!subtitlesGenerationId) return;
-    if (subtitlesSrtText.trim() && subtitlesDownloadUrl.trim()) {
-      return;
-    }
     if (subtitlesStreamRef.current === subtitlesGenerationId) return;
-
     subtitlesStreamRef.current = subtitlesGenerationId;
     setSubtitlesError(null);
     setSubtitlesProgress((prev) => prev ?? { percent: 12, label: 'Resuming subtitles…' });
-
     openGenerationJobSseStream(subtitlesGenerationId, {
       onStatus: (raw) => {
         const p = parseGenerationSseProgressPayload(raw);
         if (p) setSubtitlesProgress((prev) => mergeMonotonicJobProgress(prev, p));
       },
       onDone: () => {
-        if (subtitlesStreamRef.current === subtitlesGenerationId) subtitlesStreamRef.current = null;
+        // Do NOT reset subtitlesStreamRef — keeps ref guard effective on spurious re-runs.
         setSubtitlesProgress((prev) => (prev && prev.percent < 100 ? null : prev));
       },
       onError: (msg) => {
+        // Clear jobId to stop retrying; keep ref set as secondary guard.
+        setSubtitlesGenerationId(null);
         setSubtitlesError(msg);
         setSubtitlesProgress(null);
       },
       onTerminal: (payload) => applySubtitlesJobTerminal(subtitlesGenerationId, payload),
     });
-  }, [applySubtitlesJobTerminal, subtitlesDownloadUrl, subtitlesGenerationId, subtitlesSrtText]);
+  // subtitlesSrtText and subtitlesDownloadUrl excluded — applySubtitlesJobTerminal clears jobId on completion.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [applySubtitlesJobTerminal, subtitlesGenerationId]);
 
   // Recover translate text by generation id when the HTTP response was lost (e.g. refresh).
   useEffect(() => {
