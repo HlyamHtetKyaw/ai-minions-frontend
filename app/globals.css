@@ -515,6 +515,11 @@ body {
   );
 }
 
+/* Viral Shorts studio route: flat white page (no lavender gradient behind editor) */
+.light .app-gradient:has(.viral-studio-shell) {
+  background: #ffffff;
+}
+
 .glass-panel {
   background-color: var(--card);
   border: 1px solid var(--glass-border);
@@ -936,6 +941,284 @@ button.video-edit-export-card .video-edit-export-card-desc {
   font-weight: 500;
 }
 
+/* Viral Shorts studio workspace — editor surfaces (preview + timeline) */
+.viral-studio-shell {
+  border-color: rgba(15, 23, 42, 0.1);
+  background: #ffffff;
+  color: #18181b;
+}
+
+.light .viral-studio-shell {
+  background: #ffffff;
+  border-color: rgba(15, 23, 42, 0.1);
+  color: #18181b;
+}
+
+.light .viral-studio-shell .viral-studio-header {
+  background: #ffffff;
+  border-color: rgb(228 228 231);
+  color: #18181b;
+}
+
+.light .viral-studio-shell .viral-studio-panel {
+  border-color: rgb(228 228 231);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.light .viral-studio-shell .viral-studio-sidebar {
+  background: #ffffff;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-shell .viral-studio-stage {
+  background: #ffffff !important;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-shell .viral-studio-preview-bar,
+.light .viral-studio-shell .viral-studio-preview-slot,
+.light .viral-studio-shell .viral-studio-stage-foot {
+  background-color: #ffffff !important;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-shell .viral-studio-preview-bar {
+  color: rgb(82 82 91);
+}
+
+.light .viral-studio-shell .viral-studio-job-bar {
+  background-color: #ffffff !important;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-shell .viral-studio-job-bar .text-muted-foreground {
+  color: rgb(113 113 122);
+}
+
+.light .viral-studio-shell .viral-studio-script-card {
+  border-color: rgb(228 228 231);
+  background: #ffffff;
+}
+
+/* Light studio: white fields (override lavender --subtle / --card tokens inside shell) */
+.light .viral-studio-shell textarea,
+.light .viral-studio-shell select,
+.light .viral-studio-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']):not([type='hidden']) {
+  background-color: #ffffff;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-shell .viral-studio-muted-surface {
+  background-color: #ffffff;
+  border-color: rgb(228 228 231);
+}
+
+/* Secondary actions: always white in light mode (not gray / lavender tokens) */
+.light .viral-studio-shell .viral-studio-secondary-btn,
+.light .viral-studio-shell .viral-studio-voice-row {
+  background-color: #ffffff !important;
+  border-color: rgb(228 228 231) !important;
+  color: rgb(39 39 42) !important;
+}
+
+.light .viral-studio-shell .viral-studio-secondary-btn:hover:not(:disabled) {
+  background-color: #faf5ff !important;
+  border-color: rgb(196 181 253) !important;
+}
+
+.light .viral-studio-shell .viral-studio-secondary-btn:disabled {
+  background-color: #ffffff !important;
+  border-color: rgb(228 228 231) !important;
+  color: rgb(161 161 170) !important;
+  opacity: 1 !important;
+  cursor: not-allowed;
+}
+
+.light .viral-studio-shell .viral-studio-secondary-btn {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.light .viral-modal-panel .viral-studio-secondary-btn,
+.light .viral-modal-panel button.h-9.rounded-md.border {
+  background-color: #ffffff !important;
+  border-color: rgb(228 228 231) !important;
+  color: rgb(39 39 42) !important;
+}
+
+.light .viral-modal-panel .viral-studio-secondary-btn:hover,
+.light .viral-modal-panel button.h-9.rounded-md.border:hover {
+  background-color: #faf5ff !important;
+}
+
+.light .viral-studio-shell {
+  --card: #ffffff;
+  --subtle: #ffffff;
+  --surface: #faf5ff;
+  --glass: #ffffff;
+  --card-border: rgba(24, 24, 27, 0.1);
+}
+
+.light .viral-timeline-dock {
+  background: #ffffff;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-timeline-dock .viral-timeline-toolbar,
+.light .viral-timeline-dock .viral-timeline-canvas,
+.light .viral-timeline-dock .viral-timeline-ruler {
+  background: #ffffff;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-timeline-dock .viral-timeline-track {
+  background: #ffffff;
+  border-color: rgb(241 241 245);
+}
+
+.light .viral-timeline-dock .viral-timeline-track-empty {
+  background: #ffffff;
+  border-color: rgb(241 241 245);
+}
+
+.light .viral-studio-timeline-section,
+.light .viral-studio-timeline-heading {
+  background-color: #ffffff !important;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-timeline-heading {
+  color: rgb(82 82 91);
+}
+
+.light .viral-timeline-dock .viral-timeline-toolbar button,
+.light .viral-timeline-dock .viral-timeline-transport-btn {
+  background-color: #ffffff !important;
+  border-color: rgb(228 228 231) !important;
+  color: rgb(39 39 42) !important;
+  box-shadow: none !important;
+}
+
+.light .viral-timeline-dock .viral-timeline-toolbar button:hover:not(:disabled) {
+  background-color: #faf5ff !important;
+  border-color: rgb(196 181 253) !important;
+}
+
+.light .viral-overlay-inspector {
+  background: #ffffff;
+  border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-shell .viral-studio-error {
+  color: rgb(185 28 28);
+  border-color: rgb(252 165 165);
+  background: rgb(254 242 242);
+}
+
+.light .viral-studio-shell .viral-studio-discard {
+  color: rgb(185 28 28);
+  border-color: rgb(252 165 165);
+}
+
+.light .viral-studio-shell .viral-studio-discard:hover {
+  background: rgb(254 242 242);
+  border-color: rgb(248 113 113);
+}
+
+/* Light mode: visible keyboard focus (replaces outline-none + weak border-only focus) */
+.light .viral-studio-shell button:focus-visible,
+.light .viral-timeline-dock button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px rgba(109, 40, 217, 0.55);
+}
+
+.light .viral-studio-shell .btn-transcribe:focus-visible,
+.light .viral-studio-shell .btn-viral-shorts:focus-visible,
+.light .viral-studio-shell .btn-viral-shorts-analyze:focus-visible {
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px rgba(109, 40, 217, 0.65),
+    0 6px 22px rgba(106, 45, 255, 0.38);
+}
+
+.light .viral-studio-shell textarea:focus-visible,
+.light .viral-studio-shell select:focus-visible,
+.light .viral-studio-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):focus-visible {
+  outline: none;
+  border-color: rgba(109, 40, 217, 0.72) !important;
+  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.22);
+}
+
+.light .viral-overlay-inspector button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 4px rgba(109, 40, 217, 0.55);
+}
+
+.dark .viral-studio-shell {
+  background: #12101e;
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
+.dark .viral-studio-shell button:focus-visible,
+.dark .viral-timeline-dock button:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 2px #12101e,
+    0 0 0 4px rgba(167, 139, 250, 0.65);
+}
+
+.dark .viral-studio-shell textarea:focus-visible,
+.dark .viral-studio-shell select:focus-visible,
+.dark .viral-studio-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):focus-visible {
+  outline: none;
+  border-color: rgba(167, 139, 250, 0.75) !important;
+  box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.28);
+}
+
+.viral-timeline-dock .text-muted-foreground {
+  color: rgb(113 113 122);
+}
+
+.dark .viral-timeline-dock .text-muted-foreground {
+  color: rgb(161 161 170);
+}
+
+.light .viral-overlay-inspector .viral-overlay-tool-active {
+  border-color: rgba(109, 40, 217, 0.45);
+  background: rgba(109, 40, 217, 0.1);
+  color: #18181b;
+}
+
+.light .viral-overlay-inspector .viral-overlay-tool-idle {
+  border-color: rgb(212 212 216);
+  background: #ffffff;
+  color: rgb(82 82 91);
+}
+
+.light .viral-overlay-inspector .viral-overlay-add-text {
+  color: rgb(4 120 87);
+  border-color: rgb(110 231 183);
+  background: rgb(236 253 245);
+}
+
+.light .viral-overlay-inspector .viral-overlay-add-blur {
+  color: rgb(190 18 60);
+  border-color: rgb(251 113 133);
+  background: rgb(255 241 242);
+}
+
+.light .viral-overlay-inspector .viral-overlay-remove {
+  color: rgb(185 28 28);
+  border-color: rgb(252 165 165);
+  background: rgb(254 242 242);
+}
+
 button.btn-viral-shorts {
   width: 100%;
   display: flex;
@@ -1021,8 +1304,9 @@ select.viral-translate-tone-select {
   cursor: pointer;
 }
 
-select.viral-translate-tone-select:focus {
-  border-color: var(--foreground);
+select.viral-translate-tone-select:focus-visible {
+  border-color: rgba(109, 40, 217, 0.72);
+  box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.22);
 }
 
 .light select.viral-translate-tone-select {

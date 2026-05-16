@@ -18,11 +18,18 @@ type Clip = {
 };
 
 const toneClass: Record<Clip['tone'], string> = {
-  violet: 'bg-violet-600/90 ring-violet-400/30',
-  emerald: 'bg-emerald-600/90 ring-emerald-400/25',
-  rose: 'bg-rose-800/90 ring-rose-500/25',
-  amber: 'bg-amber-700/80 ring-amber-400/30',
+  violet: 'bg-violet-600/95 ring-violet-400/40 dark:bg-violet-500/90 dark:ring-violet-300/35',
+  emerald: 'bg-emerald-600/95 ring-emerald-400/35 dark:bg-emerald-500/90',
+  rose: 'bg-rose-600/95 ring-rose-400/35 dark:bg-rose-500/90',
+  amber: 'bg-amber-500/95 text-zinc-950 ring-amber-400/45 dark:bg-amber-400/90 dark:text-white dark:ring-amber-300/40',
 };
+
+const TRACK_ROW_VIDEO_CLASS =
+  'viral-timeline-track relative h-12 min-h-12 shrink-0 border-b border-zinc-200/80 bg-white dark:border-white/5 dark:bg-black/20';
+const TRACK_ROW_LANE_CLASS =
+  'viral-timeline-track relative h-8 shrink-0 border-b border-zinc-200/80 bg-white dark:border-white/5 dark:bg-black/20';
+const TRACK_ROW_EMPTY_CLASS =
+  'viral-timeline-track-empty relative h-8 shrink-0 border-b border-zinc-200/50 bg-white dark:border-white/[0.04] dark:bg-white/[0.02]';
 
 type TimelineLaneItem = { id: string; startTime: number; endTime: number };
 
@@ -134,7 +141,7 @@ function ViralTextTimelineClip({
           top: 4,
           bottom: 4,
           boxSizing: 'border-box',
-          border: selected ? '2px solid #5DCAA5' : 'none',
+          border: selected ? '2px solid rgb(196 181 253)' : 'none',
         }}
         title={clip.label}
       >
@@ -275,14 +282,16 @@ function SrtCueTimelineClip({
     <>
       <div
         data-timeline-clip
-        className="absolute z-5 flex min-w-[6px] touch-none items-center overflow-hidden rounded px-1 text-[9px] font-medium text-white"
+        className={`absolute z-5 flex min-w-[6px] touch-none items-center overflow-hidden rounded px-1 text-[9px] font-semibold text-white ring-1 ring-inset ${
+          selected
+            ? 'border-2 border-amber-200 bg-amber-500 ring-amber-200/80 dark:border-amber-100 dark:bg-amber-400 dark:ring-amber-100/60'
+            : 'border border-transparent bg-amber-500/95 ring-amber-400/35 dark:bg-amber-500/88 dark:ring-amber-300/30'
+        }`}
         style={{
           ...clipStyle,
           top: 4,
           bottom: 4,
           boxSizing: 'border-box',
-          background: selected ? '#b45309' : '#78350f',
-          border: selected ? '2px solid #fbbf24' : '0.5px solid #d97706',
         }}
         title={clip.label}
       >
@@ -328,7 +337,7 @@ function SrtCueTimelineClip({
             handlers.onBodyMouseDown(e);
           }}
         >
-          <span className="truncate text-amber-100">{clip.label}</span>
+          <span className="truncate">{clip.label}</span>
         </div>
       </div>
       {tooltipText != null && tooltipPosition != null && (
@@ -338,8 +347,8 @@ function SrtCueTimelineClip({
             left: tooltipPosition.x,
             top: tooltipPosition.y,
             transform: 'translate(-50%, calc(-100% - 4px))',
-            background: '#1a1a1a',
-            color: '#fbbf24',
+            background: 'rgb(24 24 27)',
+            color: 'rgb(251 191 36)',
             fontSize: 10,
             borderRadius: 4,
             padding: '3px 7px',
@@ -418,15 +427,16 @@ function ViralBlurTimelineClip({
     <>
       <div
         data-timeline-clip
-        className="absolute z-5 flex min-w-8 touch-none items-center overflow-hidden rounded px-2 text-[10px] font-medium ring-1 ring-inset"
+        className={`absolute z-5 flex min-w-8 touch-none items-center overflow-hidden rounded px-2 text-[10px] font-medium ring-1 ring-inset text-zinc-100 dark:text-rose-100 ${
+          selected
+            ? 'border-2 border-violet-300 bg-zinc-600 ring-violet-400/50 dark:border-violet-300 dark:bg-zinc-700 dark:ring-violet-400/40'
+            : 'border border-transparent bg-zinc-500/90 ring-zinc-400/30 dark:bg-zinc-700/90 dark:ring-zinc-500/35'
+        }`}
         style={{
           ...clipStyle,
           top: 4,
           bottom: 4,
           boxSizing: 'border-box',
-          background: '#2a1a1a',
-          color: '#F0997B',
-          border: selected ? '2px solid #F0997B' : '0.5px solid #993C1D',
         }}
         title={clip.label}
       >
@@ -780,16 +790,28 @@ export function ViralTimelineDock({
 
   const transportDisabled = phase !== 'ready';
   return (
-    <div className="flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden border-t border-card-border" style={{ background: 'var(--card)' }}>
-      <div className="flex shrink-0 flex-wrap items-center gap-2 border-b border-card-border px-2 py-2 sm:gap-3 sm:px-3">
+    <div className="viral-timeline-dock flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-white dark:bg-zinc-950">
+      <div className="viral-timeline-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-zinc-200/90 bg-white px-2 py-2 sm:gap-3 sm:px-3 dark:border-white/10 dark:bg-zinc-900/80">
         <div className={`flex items-center gap-1 ${transportDisabled ? 'pointer-events-none opacity-40' : ''}`}>
-          <WorkspaceIconButton label={prevLabel} onClick={() => onSeekBy(-5)}>
+          <WorkspaceIconButton
+            className="viral-timeline-transport-btn"
+            label={prevLabel}
+            onClick={() => onSeekBy(-5)}
+          >
             <SkipBack strokeWidth={1.75} />
           </WorkspaceIconButton>
-          <WorkspaceIconButton label={isPlaying ? pauseLabel : playLabel} onClick={onTogglePlay}>
+          <WorkspaceIconButton
+            className="viral-timeline-transport-btn"
+            label={isPlaying ? pauseLabel : playLabel}
+            onClick={onTogglePlay}
+          >
             {isPlaying ? <Pause strokeWidth={1.75} className="fill-current" /> : <Play strokeWidth={1.75} className="ml-0.5 fill-current" />}
           </WorkspaceIconButton>
-          <WorkspaceIconButton label={nextLabel} onClick={() => onSeekBy(5)}>
+          <WorkspaceIconButton
+            className="viral-timeline-transport-btn"
+            label={nextLabel}
+            onClick={() => onSeekBy(5)}
+          >
             <SkipForward strokeWidth={1.75} />
           </WorkspaceIconButton>
         </div>
@@ -811,13 +833,12 @@ export function ViralTimelineDock({
       )}
 
       {phase === 'ready' && durationSec > 0 && (
-        <div className="scrollbar-themed flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto" style={{ background: 'var(--background)' }}>
-          <div className="relative flex min-w-[560px] flex-col">
+        <div className="viral-timeline-canvas scrollbar-themed flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-white dark:bg-zinc-950">
+          <div className="relative flex min-w-[560px] flex-col bg-white dark:bg-black/25">
             {/* Ruler */}
             <div
               ref={timelineSeekRef}
-              className="relative h-7 shrink-0 cursor-grab touch-none border-b border-card-border active:cursor-grabbing"
-              style={{ background: 'var(--elevated, var(--subtle))' }}
+              className="viral-timeline-ruler relative h-7 shrink-0 cursor-grab touch-none border-b border-zinc-200/90 bg-white active:cursor-grabbing dark:border-white/10 dark:bg-black/40"
               onPointerDown={onScrubPointerDown}
               onPointerMove={onScrubPointerMove}
               onPointerUp={onScrubPointerUpOrCancel}
@@ -847,12 +868,11 @@ export function ViralTimelineDock({
                       data-timeline-track-row
                       data-row-id="video"
                       ref={videoTrackLaneRef}
-                      className="relative h-12 shrink-0 border-b border-card-border"
-                      style={{ background: 'var(--card)' }}
+                      className={TRACK_ROW_VIDEO_CLASS}
                       onMouseDown={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); onDeselect(); } }}
                     >
                       <div
-                        className="pointer-events-none absolute top-1 bottom-1 min-w-8 overflow-hidden rounded ring-1 ring-inset ring-violet-400/50 bg-[#1e1033]"
+                        className="pointer-events-none absolute top-1 bottom-1 min-w-8 overflow-hidden rounded bg-gradient-to-r from-violet-700 to-indigo-800 ring-1 ring-inset ring-violet-400/45 dark:from-violet-600 dark:to-indigo-950"
                         style={{ left: `${vc.start * 100}%`, width: `${vc.width * 100}%` }}
                       >
                         <span className="flex h-full items-center px-2.5 text-[10px] font-semibold text-white">{vc.label}</span>
@@ -869,8 +889,7 @@ export function ViralTimelineDock({
                       data-timeline-track-row
                       data-row-id="subtitle"
                       ref={srtTrackLaneRef}
-                      className="relative h-8 shrink-0 border-b border-card-border"
-                      style={{ background: 'var(--card)' }}
+                      className={TRACK_ROW_LANE_CLASS}
                       onMouseDown={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); onDeselect(); } }}
                     >
                       {row.clips.map((clip) => (
@@ -908,8 +927,7 @@ export function ViralTimelineDock({
                         key={lr.rowId}
                         data-timeline-track-row
                         data-row-id={lr.rowId}
-                        className="relative h-8 shrink-0 border-b border-card-border"
-                        style={{ background: 'var(--card)' }}
+                        className={TRACK_ROW_LANE_CLASS}
                         onMouseDown={(e) => { if (e.target === e.currentTarget) { e.stopPropagation(); onDeselect(); } }}
                       >
                         <div ref={trackRef} className="absolute inset-0">
@@ -950,18 +968,17 @@ export function ViralTimelineDock({
               {[1, 2, 3, 4].map((n) => (
                 <div
                   key={`empty-lane-${n}`}
-                  className="relative h-8 shrink-0 border-b border-card-border/40"
-                  style={{ background: 'var(--glass, var(--subtle, rgba(0,0,0,0.04)))' }}
+                  className={TRACK_ROW_EMPTY_CLASS}
                 />
               ))}
             </div>
 
             {/* Playhead */}
             <div
-              className="pointer-events-none absolute bottom-0 top-0 z-[11] w-px bg-violet-400"
+              className="pointer-events-none absolute bottom-0 top-0 z-[11] w-px bg-violet-500 shadow-[0_0_10px_rgba(139,92,246,0.55)] dark:bg-violet-400"
               style={{ left: `${playheadRatio * 100}%` }}
             >
-              <div className="absolute -left-1.5 top-0 h-2.5 w-3.5 rounded-sm bg-violet-400 shadow-sm ring-1 ring-violet-200/40" />
+              <div className="absolute -left-1.5 top-0 h-2.5 w-3.5 rounded-sm bg-violet-500 shadow-sm ring-1 ring-violet-300/50 dark:bg-violet-400 dark:ring-violet-200/30" />
             </div>
           </div>
         </div>
