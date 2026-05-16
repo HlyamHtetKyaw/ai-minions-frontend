@@ -90,19 +90,20 @@ const MAX_SYNC_RATE = 1.25;
 const MAX_SYNC_RATE_STRONG = 5;
 
 /**
- * Balanced sync worker stages: {@code download → gen_* → parse_srt → ffmpeg_segments → upload}.
+ * Balanced sync worker stages: {@code download → uniform_preprocess? → gen_* → parse_srt → ffmpeg_segments → upload}.
  * Playful copy + monotonic percents; heavier “finalizing” language only after AI-ish steps.
  */
 const BALANCED_SYNC_SSE_FOR_UI: GenerationSseProgressLabelOverrides = {
   subscribedLabel: 'You’re in—we’re warming up the backstage.',
   subscribedPercent: 6,
   stages: {
-    download: { percent: 14, label: 'Initializing your video and audio files...' },
-    gen_original_srt: { percent: 28, label: 'Generating the initial subtitles...' },
-    gen_voice_srt: { percent: 42, label: 'Refining the text for the voiceover...' },
-    parse_srt: { percent: 56, label: 'Aligning the subtitles with the timing...' },
-    ffmpeg_segments: { percent: 72, label: 'Stitching your video and audio together...' },
-    upload: { percent: 86, label: 'Uploading your finished video...' },
+    download: { percent: 12, label: 'Initializing your video and audio files...' },
+    uniform_preprocess: { percent: 22, label: 'Balancing overall video and voice timing...' },
+    gen_original_srt: { percent: 34, label: 'Generating the initial subtitles...' },
+    gen_voice_srt: { percent: 46, label: 'Refining the text for the voiceover...' },
+    parse_srt: { percent: 58, label: 'Aligning the subtitles with the timing...' },
+    ffmpeg_segments: { percent: 74, label: 'Stitching your video and audio together...' },
+    upload: { percent: 88, label: 'Uploading your finished video...' },
   },
 };
 
