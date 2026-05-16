@@ -39,8 +39,8 @@ export function ViralOverlayInspector({
       onClick={() => onActiveTool(tool)}
       className={
         activeTool === tool
-          ? 'flex h-8 items-center gap-1.5 rounded-md border border-[#7c5cff]/50 bg-[#7c5cff]/20 px-2.5 text-[11px] font-semibold text-foreground'
-          : 'flex h-8 items-center gap-1.5 rounded-md border border-card-border bg-card px-2.5 text-[11px] font-medium text-muted-foreground hover:bg-subtle/40'
+          ? 'viral-overlay-tool-active flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold'
+          : 'viral-overlay-tool-idle flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium hover:bg-violet-50/60 dark:hover:bg-white/5'
       }
     >
       {icon}
@@ -49,7 +49,7 @@ export function ViralOverlayInspector({
   );
 
   return (
-    <div className="space-y-2 border-b border-card-border bg-card/40 px-3 py-2">
+    <div className="viral-overlay-inspector space-y-2 border-b border-zinc-200/90 bg-white px-3 py-2 dark:border-white/10 dark:bg-zinc-900/50">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {t('sectionTitle')}
@@ -61,7 +61,7 @@ export function ViralOverlayInspector({
           type="button"
           disabled={!durationReady}
           onClick={onAddText}
-          className="h-8 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2 text-[10px] font-semibold text-emerald-200 hover:bg-emerald-500/15 disabled:opacity-40"
+          className="viral-overlay-add-text h-8 rounded-md border px-2 text-[10px] font-semibold hover:opacity-90 disabled:opacity-40 dark:border-emerald-500/40 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:bg-emerald-500/15"
         >
           {t('addText')}
         </button>
@@ -69,7 +69,7 @@ export function ViralOverlayInspector({
           type="button"
           disabled={!durationReady}
           onClick={onAddBlur}
-          className="h-8 rounded-md border border-rose-500/40 bg-rose-500/10 px-2 text-[10px] font-semibold text-rose-200 hover:bg-rose-500/15 disabled:opacity-40"
+          className="viral-overlay-add-blur h-8 rounded-md border px-2 text-[10px] font-semibold hover:opacity-90 disabled:opacity-40 dark:border-rose-500/40 dark:bg-rose-500/10 dark:text-rose-200 dark:hover:bg-rose-500/15"
         >
           {t('addBlur')}
         </button>
@@ -77,7 +77,7 @@ export function ViralOverlayInspector({
           <button
             type="button"
             onClick={onDelete}
-            className="ml-auto h-8 rounded-md border border-red-500/40 bg-red-500/5 px-2 text-[10px] font-semibold text-red-300 hover:bg-red-500/10"
+            className="viral-overlay-remove ml-auto h-8 rounded-md border px-2 text-[10px] font-semibold hover:opacity-90 dark:border-red-500/40 dark:bg-red-500/5 dark:text-red-300 dark:hover:bg-red-500/10"
           >
             {t('remove')}
           </button>
