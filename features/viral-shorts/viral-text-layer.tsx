@@ -3,6 +3,7 @@
 import { useCallback, type MouseEvent as ReactMouseEvent } from 'react';
 import { Rnd } from 'react-rnd';
 import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
+import { useTextLayerBoxResize } from '@/hooks/useTextLayerBoxResize';
 import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
 import type { TextLayer as TextLayerType } from '@/store/editorStore';
 
@@ -54,27 +55,13 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralT
     [endTransform, layer.id, updateTextLayer],
   );
 
-  const onResizeStart = useCallback(() => {
-    beginTransform();
-  }, [beginTransform]);
-
-  const onResizeStop = useCallback(
-    (
-      _e: MouseEvent | TouchEvent,
-      _dir: unknown,
-      ref: HTMLElement,
-      _delta: { width: number; height: number },
-      position: { x: number; y: number },
-    ) => {
-      updateTextLayer(layer.id, {
-        x: position.x,
-        y: position.y,
-        width: ref.offsetWidth,
-        height: ref.offsetHeight,
-      });
-      endTransform();
-    },
-    [endTransform, layer.id, updateTextLayer],
+  const { displayFontSize, onResizeStart, onResizeStop } = useTextLayerBoxResize(
+    layer,
+    bounds,
+    isLive,
+    updateTextLayer,
+    beginTransform,
+    endTransform,
   );
 
   if (currentTimeSec < layer.startTime || currentTimeSec > layer.endTime) {
@@ -145,7 +132,7 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0 }: ViralT
         <div
           className="w-full px-1 text-center"
           style={{
-            fontSize: `${layer.fontSize}px`,
+            fontSize: `${displayFontSize}px`,
             fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
             color: layer.color,
             opacity: layer.opacity / 100,

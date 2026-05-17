@@ -3,6 +3,7 @@
 import { useCallback, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
 import { Rnd } from 'react-rnd';
 import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
+import { useTextLayerBoxResize } from '@/hooks/useTextLayerBoxResize';
 import { useEditorStore } from '@/store/editorStore';
 import type { TextLayer as TextLayerType } from '@/store/editorStore';
 
@@ -68,27 +69,13 @@ export function TextLayer({ layer, stackIndex = 0 }: TextLayerProps) {
 
   const zIndex = 30 + stackIndex + (selected ? 50 : 0);
 
-  const onResizeStart = useCallback(() => {
-    beginTransform();
-  }, [beginTransform]);
-
-  const onResizeStop = useCallback(
-    (
-      _e: MouseEvent | TouchEvent,
-      _dir: unknown,
-      ref: HTMLElement,
-      _delta: { width: number; height: number },
-      position: { x: number; y: number },
-    ) => {
-      updateTextLayer(layer.id, {
-        x: position.x,
-        y: position.y,
-        width: ref.offsetWidth,
-        height: ref.offsetHeight,
-      });
-      endTransform();
-    },
-    [endTransform, layer.id, updateTextLayer],
+  const { displayFontSize, onResizeStart, onResizeStop } = useTextLayerBoxResize(
+    layer,
+    bounds,
+    isLive,
+    updateTextLayer,
+    beginTransform,
+    endTransform,
   );
 
   return (
@@ -154,7 +141,7 @@ export function TextLayer({ layer, stackIndex = 0 }: TextLayerProps) {
         <div
           className="w-full px-1 text-center"
           style={{
-            fontSize: `${layer.fontSize}px`,
+            fontSize: `${displayFontSize}px`,
             // Keep video-editor text rendering aligned with Viral flow (Pyidaungsu-first fallback stack).
             fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
             color: layer.color,

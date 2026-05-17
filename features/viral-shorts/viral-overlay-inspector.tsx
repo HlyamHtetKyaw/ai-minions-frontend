@@ -102,7 +102,7 @@ export function ViralOverlayInspector({
               <input
                 type="number"
                 min={8}
-                max={96}
+                max={200}
                 value={selectedText.fontSize}
                 onChange={(e) => {
                   const n = Number(e.target.value);
