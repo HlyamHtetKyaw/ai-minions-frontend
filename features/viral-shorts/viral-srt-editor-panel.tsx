@@ -207,13 +207,13 @@ export function ViralSrtEditorPanel({
                   key={c.id}
                   data-cue-id={c.id}
                   onClick={() => onSelectCue(selectedCueId === c.id ? null : c.id)}
-                  className={`viral-srt-cue-card cursor-pointer rounded-md border bg-white px-2 py-1.5 transition-colors ${
+                  className={`viral-srt-cue-card cursor-pointer rounded-md border px-2 py-1.5 transition-colors ${
                     selectedCueId === c.id
-                      ? 'viral-srt-cue-card--selected border-violet-400 !bg-white ring-2 ring-violet-500/30 dark:border-violet-500/50 dark:bg-violet-500/15 dark:ring-violet-500/25'
-                      : 'border-violet-200/70 hover:border-violet-400/50 hover:ring-1 hover:ring-violet-400/20 dark:border-violet-400/10 dark:bg-zinc-900/40 dark:hover:border-violet-400/25 dark:hover:bg-zinc-900/60'
+                      ? 'viral-srt-cue-card--selected border-violet-500/70 bg-violet-50 ring-2 ring-violet-500/25 dark:border-violet-400/55 dark:bg-violet-950/45 dark:ring-violet-400/30'
+                      : 'border-violet-200/70 bg-white hover:border-violet-400/50 hover:ring-1 hover:ring-violet-400/20 dark:border-violet-400/10 dark:bg-zinc-900/40 dark:hover:border-violet-400/25 dark:hover:bg-zinc-900/60'
                   }`}
                 >
-                  <div className="flex flex-wrap items-start gap-2 bg-white dark:bg-transparent">
+                  <div className="flex flex-wrap items-start gap-2">
                     <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
                       Start
                       <input
@@ -243,7 +243,7 @@ export function ViralSrtEditorPanel({
                     <div className="ml-auto flex shrink-0 gap-1">
                       <button
                         type="button"
-                        className="viral-srt-add-after-btn h-7 appearance-none rounded border border-violet-500/25 bg-[#ffffff] px-2 text-[10px] font-semibold text-foreground hover:border-violet-400/60 dark:border-violet-400/20 dark:bg-zinc-900/40"
+                        className="viral-srt-add-after-btn h-7 appearance-none rounded border border-violet-500/25 bg-white px-2 text-[10px] font-semibold text-foreground hover:border-violet-400/60 dark:border-violet-400/20 dark:bg-zinc-800/80 dark:hover:bg-zinc-800"
                         disabled={disabled}
                         onClick={() => onAddCueAfter(c.id)}
                       >
@@ -259,13 +259,19 @@ export function ViralSrtEditorPanel({
                       </button>
                     </div>
                   </div>
-                  <div className="mt-2 rounded-lg border-2 border-dashed border-[#7c5cff]/40 bg-white p-2 dark:bg-white/5">
+                  <div
+                    className={`mt-2 rounded-lg border-2 border-dashed p-2 ${
+                      selectedCueId === c.id
+                        ? 'border-violet-500/50 bg-violet-50/90 dark:border-violet-400/45 dark:bg-zinc-950/60'
+                        : 'border-violet-500/35 bg-zinc-50 dark:border-violet-400/25 dark:bg-zinc-950/35'
+                    }`}
+                  >
                     <textarea
                       value={c.content}
                       disabled={disabled}
                       onChange={(e) => onCueContentChange(c.id, e.target.value)}
                       rows={3}
-                      className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-violet-500/25 bg-white px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none focus:border-violet-500/70 dark:border-violet-400/20 dark:bg-zinc-900/40"
+                      className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-violet-500/25 bg-white px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none focus:border-violet-500/70 dark:border-violet-400/25 dark:bg-zinc-900/70 dark:text-zinc-100"
                     />
                   </div>
                 </div>

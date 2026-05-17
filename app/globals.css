@@ -1215,6 +1215,19 @@ button.video-edit-export-card .video-edit-export-card-desc {
   box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.28);
 }
 
+/* SRT cue list: selected card must stay dark (avoid !bg-white / light surfaces in dark mode) */
+.dark .viral-studio-shell .viral-srt-cue-card--selected {
+  background-color: rgba(46, 16, 101, 0.42) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+}
+
+.dark .viral-studio-shell .viral-srt-cue-card--selected textarea,
+.dark .viral-studio-shell .viral-srt-cue-card--selected input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+  background-color: rgba(24, 24, 27, 0.75) !important;
+  color: rgb(244 244 245) !important;
+  border-color: rgba(139, 92, 246, 0.28) !important;
+}
+
 .viral-timeline-dock .text-muted-foreground {
   color: rgb(113 113 122);
 }

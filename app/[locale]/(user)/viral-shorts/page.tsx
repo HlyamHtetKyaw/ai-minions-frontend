@@ -186,10 +186,18 @@ export default function ViralShortsPage() {
               ? parsed.exportGenerationId
               : null,
           );
-          setExportedVideoUrl(
-            typeof parsed.exportedVideoUrl === 'string' && parsed.exportedVideoUrl.trim() ? parsed.exportedVideoUrl.trim() : null,
-          );
-          setExportedVideoKey(typeof parsed.exportedVideoKey === 'string' ? parsed.exportedVideoKey : '');
+          const restoredExportUrl =
+            typeof parsed.exportedVideoUrl === 'string' && parsed.exportedVideoUrl.trim()
+              ? parsed.exportedVideoUrl.trim()
+              : null;
+          const restoredExportKey =
+            typeof parsed.exportedVideoKey === 'string' ? parsed.exportedVideoKey.trim() : '';
+          setExportedVideoUrl(restoredExportUrl);
+          setExportedVideoKey(restoredExportKey);
+          // Completed export artifacts mean the in-flight job id is stale.
+          if (restoredExportUrl) {
+            setExportGenerationId(null);
+          }
           setSubtitlesGenerationId(
             typeof parsed.subtitlesGenerationId === 'number' && Number.isFinite(parsed.subtitlesGenerationId)
               ? parsed.subtitlesGenerationId
@@ -441,70 +449,88 @@ export default function ViralShortsPage() {
     handleNewVideo();
   }, [handleNewVideo]);
 
-  const flushViralWorkspaceToServer = useCallback(async () => {
-    if (!isSignedIn || step !== 'studio' || !videoUrl) return;
-    try {
-      const viralPayload = {
-        videoUrl,
-        videoName,
-        transcriptText,
-        transcribeGenerationId,
-        translateGenerationId,
-        translatedText,
-        tone: translateTone,
-        voiceOverAudioUrl,
-        voiceOverS3Key,
-        voiceOverVoice,
-        voiceOverEnabled,
-        originalAudioEnabled,
-        voiceOverPlaybackRate,
-        allowStrongerSync,
-        protectFlip,
-        protectHueDeg,
-        balancedSyncGenerationId,
-        balancedSyncPreviewUrl,
-        balancedSyncPreviewS3Key,
-        subtitlesGenerationId,
-        subtitlesSrtKey,
-        subtitlesDownloadUrl,
-        subtitlesSrtText,
-        textLayers: viralTextLayers,
-        blurLayers: viralBlurLayers,
-        step: 'studio',
-      };
-      await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
-    } catch {
-      /* best-effort after export */
-    }
-  }, [
-    isSignedIn,
-    step,
-    videoUrl,
-    videoName,
-    transcriptText,
-    transcribeGenerationId,
-    translateGenerationId,
-    translatedText,
-    translateTone,
-    voiceOverAudioUrl,
-    voiceOverS3Key,
-    voiceOverVoice,
-    voiceOverEnabled,
-    originalAudioEnabled,
-    voiceOverPlaybackRate,
-    allowStrongerSync,
-    protectFlip,
-    protectHueDeg,
-    balancedSyncGenerationId,
-    balancedSyncPreviewUrl,
-    balancedSyncPreviewS3Key,
-    subtitlesGenerationId,
-    subtitlesSrtKey,
-    subtitlesDownloadUrl,
-    subtitlesSrtText,
-    viralTextLayers,
-    viralBlurLayers,
-  ]);
+  const flushViralWorkspaceToServer = useCallback(
+    async (overrides?: {
+      exportedVideoUrl?: string | null;
+      exportedVideoKey?: string;
+      exportGenerationId?: number | null;
+    }) => {
+      if (!isSignedIn || step !== 'studio' || !videoUrl) return;
+      try {
+        const viralPayload = {
+          videoUrl,
+          videoName,
+          transcriptText,
+          transcribeGenerationId,
+          translateGenerationId,
+          translatedText,
+          tone: translateTone,
+          voiceOverAudioUrl,
+          voiceOverS3Key,
+          voiceOverJobId,
+          voiceOverVoice,
+          voiceOverEnabled,
+          originalAudioEnabled,
+          voiceOverPlaybackRate,
+          allowStrongerSync,
+          protectFlip,
+          protectHueDeg,
+          balancedSyncGenerationId,
+          balancedSyncPreviewUrl,
+          balancedSyncPreviewS3Key,
+          exportGenerationId:
+            overrides?.exportGenerationId !== undefined ? overrides.exportGenerationId : exportGenerationId,
+          exportedVideoUrl:
+            overrides?.exportedVideoUrl !== undefined ? overrides.exportedVideoUrl : exportedVideoUrl,
+          exportedVideoKey:
+            overrides?.exportedVideoKey !== undefined ? overrides.exportedVideoKey : exportedVideoKey,
+          subtitlesGenerationId,
+          subtitlesSrtKey,
+          subtitlesDownloadUrl,
+          subtitlesSrtText,
+          textLayers: viralTextLayers,
+          blurLayers: viralBlurLayers,
+          step: 'studio',
+        };
+        await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
+      } catch {
+        /* best-effort after export */
+      }
+    },
+    [
+      isSignedIn,
+      step,
+      videoUrl,
+      videoName,
+      transcriptText,
+      transcribeGenerationId,
+      translateGenerationId,
+      translatedText,
+      translateTone,
+      voiceOverAudioUrl,
+      voiceOverS3Key,
+      voiceOverJobId,
+      voiceOverVoice,
+      voiceOverEnabled,
+      originalAudioEnabled,
+      voiceOverPlaybackRate,
+      allowStrongerSync,
+      protectFlip,
+      protectHueDeg,
+      balancedSyncGenerationId,
+      balancedSyncPreviewUrl,
+      balancedSyncPreviewS3Key,
+      exportGenerationId,
+      exportedVideoUrl,
+      exportedVideoKey,
+      subtitlesGenerationId,
+      subtitlesSrtKey,
+      subtitlesDownloadUrl,
+      subtitlesSrtText,
+      viralTextLayers,
+      viralBlurLayers,
+    ],
+  );
 
   return (
     <>
@@ -668,7 +694,17 @@ export default function ViralShortsPage() {
                 onVideoUrlChange={(next) => setVideoUrl(next)}
                 onVideoNameChange={(next) => setVideoName(next)}
                 onDiscardWorkspace={() => void handleDiscardWorkspace()}
-                onExportSuccess={() => void flushViralWorkspaceToServer()}
+                onExportSuccess={(artifact) =>
+                  void flushViralWorkspaceToServer(
+                    artifact
+                      ? {
+                          exportedVideoUrl: artifact.downloadUrl,
+                          exportedVideoKey: artifact.s3Key,
+                          exportGenerationId: null,
+                        }
+                      : undefined,
+                  )
+                }
                 onPersistWorkspaceSnapshot={() => void flushViralWorkspaceToServer()}
                 onViralOverlayLayersChange={(p) => {
                   setViralTextLayers(p.textLayers);

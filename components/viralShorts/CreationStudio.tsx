@@ -317,7 +317,7 @@ type Props = {
   onExportedVideoKeyChange?: (key: string) => void;
   onDiscardWorkspace?: () => void;
   /** Persist viral workspace to the server right after export (avoids losing state if URLs refresh). */
-  onExportSuccess?: () => void | Promise<void>;
+  onExportSuccess?: (artifact: { downloadUrl: string; s3Key: string }) => void | Promise<void>;
   /** Best-effort immediate snapshot (debounced auto-save may lag behind active jobs). */
   onPersistWorkspaceSnapshot?: () => void | Promise<void>;
   initialViralTextLayers?: ViralTextLayerType[];
@@ -433,7 +433,6 @@ export default function CreationStudio({
     const s = typeof initialExportedVideoKey === 'string' ? initialExportedVideoKey.trim() : '';
     return s;
   });
-  const [showExportDownloadNotice, setShowExportDownloadNotice] = useState(false);
   const [exportProgress, setExportProgress] = useState<{ percent: number; label: string } | null>(null);
   const [translateProgress, setTranslateProgress] = useState<{ percent: number; label: string } | null>(null);
 
@@ -723,6 +722,17 @@ export default function CreationStudio({
 
   const activePreviewSrc = isBalancedPreviewMode ? String(balancedSyncPreviewUrl ?? '') : String(videoUrl ?? '');
 
+  /** Stable across presigned URL rotation — only changes when the underlying object key changes. */
+  const previewMediaFingerprint = useMemo(() => {
+    if (isBalancedPreviewMode) {
+      const k = String(balancedSyncPreviewS3Key ?? '').trim();
+      if (k) return `balanced:${k}`;
+    }
+    const k = workspaceS3Key.trim();
+    if (k) return `video:${k}`;
+    return activePreviewSrc;
+  }, [isBalancedPreviewMode, balancedSyncPreviewS3Key, workspaceS3Key, activePreviewSrc]);
+
   /**
    * Fixed canvas size for the preview frame.
    * The DOM dimensions stay constant so overlay layers (blur, text, SRT) never drift.
@@ -867,7 +877,7 @@ export default function CreationStudio({
   }, [subtitlesEditPosition, showSubtitlesOverlay, srtStyleLayer, setOverlayActiveTool, setOverlaySelectedId]);
 
   useEffect(() => {
-    const fp = activePreviewSrc;
+    const fp = previewMediaFingerprint;
     if (previewFingerprintRef.current === null) {
       previewFingerprintRef.current = fp;
       return;
@@ -877,10 +887,9 @@ export default function CreationStudio({
     overlayHydratedRef.current = false;
     resetOverlays();
     onViralOverlayLayersChange?.({ textLayers: [], blurLayers: [] });
-  }, [activePreviewSrc, onViralOverlayLayersChange, resetOverlays]);
+  }, [previewMediaFingerprint, onViralOverlayLayersChange, resetOverlays]);
 
   useEffect(() => {
-    if (overlayHydratedRef.current) return;
     if (overlayPreviewDuration <= 0) return;
     const t = initialViralTextLayers ?? [];
     const b = initialViralBlurLayers ?? [];
@@ -888,6 +897,9 @@ export default function CreationStudio({
       overlayHydratedRef.current = true;
       return;
     }
+    const store = useViralOverlayStore.getState();
+    const storeEmpty = store.textLayers.length === 0 && store.blurLayers.length === 0;
+    if (overlayHydratedRef.current && !storeEmpty) return;
     hydrateOverlays({ textLayers: t, blurLayers: b });
     overlayHydratedRef.current = true;
   }, [overlayPreviewDuration, initialViralTextLayers, initialViralBlurLayers, hydrateOverlays]);
@@ -1117,7 +1129,7 @@ export default function CreationStudio({
       setExportGenerationId(null);
       setExportProgress({ percent: 100, label: 'Export ready' });
       window.setTimeout(() => setExportProgress(null), PROGRESS_COMPLETION_FLASH_MS);
-      void onExportSuccess?.();
+      void onExportSuccess?.({ downloadUrl, s3Key });
     },
     [onExportSuccess],
   );
@@ -1501,6 +1513,16 @@ export default function CreationStudio({
   useEffect(() => {
     onExportGenerationIdChange?.(exportGenerationId);
   }, [exportGenerationId, onExportGenerationIdChange]);
+
+  useEffect(() => {
+    const url = typeof initialExportedVideoUrl === 'string' ? initialExportedVideoUrl.trim() : '';
+    const key = typeof initialExportedVideoKey === 'string' ? initialExportedVideoKey.trim() : '';
+    if (url) {
+      setExportedVideoUrl(url);
+      setExportGenerationId(null);
+    }
+    if (key) setExportedVideoKey(key);
+  }, [initialExportedVideoUrl, initialExportedVideoKey]);
 
   useEffect(() => {
     onExportedVideoUrlChange?.(exportedVideoUrl);
@@ -2392,12 +2414,23 @@ export default function CreationStudio({
     setShowVoiceOverConfirm(true);
   };
 
+  const handleDownloadExportAgain = useCallback(async () => {
+    const url = exportedVideoUrl?.trim();
+    if (!url) return;
+    setExportError(null);
+    try {
+      await triggerWorkspaceExportDownload(url, exportedVideoKey || 'video-export.mp4');
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setExportError(msg || 'Download failed');
+    }
+  }, [exportedVideoUrl, exportedVideoKey]);
+
   const handleFinalExportClick = async () => {
     setExportEstimateError(null);
     setExportError(null);
     setExportedVideoUrl(null);
     setExportedVideoKey('');
-    setShowExportDownloadNotice(false);
     try {
       const estimatedVideoSrcKey = extractWorkspaceKeyFromVideoUrl(String(videoUrl ?? '')) ?? workspaceS3Key ?? null;
       if (!estimatedVideoSrcKey) throw new Error('Video key is missing. Please re-upload the video.');
@@ -2418,7 +2451,6 @@ export default function CreationStudio({
     setExportError(null);
     setExportedVideoUrl(null);
     setExportedVideoKey('');
-    setShowExportDownloadNotice(false);
     setExporting(true);
     try {
       const v = videoRef.current;
@@ -2598,20 +2630,18 @@ export default function CreationStudio({
         setExportedVideoKey(sseResult.s3Key);
         setExportGenerationId(null);
         await triggerWorkspaceExportDownload(sseResult.downloadUrl, sseResult.s3Key);
-        setShowExportDownloadNotice(true);
+        await onExportSuccess?.({ downloadUrl: sseResult.downloadUrl, s3Key: sseResult.s3Key });
       } else {
         setExportProgress({ percent: 100, label: 'Export ready' });
         window.setTimeout(() => setExportProgress(null), PROGRESS_COMPLETION_FLASH_MS);
         setExportedVideoUrl(res.downloadUrl);
         setExportedVideoKey(res.s3Key);
         await triggerWorkspaceExportDownload(res.downloadUrl, res.s3Key);
-        setShowExportDownloadNotice(true);
+        await onExportSuccess?.({ downloadUrl: res.downloadUrl, s3Key: res.s3Key });
       }
-      await onExportSuccess?.();
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setExportError(msg || 'Export failed');
-      setShowExportDownloadNotice(false);
       setExportProgress(null);
     } finally {
       setExporting(false);
@@ -2931,6 +2961,16 @@ export default function CreationStudio({
             >
               {tEditor('buttons.discardWorkspace')}
             </button>
+          ) : null}
+          {exportedVideoUrl && !isExportPipelineBusy ? (
+            <ActionButton
+              onClick={() => void handleDownloadExportAgain()}
+              isLoading={false}
+              disabled={isAnyTaskRunning}
+              label={tEditor('buttons.downloadAgain')}
+              loadingLabel={tEditor('buttons.downloadAgain')}
+              className="inline-flex h-8 items-center gap-1.5 whitespace-nowrap rounded-md border border-violet-200/60 bg-white px-3 text-xs font-semibold text-zinc-900 transition-colors hover:bg-violet-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-violet-500/25 dark:bg-zinc-900/60 dark:text-foreground dark:hover:bg-violet-500/10"
+            />
           ) : null}
           <ActionButton
             onClick={() => void handleFinalExportClick()}
@@ -3354,14 +3394,14 @@ export default function CreationStudio({
                 {exportError}
               </div>
             ) : null}
-            {exportedVideoUrl && showExportDownloadNotice ? (
-              <div className="mb-2 rounded border border-violet-200/50 bg-white dark:border-violet-500/15 dark:bg-zinc-900/40 px-2 py-1.5 text-[10px] text-muted">
-                Export saved — your browser should have downloaded the file.{' '}
+            {exportedVideoUrl && !isExportPipelineBusy ? (
+              <div className="mb-2 rounded border border-emerald-500/25 bg-emerald-500/10 px-2 py-1.5 text-[10px] text-emerald-900 dark:text-emerald-100">
+                Export is ready on cloud storage — re-download is free (no extra points).{' '}
                 <button
                   type="button"
                   className="font-semibold text-foreground underline"
                   disabled={isAnyTaskRunning}
-                  onClick={() => void triggerWorkspaceExportDownload(exportedVideoUrl, exportedVideoKey || 'video-export.mp4')}
+                  onClick={() => void handleDownloadExportAgain()}
                 >
                   {tEditor('buttons.downloadAgain')}
                 </button>
