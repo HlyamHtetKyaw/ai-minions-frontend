@@ -1,6 +1,11 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { clampTimeToVideoSegments } from '@/lib/videoSegmentTime';
+import { createTextLayersFromSrtCues } from '@/lib/import-srt-cues-as-text-layers';
+import {
+  DEFAULT_CAPTION_BACKGROUND_COLOR,
+  DEFAULT_SRT_BACKGROUND_OPACITY,
+} from '@/lib/text-layer-caption-style';
 
 export type TextLayer = {
   id: string;
@@ -14,6 +19,10 @@ export type TextLayer = {
   fontFamily: string;
   color: string;
   opacity: number;
+  /** Caption box behind text (burned on export for imported .srt). */
+  backgroundColor?: string;
+  /** 0–100; 0 = no box in preview/export. */
+  backgroundOpacity?: number;
   startTime: number;
   endTime: number;
   /** Shared by all cues from one SRT import; used to sync layout/style across captions. */
@@ -776,6 +785,8 @@ export const useEditorStore = create<EditorState>((set) => ({
         fontFamily: 'Pyidaungsu',
         color: '#ffffff',
         opacity: 100,
+        backgroundColor: DEFAULT_CAPTION_BACKGROUND_COLOR,
+        backgroundOpacity: 0,
         startTime,
         endTime,
       };
@@ -792,37 +803,12 @@ export const useEditorStore = create<EditorState>((set) => ({
         state.canvasFrameWidth > 0 ? state.canvasFrameWidth : Math.max(1, state.canvasSize.width);
       const ch =
         state.canvasFrameHeight > 0 ? state.canvasFrameHeight : Math.max(1, state.canvasSize.height);
-      const boxW = cw > 48 ? Math.min(cw - 16, Math.max(280, cw * 0.92)) : 280;
-      const boxH = Math.min(160, Math.max(72, Math.round(ch * 0.14)));
-      const x = Math.max(8, Math.round((cw - boxW) / 2));
-      const y = Math.max(8, Math.round(ch - boxH - Math.max(12, ch * 0.03)));
-      const srtImportBatchId = nanoid();
-      const newLayers: TextLayer[] = cues.map((cue) => {
-        let startTime = Math.max(0, cue.startTime);
-        let endTime = Math.max(startTime + MIN_VIDEO_CLIP_SEC, cue.endTime);
-        if (d > 0) {
-          startTime = Math.min(startTime, d);
-          endTime = Math.min(Math.max(endTime, startTime + MIN_VIDEO_CLIP_SEC), d);
-        }
-        const content =
-          cue.content.replace(/\r\n/g, '\n').trim() || ' ';
-        return {
-          id: nanoid(),
-          type: 'text' as const,
-          content,
-          x,
-          y,
-          width: boxW,
-          height: boxH,
-          fontSize: 20,
-          fontFamily: 'Pyidaungsu',
-          color: '#ffffff',
-          opacity: 100,
-          startTime,
-          endTime,
-          srtImportBatchId,
-        };
+      const newLayers = createTextLayersFromSrtCues(cues, {
+        duration: d,
+        canvasWidth: cw,
+        canvasHeight: ch,
       });
+      if (newLayers.length === 0) return {};
       const lastId = newLayers[newLayers.length - 1]!.id;
       return {
         textLayers: [...state.textLayers, ...newLayers],
@@ -842,6 +828,8 @@ export const useEditorStore = create<EditorState>((set) => ({
         'fontFamily',
         'color',
         'opacity',
+        'backgroundColor',
+        'backgroundOpacity',
       ];
       const patchBulk: Partial<TextLayer> = {};
       for (const k of bulkKeys) {

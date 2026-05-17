@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
+import type { SrtCue } from '@/features/video-edit/lib/parse-srt';
+import { createTextLayersFromSrtCues } from '@/lib/import-srt-cues-as-text-layers';
 import type { BlurLayer, TextLayer } from '@/store/editorStore';
 
 const MIN_CLIP_SEC = 1;
@@ -82,6 +84,11 @@ export type ViralOverlayState = {
   deleteTextLayer: (id: string) => void;
   deleteBlurLayer: (id: string) => void;
   deleteSelectedLayer: () => void;
+  /** Append cues as text layers (same as video editor .srt upload). */
+  importSrtCuesAsTextLayers: (cues: SrtCue[], canvasWidth: number, canvasHeight: number) => void;
+  /** Replace prior imported-caption layers with a new batch (e.g. after AI subtitle generation). */
+  replaceSrtImportFromCues: (cues: SrtCue[], canvasWidth: number, canvasHeight: number) => void;
+  addSrtCueLayerAfter: (afterLayerId: string) => void;
   /** Move a layer one step toward the top (higher z-order). */
   moveLayerUp: (id: string) => void;
   /** Move a layer one step toward the bottom (lower z-order). */
@@ -192,9 +199,126 @@ export const useViralOverlayStore = create<ViralOverlayState>((set, get) => ({
   },
 
   updateTextLayer: (id, patch) =>
-    set((s) => ({
-      textLayers: s.textLayers.map((l) => (l.id === id ? { ...l, ...patch } : l)),
-    })),
+    set((s) => {
+      const target = s.textLayers.find((l) => l.id === id);
+      const batchId = target?.srtImportBatchId;
+      const bulkKeys: (keyof TextLayer)[] = [
+        'x',
+        'y',
+        'width',
+        'height',
+        'fontSize',
+        'fontFamily',
+        'color',
+        'opacity',
+        'backgroundColor',
+        'backgroundOpacity',
+      ];
+      const patchBulk: Partial<TextLayer> = {};
+      for (const k of bulkKeys) {
+        if (k in patch && patch[k] !== undefined) {
+          (patchBulk as Record<string, unknown>)[k] = patch[k] as unknown;
+        }
+      }
+      const propagateBulk = Boolean(batchId) && Object.keys(patchBulk).length > 0;
+
+      return {
+        textLayers: s.textLayers.map((l) => {
+          if (l.id === id) return { ...l, ...patch };
+          if (propagateBulk && l.srtImportBatchId === batchId) return { ...l, ...patchBulk };
+          return l;
+        }),
+      };
+    }),
+
+  importSrtCuesAsTextLayers: (cues, canvasWidth, canvasHeight) => {
+    const state = get();
+    if (cues.length === 0) return;
+    const d = state.previewDuration;
+    const newLayers = createTextLayersFromSrtCues(cues, {
+      duration: d,
+      canvasWidth,
+      canvasHeight,
+    });
+    if (newLayers.length === 0) return;
+    const lastId = newLayers[newLayers.length - 1]!.id;
+    const newOrder: LayerOrderEntry[] = newLayers.map((l) => ({ id: l.id, type: 'text' as const }));
+    set({
+      textLayers: [...state.textLayers, ...newLayers],
+      layerOrder: [...state.layerOrder, ...newOrder],
+      selectedLayerId: lastId,
+      activeTool: 'text',
+    });
+  },
+
+  addSrtCueLayerAfter: (afterLayerId) => {
+    const state = get();
+    const ref = state.textLayers.find((l) => l.id === afterLayerId && l.srtImportBatchId);
+    if (!ref) return;
+    const d = state.previewDuration;
+    let startTime = Math.max(0, ref.endTime);
+    let endTime = Math.min(d > 0 ? d : startTime + 1.6, startTime + 1.6);
+    if (d > 0 && endTime - startTime < MIN_CLIP_SEC) {
+      endTime = Math.min(d, startTime + MIN_CLIP_SEC);
+    }
+    const id = nanoid();
+    const layer: TextLayer = {
+      id,
+      type: 'text',
+      content: '',
+      x: ref.x,
+      y: ref.y,
+      width: ref.width,
+      height: ref.height,
+      fontSize: ref.fontSize,
+      fontFamily: ref.fontFamily,
+      color: ref.color,
+      opacity: ref.opacity,
+      backgroundColor: ref.backgroundColor,
+      backgroundOpacity: ref.backgroundOpacity,
+      startTime,
+      endTime,
+      srtImportBatchId: ref.srtImportBatchId,
+    };
+    const newOrder: LayerOrderEntry = { id, type: 'text' };
+    set({
+      textLayers: [...state.textLayers, layer],
+      layerOrder: [...state.layerOrder, newOrder],
+      selectedLayerId: id,
+      activeTool: 'text',
+    });
+  },
+
+  replaceSrtImportFromCues: (cues, canvasWidth, canvasHeight) => {
+    const state = get();
+    const keptText = state.textLayers.filter((l) => !l.srtImportBatchId);
+    const keptOrder = state.layerOrder.filter((e) => {
+      if (e.type !== 'text') return true;
+      return keptText.some((l) => l.id === e.id);
+    });
+    if (cues.length === 0) {
+      set({
+        textLayers: keptText,
+        layerOrder: keptOrder,
+        selectedLayerId: null,
+      });
+      return;
+    }
+    const d = state.previewDuration;
+    const newLayers = createTextLayersFromSrtCues(cues, {
+      duration: d,
+      canvasWidth,
+      canvasHeight,
+    });
+    const lastId = newLayers[newLayers.length - 1]!.id;
+    const newOrder: LayerOrderEntry[] = newLayers.map((l) => ({ id: l.id, type: 'text' as const }));
+    set({
+      textLayers: [...keptText, ...newLayers],
+      layerOrder: [...keptOrder, ...newOrder],
+      selectedLayerId: lastId,
+      activeTool: 'text',
+    });
+  },
 
   updateBlurLayer: (id, patch) =>
     set((s) => ({

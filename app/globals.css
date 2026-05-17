@@ -942,12 +942,6 @@ button.video-edit-export-card .video-edit-export-card-desc {
 }
 
 /* Viral Shorts studio workspace — editor surfaces (preview + timeline) */
-.viral-studio-shell {
-  border-color: rgba(15, 23, 42, 0.1);
-  background: #ffffff;
-  color: #18181b;
-}
-
 .light .viral-studio-shell {
   background: #ffffff;
   border-color: rgba(15, 23, 42, 0.1);
@@ -955,19 +949,19 @@ button.video-edit-export-card .video-edit-export-card-desc {
 }
 
 .light .viral-studio-shell .viral-studio-header {
-  background: #ffffff;
+  background-color: #ffffff !important;
   border-color: rgb(228 228 231);
   color: #18181b;
 }
 
 .light .viral-studio-shell .viral-studio-panel {
   border-color: rgb(228 228 231);
-  background: #ffffff;
+  background-color: #ffffff !important;
   box-shadow: none;
 }
 
 .light .viral-studio-shell .viral-studio-sidebar {
-  background: #ffffff;
+  background-color: #ffffff !important;
   border-color: rgb(228 228 231);
 }
 
@@ -998,20 +992,48 @@ button.video-edit-export-card .video-edit-export-card-desc {
 
 .light .viral-studio-shell .viral-studio-script-card {
   border-color: rgb(228 228 231);
-  background: #ffffff;
 }
 
 /* Light studio: white fields (override lavender --subtle / --card tokens inside shell) */
 .light .viral-studio-shell textarea,
 .light .viral-studio-shell select,
 .light .viral-studio-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']):not([type='hidden']) {
-  background-color: #ffffff;
+  background-color: #ffffff !important;
   border-color: rgb(228 228 231);
 }
 
-.light .viral-studio-shell .viral-studio-muted-surface {
-  background-color: #ffffff;
+.light .viral-studio-shell .viral-studio-muted-surface,
+.light .viral-studio-shell .viral-studio-srt-settings {
+  background-color: #ffffff !important;
+  background-image: none !important;
   border-color: rgb(228 228 231);
+}
+
+.light .viral-studio-shell .viral-srt-add-after-btn {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: #ffffff !important;
+  color: rgb(39 39 42) !important;
+}
+
+.light .viral-studio-shell .viral-srt-add-after-btn:hover:not(:disabled) {
+  background-color: #ffffff !important;
+  border-color: rgba(109, 40, 217, 0.45) !important;
+}
+
+.light .viral-studio-shell .viral-srt-add-after-btn:disabled {
+  background-color: #ffffff !important;
+  opacity: 0.5;
+}
+
+.light .viral-studio-shell .viral-overlay-inspector,
+.light .viral-studio-shell .viral-timeline-dock,
+.light .viral-studio-shell .viral-timeline-toolbar,
+.light .viral-studio-shell .viral-timeline-canvas,
+.light .viral-studio-shell .viral-timeline-ruler,
+.light .viral-studio-shell .viral-timeline-track,
+.light .viral-studio-shell .viral-timeline-track-empty {
+  background-color: #ffffff !important;
 }
 
 /* Secondary actions: always white in light mode (not gray / lavender tokens) */
@@ -1023,8 +1045,8 @@ button.video-edit-export-card .video-edit-export-card-desc {
 }
 
 .light .viral-studio-shell .viral-studio-secondary-btn:hover:not(:disabled) {
-  background-color: #faf5ff !important;
-  border-color: rgb(196 181 253) !important;
+  background-color: #ffffff !important;
+  border-color: rgb(167 139 250) !important;
 }
 
 .light .viral-studio-shell .viral-studio-secondary-btn:disabled {
@@ -1055,59 +1077,32 @@ button.video-edit-export-card .video-edit-export-card-desc {
 .light .viral-studio-shell {
   --card: #ffffff;
   --subtle: #ffffff;
-  --surface: #faf5ff;
+  --surface: #ffffff;
   --glass: #ffffff;
   --card-border: rgba(24, 24, 27, 0.1);
 }
 
-.light .viral-timeline-dock {
-  background: #ffffff;
-  border-color: rgb(228 228 231);
-}
-
-.light .viral-timeline-dock .viral-timeline-toolbar,
-.light .viral-timeline-dock .viral-timeline-canvas,
-.light .viral-timeline-dock .viral-timeline-ruler {
-  background: #ffffff;
-  border-color: rgb(228 228 231);
-}
-
-.light .viral-timeline-dock .viral-timeline-track {
-  background: #ffffff;
-  border-color: rgb(241 241 245);
-}
-
-.light .viral-timeline-dock .viral-timeline-track-empty {
-  background: #ffffff;
-  border-color: rgb(241 241 245);
-}
-
-.light .viral-studio-timeline-section,
-.light .viral-studio-timeline-heading {
+.light .viral-studio-shell .viral-studio-timeline-section,
+.light .viral-studio-shell .viral-studio-timeline-heading {
   background-color: #ffffff !important;
   border-color: rgb(228 228 231);
 }
 
-.light .viral-studio-timeline-heading {
+.light .viral-studio-shell .viral-studio-timeline-heading {
   color: rgb(82 82 91);
 }
 
-.light .viral-timeline-dock .viral-timeline-toolbar button,
-.light .viral-timeline-dock .viral-timeline-transport-btn {
+.light .viral-studio-shell .viral-timeline-dock .viral-timeline-toolbar button,
+.light .viral-studio-shell .viral-timeline-dock .viral-timeline-transport-btn {
   background-color: #ffffff !important;
   border-color: rgb(228 228 231) !important;
   color: rgb(39 39 42) !important;
   box-shadow: none !important;
 }
 
-.light .viral-timeline-dock .viral-timeline-toolbar button:hover:not(:disabled) {
-  background-color: #faf5ff !important;
-  border-color: rgb(196 181 253) !important;
-}
-
-.light .viral-overlay-inspector {
-  background: #ffffff;
-  border-color: rgb(228 228 231);
+.light .viral-studio-shell .viral-timeline-dock .viral-timeline-toolbar button:hover:not(:disabled) {
+  background-color: #ffffff !important;
+  border-color: rgb(167 139 250) !important;
 }
 
 .light .viral-studio-shell .viral-studio-error {
@@ -1144,12 +1139,44 @@ button.video-edit-export-card .video-edit-export-card-desc {
     0 6px 22px rgba(106, 45, 255, 0.38);
 }
 
+.light .viral-studio-shell textarea:focus,
 .light .viral-studio-shell textarea:focus-visible,
+.light .viral-studio-shell select:focus,
 .light .viral-studio-shell select:focus-visible,
+.light .viral-studio-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):focus,
 .light .viral-studio-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']):focus-visible {
   outline: none;
+  background-color: #ffffff !important;
   border-color: rgba(109, 40, 217, 0.72) !important;
   box-shadow: 0 0 0 3px rgba(109, 40, 217, 0.22);
+}
+
+.light .viral-studio-shell .viral-studio-srt-settings,
+.light .viral-studio-shell .viral-studio-script-card,
+.light .viral-studio-shell .viral-srt-cue-card,
+.light .viral-studio-shell .viral-srt-cue-card--selected,
+.light .viral-studio-shell .viral-studio-srt-editor,
+.light .viral-studio-shell .viral-studio-srt-scroll,
+.light .viral-studio-shell .viral-srt-save-footer,
+.light .viral-studio-shell .viral-studio-advanced-srt,
+.light .viral-studio-shell .viral-studio-advanced-srt-summary {
+  background-color: #ffffff !important;
+}
+
+.light .viral-studio-shell .scrollbar-themed {
+  scrollbar-color: rgba(124, 92, 255, 0.42) #ffffff;
+}
+
+.light .viral-studio-shell .scrollbar-themed::-webkit-scrollbar-track {
+  background: #ffffff;
+}
+
+.light .viral-studio-shell .scrollbar-themed::-webkit-scrollbar-thumb {
+  border-color: #ffffff;
+}
+
+.light .viral-studio-shell .scrollbar-themed::-webkit-scrollbar-thumb:hover {
+  border-color: #ffffff;
 }
 
 .light .viral-overlay-inspector button:focus-visible {
@@ -1163,6 +1190,13 @@ button.video-edit-export-card .video-edit-export-card-desc {
   background: #12101e;
   border-color: rgba(255, 255, 255, 0.08);
   color: #f4f4f5;
+}
+
+.dark .viral-studio-shell .viral-studio-script-card,
+.dark .viral-studio-shell .viral-studio-panel,
+.dark .viral-studio-shell .viral-studio-muted-surface {
+  border-color: rgba(139, 92, 246, 0.15);
+  background: transparent;
 }
 
 .dark .viral-studio-shell button:focus-visible,
@@ -1181,6 +1215,19 @@ button.video-edit-export-card .video-edit-export-card-desc {
   box-shadow: 0 0 0 3px rgba(124, 92, 255, 0.28);
 }
 
+/* SRT cue list: selected card must stay dark (avoid !bg-white / light surfaces in dark mode) */
+.dark .viral-studio-shell .viral-srt-cue-card--selected {
+  background-color: rgba(46, 16, 101, 0.42) !important;
+  border-color: rgba(167, 139, 250, 0.5) !important;
+}
+
+.dark .viral-studio-shell .viral-srt-cue-card--selected textarea,
+.dark .viral-studio-shell .viral-srt-cue-card--selected input:not([type='checkbox']):not([type='radio']):not([type='range']) {
+  background-color: rgba(24, 24, 27, 0.75) !important;
+  color: rgb(244 244 245) !important;
+  border-color: rgba(139, 92, 246, 0.28) !important;
+}
+
 .viral-timeline-dock .text-muted-foreground {
   color: rgb(113 113 122);
 }
@@ -1191,7 +1238,7 @@ button.video-edit-export-card .video-edit-export-card-desc {
 
 .light .viral-overlay-inspector .viral-overlay-tool-active {
   border-color: rgba(109, 40, 217, 0.45);
-  background: rgba(109, 40, 217, 0.1);
+  background-color: #ffffff;
   color: #18181b;
 }
 

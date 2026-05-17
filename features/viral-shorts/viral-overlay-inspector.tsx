@@ -1,15 +1,16 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { useTranslations } from 'next-intl';
 import type { BlurLayer, TextLayer } from '@/store/editorStore';
 import type { ViralActiveTool } from '@/features/viral-shorts/viral-overlay-store';
+import { ViralTextProperties } from '@/features/viral-shorts/viral-text-properties';
 
 type Props = {
   activeTool: ViralActiveTool;
   onActiveTool: (tool: ViralActiveTool) => void;
   selectedText: TextLayer | null;
   selectedBlur: BlurLayer | null;
+  previewDurationSec: number;
   durationReady: boolean;
   onAddText: () => void;
   onAddBlur: () => void;
@@ -19,10 +20,9 @@ type Props = {
 };
 
 export function ViralOverlayInspector({
-  activeTool,
-  onActiveTool,
   selectedText,
   selectedBlur,
+  previewDurationSec,
   durationReady,
   onAddText,
   onAddBlur,
@@ -32,9 +32,8 @@ export function ViralOverlayInspector({
 }: Props) {
   const t = useTranslations('viralShorts.overlays');
 
-
   return (
-    <div className="viral-overlay-inspector space-y-2 border-b border-violet-200/50 bg-violet-50/30 px-3 py-2 dark:border-violet-500/15 dark:bg-zinc-900/50">
+    <div className="viral-overlay-inspector space-y-2 border-b border-violet-200/50 bg-white px-3 py-2 dark:border-violet-500/15 dark:bg-zinc-900/50">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {t('sectionTitle')}
@@ -66,62 +65,26 @@ export function ViralOverlayInspector({
         )}
       </div>
 
-      {selectedText != null && (
-        <div className="rounded-lg border border-violet-500/20 bg-subtle/20 p-2 dark:border-violet-400/15">
+      {selectedText != null && selectedText.srtImportBatchId ? (
+        <p className="rounded-md border border-violet-200/60 bg-violet-50/80 px-2 py-1.5 text-[9px] leading-relaxed text-muted-foreground dark:border-violet-400/15 dark:bg-violet-500/10">
+          Edit caption text, timing, and style in the SRT Editor tab.
+        </p>
+      ) : null}
+
+      {selectedText != null && !selectedText.srtImportBatchId ? (
+        <div className="rounded-lg border border-violet-500/20 bg-white p-2 dark:border-violet-400/15 dark:bg-zinc-900/40">
           <p className="mb-2 text-[10px] font-semibold text-muted-foreground">{t('inspectorText')}</p>
-          <label className="block text-[10px] text-muted-foreground">
-            {t('content')}
-            <textarea
-              value={selectedText.content}
-              onChange={(e) => onUpdateText(selectedText.id, { content: e.target.value })}
-              rows={2}
-              className="mt-0.5 w-full resize-y rounded border border-violet-500/25 bg-card px-2 py-1 text-[12px] text-foreground dark:border-violet-400/20"
-            />
-          </label>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <label className="text-[10px] text-muted-foreground">
-              {t('fontSize')}
-              <input
-                type="number"
-                min={8}
-                max={96}
-                value={selectedText.fontSize}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (Number.isFinite(n)) onUpdateText(selectedText.id, { fontSize: n });
-                }}
-                className="ml-1 w-16 rounded border border-violet-500/25 bg-card px-1 py-0.5 text-[11px] dark:border-violet-400/20"
-              />
-            </label>
-            <label className="text-[10px] text-muted-foreground">
-              {t('color')}
-              <input
-                type="color"
-                value={selectedText.color.startsWith('#') ? selectedText.color : '#ffffff'}
-                onChange={(e) => onUpdateText(selectedText.id, { color: e.target.value })}
-                className="ml-1 h-7 w-10 cursor-pointer rounded border border-violet-500/25 bg-card dark:border-violet-400/20"
-              />
-            </label>
-            <label className="text-[10px] text-muted-foreground">
-              {t('opacity')}
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={selectedText.opacity}
-                onChange={(e) => {
-                  const n = Number(e.target.value);
-                  if (Number.isFinite(n)) onUpdateText(selectedText.id, { opacity: n });
-                }}
-                className="ml-1 w-24 align-middle"
-              />
-            </label>
-          </div>
+          <ViralTextProperties
+            layer={selectedText}
+            durationSec={previewDurationSec}
+            onUpdate={onUpdateText}
+            onDelete={onDelete}
+          />
         </div>
-      )}
+      ) : null}
 
       {selectedBlur != null && (
-        <div className="rounded-lg border border-violet-500/20 bg-subtle/20 p-2 dark:border-violet-400/15">
+        <div className="rounded-lg border border-violet-500/20 bg-white p-2 dark:border-violet-400/15 dark:bg-zinc-900/40">
           <p className="mb-2 text-[10px] font-semibold text-muted-foreground">{t('inspectorBlur')}</p>
           <label className="flex items-center gap-2 text-[10px] text-muted-foreground">
             {t('intensity')}

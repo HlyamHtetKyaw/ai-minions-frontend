@@ -2,16 +2,10 @@
 
 import { useCallback, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Rnd } from 'react-rnd';
+import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
+import { blurResizeEnabled, blurResizeHandleStyles } from '@/lib/rnd-blur-resize-handles';
 import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
 import type { BlurLayer as BlurLayerType } from '@/store/editorStore';
-
-const handleStyle = {
-  width: 8,
-  height: 8,
-  background: '#ffffff',
-  border: '1px solid rgba(0,0,0,0.25)',
-  borderRadius: 1,
-};
 
 type ViralBlurLayerProps = {
   layer: BlurLayerType;
@@ -21,7 +15,6 @@ type ViralBlurLayerProps = {
 };
 
 export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 1 }: ViralBlurLayerProps) {
-  const activeTool = useViralOverlayStore((s) => s.activeTool);
   const selectedLayerId = useViralOverlayStore((s) => s.selectedLayerId);
   const updateBlurLayer = useViralOverlayStore((s) => s.updateBlurLayer);
   const setSelectedLayerId = useViralOverlayStore((s) => s.setSelectedLayerId);
@@ -38,11 +31,24 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
 
   const interactiveOnCanvas = selected;
 
+  const storedBounds = {
+    x: layer.x,
+    y: layer.y,
+    width: layer.width,
+    height: layer.height,
+  };
+  const { bounds, onDrag, onResize, clearLive, isLive } = useRndLiveBounds(storedBounds);
+
+  const endTransform = useCallback(() => {
+    clearLive();
+  }, [clearLive]);
+
   const onDragStop = useCallback(
     (_e: unknown, d: { x: number; y: number }) => {
       updateBlurLayer(layer.id, { x: d.x, y: d.y });
+      endTransform();
     },
-    [layer.id, updateBlurLayer],
+    [endTransform, layer.id, updateBlurLayer],
   );
 
   const onResizeStop = useCallback(
@@ -59,8 +65,9 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
         width: ref.offsetWidth,
         height: ref.offsetHeight,
       });
+      endTransform();
     },
-    [layer.id, updateBlurLayer],
+    [endTransform, layer.id, updateBlurLayer],
   );
 
   if (currentTimeSec < layer.startTime || currentTimeSec > layer.endTime) {
@@ -73,28 +80,22 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
     <Rnd
       bounds="parent"
       scale={scale}
-      size={{ width: layer.width, height: layer.height }}
-      position={{ x: layer.x, y: layer.y }}
+      size={{ width: bounds.width, height: bounds.height }}
+      position={{ x: bounds.x, y: bounds.y }}
+      onDrag={onDrag}
       onDragStop={onDragStop}
+      onResize={onResize}
       onResizeStop={onResizeStop}
-      enableResizing={
-        interactiveOnCanvas
-          ? {
-              top: true,
-              right: true,
-              bottom: true,
-              left: true,
-              topRight: true,
-              topLeft: true,
-              bottomRight: true,
-              bottomLeft: true,
-            }
-          : false
-      }
+      enableUserSelectHack={false}
+      enableResizing={interactiveOnCanvas ? blurResizeEnabled : false}
       disableDragging={!interactiveOnCanvas}
+      className={interactiveOnCanvas ? 'touch-none' : undefined}
+      resizeHandleWrapperStyle={interactiveOnCanvas ? { touchAction: 'none' } : undefined}
       style={{
         zIndex,
         pointerEvents: 'auto',
+        touchAction: interactiveOnCanvas ? 'none' : undefined,
+        willChange: isLive ? 'transform' : undefined,
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
@@ -104,20 +105,7 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();
       }}
-      resizeHandleStyles={
-        interactiveOnCanvas
-          ? {
-              top: handleStyle,
-              right: handleStyle,
-              bottom: handleStyle,
-              left: handleStyle,
-              topLeft: handleStyle,
-              topRight: handleStyle,
-              bottomLeft: handleStyle,
-              bottomRight: handleStyle,
-            }
-          : undefined
-      }
+      resizeHandleStyles={interactiveOnCanvas ? blurResizeHandleStyles : undefined}
     >
       <div
         className="h-full w-full overflow-hidden"
@@ -135,6 +123,7 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
           boxShadow: supportsBackdropBlur ? undefined : 'inset 0 0 0 9999px rgba(0,0,0,0.06)',
           isolation: 'isolate',
           willChange: supportsBackdropBlur ? 'backdrop-filter' : undefined,
+          pointerEvents: 'none',
         }}
       />
     </Rnd>

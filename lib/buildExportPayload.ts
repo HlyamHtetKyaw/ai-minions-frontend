@@ -4,6 +4,10 @@ import {
   subtitlesPositionFromTextLayer,
   workspaceExportTrimWindow,
 } from '@/lib/buildWorkspaceSrtBurnFromLayers';
+import {
+  resolveCaptionBackgroundColor,
+  resolveCaptionBackgroundOpacity,
+} from '@/lib/text-layer-caption-style';
 
 /**
  * URL the export backend can fetch: not a browser-only `blob:` URL, and without the
@@ -263,8 +267,13 @@ export function buildExportPayload(state: EditorState) {
               }
             : {}),
           subtitlesBackgroundBlur: 0,
-          // Preview text has no caption box (viral default 65% would burn a dark rectangle).
-          subtitlesBackgroundOpacity: 0,
+          subtitlesBackgroundOpacity: srtStyleLayer != null
+            ? resolveCaptionBackgroundOpacity(srtStyleLayer)
+            : 0,
+          subtitlesBackgroundColor:
+            srtStyleLayer != null
+              ? resolveCaptionBackgroundColor(srtStyleLayer)
+              : '#000000',
           /** Web hex (e.g. #22c55e); processing maps to ASS PrimaryColour. */
           subtitlesPrimaryColor:
             typeof srtStyleLayer?.color === 'string' && srtStyleLayer.color.trim() !== ''

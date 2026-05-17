@@ -1,18 +1,26 @@
 'use client';
 
-import { useCallback, useEffect, type MouseEvent as ReactMouseEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  type MouseEvent as ReactMouseEvent,
+  type TouchEvent as ReactTouchEvent,
+} from 'react';
 import { Rnd } from 'react-rnd';
 import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
+import { useTextLayerBoxResize } from '@/hooks/useTextLayerBoxResize';
+import {
+  captionBoxBackgroundCss,
+  resolveCaptionBackgroundColor,
+  resolveCaptionBackgroundOpacity,
+} from '@/lib/text-layer-caption-style';
 import { useEditorStore } from '@/store/editorStore';
 import type { TextLayer as TextLayerType } from '@/store/editorStore';
-
-const cornerHandle = {
-  width: 8,
-  height: 8,
-  background: '#ffffff',
-  border: '1px solid rgba(0,0,0,0.25)',
-  borderRadius: 1,
-};
+import { textLayerSelectionStyle } from '@/lib/canvas-text-selection-style';
+import {
+  overlayResizeEnabled,
+  textOverlayResizeHandleStyles,
+} from '@/lib/rnd-blur-resize-handles';
 
 type TextLayerProps = {
   layer: TextLayerType;
@@ -68,27 +76,18 @@ export function TextLayer({ layer, stackIndex = 0 }: TextLayerProps) {
 
   const zIndex = 30 + stackIndex + (selected ? 50 : 0);
 
-  const onResizeStart = useCallback(() => {
-    beginTransform();
-  }, [beginTransform]);
+  const { displayFontSize, onResizeStart, onResizeStop } = useTextLayerBoxResize(
+    layer,
+    bounds,
+    isLive,
+    updateTextLayer,
+    beginTransform,
+    endTransform,
+  );
 
-  const onResizeStop = useCallback(
-    (
-      _e: MouseEvent | TouchEvent,
-      _dir: unknown,
-      ref: HTMLElement,
-      _delta: { width: number; height: number },
-      position: { x: number; y: number },
-    ) => {
-      updateTextLayer(layer.id, {
-        x: position.x,
-        y: position.y,
-        width: ref.offsetWidth,
-        height: ref.offsetHeight,
-      });
-      endTransform();
-    },
-    [endTransform, layer.id, updateTextLayer],
+  const captionBackground = captionBoxBackgroundCss(
+    resolveCaptionBackgroundColor(layer),
+    resolveCaptionBackgroundOpacity(layer),
   );
 
   return (
@@ -103,70 +102,59 @@ export function TextLayer({ layer, stackIndex = 0 }: TextLayerProps) {
       onResize={onResize}
       onResizeStop={onResizeStop}
       enableUserSelectHack={false}
-      enableResizing={
-        interactiveOnCanvas
-          ? {
-              top: false,
-              right: false,
-              bottom: false,
-              left: false,
-              topRight: true,
-              topLeft: true,
-              bottomRight: true,
-              bottomLeft: true,
-            }
-          : false
-      }
+      enableResizing={interactiveOnCanvas ? overlayResizeEnabled : false}
       disableDragging={!interactiveOnCanvas}
+      className={interactiveOnCanvas ? 'touch-none' : undefined}
+      resizeHandleWrapperStyle={interactiveOnCanvas ? { touchAction: 'none' } : undefined}
       style={{
         zIndex,
         willChange: isLive ? 'transform' : undefined,
         // Let clicks reach the <video> unless the text tool is active (same pattern as blur).
         pointerEvents: interactiveOnCanvas ? 'auto' : 'none',
+        touchAction: interactiveOnCanvas ? 'none' : undefined,
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
       }}
+      onTouchStart={(e: ReactTouchEvent) => {
+        if (!interactiveOnCanvas) return;
+        e.stopPropagation();
+      }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();
       }}
-      resizeHandleStyles={
-        interactiveOnCanvas
-          ? {
-              topLeft: cornerHandle,
-              topRight: cornerHandle,
-              bottomLeft: cornerHandle,
-              bottomRight: cornerHandle,
-            }
-          : undefined
-      }
+      resizeHandleStyles={interactiveOnCanvas ? textOverlayResizeHandleStyles : undefined}
     >
       <div
         className="flex h-full w-full items-center justify-center overflow-hidden"
         style={{
-          border: selected
-            ? '1px dashed rgba(127, 119, 221, 0.8)'
-            : '1px solid transparent',
+          ...textLayerSelectionStyle(selected),
           boxSizing: 'border-box',
         }}
       >
         <div
-          className="w-full px-1 text-center"
+          className="max-w-full rounded px-1 py-0.5 text-center"
           style={{
-            fontSize: `${layer.fontSize}px`,
-            // Keep video-editor text rendering aligned with Viral flow (Pyidaungsu-first fallback stack).
-            fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
-            color: layer.color,
-            opacity: layer.opacity / 100,
-            userSelect: 'none',
-            pointerEvents: 'none',
-            lineHeight: 1.2,
-            wordBreak: 'break-word',
-            whiteSpace: 'pre-wrap',
+            backgroundColor: captionBackground,
           }}
         >
-          {layer.content}
+          <div
+            className="w-full"
+            style={{
+              fontSize: `${displayFontSize}px`,
+              fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
+              color: layer.color,
+              opacity: layer.opacity / 100,
+              userSelect: 'none',
+              pointerEvents: 'none',
+              lineHeight: 1.25,
+              wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {layer.content}
+          </div>
         </div>
       </div>
     </Rnd>

@@ -649,7 +649,12 @@
       "timeOut": "ကြား",
       "deleteLayer": "အလွှာဖျက်ရန်",
       "textPanel": {
-        "srtStyleSyncHint": ".srt တင်ထားသော စာတန်းများ − ဖောင့်၊ အရောင်၊ ဖျော့မှန်မှု၊ အရွယ်နှင့် တည်နေရာပြောင်းလဲမှုများကို တူညီတင်သွင်းမှု၏ စာကြောင်းအားလုံးသို့ သုံးပါသည်။ စာသားနှင့် အချိန်ကို အောက်တွင် တစ်ကြောင်းချင်းပြင်ပါ။"
+        "srtStyleSyncHint": ".srt တင်ထားသော စာတန်းများ − ဖောင့်၊ အရောင်၊ စာသားဖျော့မှန်၊ နောက်ခံအရောင်/ဖျော့မှန်၊ အရွယ်နှင့် တည်နေရာကို တူညီတင်သွင်းမှု၏ စာကြောင်းအားလုံးသို့ သုံးပါသည်။ စာသားနှင့် အချိန်ကို အောက်တွင် တစ်ကြောင်းချင်းပြင်ပါ။",
+        "textOpacity": "စာသားဖျော့မှန်",
+        "captionBackground": "စာတန်းနောက်ခံ",
+        "captionBackgroundHint": "Preview နှင့် export တွင် စာသားနောက်က ဘောက်စ်။ ဘောက်မလိုလျှင် opacity ကို 0 ထားပါ။",
+        "backgroundColor": "အရောင်",
+        "backgroundOpacity": "ဖျော့မှန်"
       },
       "subs": {
         "uploadTitle": ".srt ဖိုင်တင်ရန်",
@@ -934,7 +939,7 @@
       "title": "Viral ဗီဒီယို",
       "subtitle": "စကားပြောအသံသွင်းရန်၊ စာတန်းထိုးများဘာသာပြန်ရန်၊ AI အသံထွက်များ၊ စတိုင်စာတန်းများ၊ စင့်ခ်အသံများ၊ နှင့် သင့်ဗီဒီယိုကို ထုတ်ယူရန်—အားလုံးသည် အလိုအလျောက်သိမ်းဆည်းသည့်ပံ့ပိုးမှုဖြင့် သင့်ဗီဒီယိုကို ထုတ်ယူရန် MP4 သို့မဟုတ် WebM ဗီဒီယိုကို အပ်လုဒ်လုပ်ပါ။",
       "helpAria": "Viral ဗီဒီယို တည်းဖြတ်မှု အကူအညီ",
-      "helpMessage": "How to use (English)\n1) Upload an MP4/WebM video.\n2) Transcribe speech to text.\n3) Translate and edit the script/subtitles.\n4) Generate voice-over and sync audio.\n5) Export the final video.\n\nအသုံးပြုပုံ (Myanmar)\n၁) MP4/WebM ဗီဒီယိုကို upload တင်ပါ။\n၂) စကားပြောကို text အဖြစ် transcribe လုပ်ပါ။\n၃) script/subtitle ကို ဘာသာပြန်ပြီး ပြင်ပါ။\n၄) voice-over ထုတ်ပြီး audio ကို sync ချိန်ပါ။\n၅) နောက်ဆုံး video ကို export ထုတ်ပါ။",
+      "helpMessage": "How to use (English)\n1) Upload: Upload an MP4 or WebM video, then open the editor.\n2) Transcribe: Click \"Transcribe Video\" to turn speech into script text.\n3) Translate and Edit: Click \"Translate\" and edit in the \"Script\" or \"SRT Editor\" tabs.\n4) Generate AI Voice-over: This step costs points. There are two options:\n   • Sync voice length to audio: Free — only adjusts playback speed in the preview.\n   • Balanced sync (render & combine): Costs extra points — renders a new video+audio preview you must accept or reject before exporting.\n5) Adjust Subtitles: Change font, position, and opacity. You can also drag subtitles on the video preview.\n6) Add Overlays (Optional): Add Text or Blur overlays from the tools panel.\n7) Final Export: Click \"Final Export\" to download your finished video.\n\nအသုံးပြုပုံ (Myanmar)\n၁) Upload: MP4 သို့မဟုတ် WebM ဗီဒီယိုကို upload တင်ပြီး editor ကိုဖွင့်ပါ။\n၂) Transcribe: \"Transcribe Video\" ကိုနှိပ်ပြီး စကားပြောကို script text အဖြစ်ပြောင်းပါ။\n၃) Translate and Edit: \"Translate\" ကိုနှိပ်ပြီး \"Script\" (သို့) \"SRT Editor\" tab မှာ ပြင်ပါ။\n၄) Generate AI Voice-over: ဤအဆင့်သည် points သုံးပါမည်။ ရွေးချယ်စရာ နှစ်ခု —\n   • Sync voice length to audio: အခမဲ့ — preview ထဲမှာ playback speed ကိုသာညှိပေးသည်။\n   • Balanced sync (render & combine): points အပိုသုံးသည် — video+audio preview အသစ်ကို render လုပ်ပြီး export မလုပ်မီ accept/reject လုပ်ရမည်။\n၅) Adjust Subtitles: font, position, opacity ကိုပြောင်းနိုင်သည်။ video preview ပေါ်မှာ ဆွဲပြီး နေရာချနိုင်သည်။\n၆) Add Overlays (Optional): tools panel မှ Text (သို့) Blur overlay တွေ ထပ်ထည့်နိုင်သည်။\n၇) Final Export: \"Final Export\" ကိုနှိပ်ပြီး ပြီးပြည့်စုံသော ဗီဒီယိုကို download လုပ်ပါ။",
       "loadingWorkspace": "အလုပ်ခွင်ကို ဖွင့်နေသည်…",
       "loadingWorkspaceHint": "သိမ်းဆည်းထားသော တည်းဖြတ်မှု စက်ရှင်ကို စစ်ဆေးနေသည်။",
       "preparingWorkspace": "အလုပ်ခွင်ကို ဖွင့်နေသည်…",
@@ -1014,7 +1019,12 @@
         "showOnVideo": "ဗီဒီယိုပေါ်တွင် ပြရန်",
         "moveOnVideo": "ဗီဒီယိုပေါ်တွင် ရွှေ့ရန်",
         "fontSizeExport": "ဖောင့်အရွယ် (export px)",
-        "backgroundOpacity": "နောက်ခံဖျော့မှန်မှု",
+        "textColor": "စာသားအရောင်",
+        "textOpacity": "စာသားဖျော့မှန်",
+        "captionBackground": "စာတန်းနောက်ခံ",
+        "captionBackgroundHint": "စာတန်းနောက်တွင် ပြမည့် အကွက် — ဖျော့မှန် 0 သည် အကွက်မပါ။",
+        "backgroundColor": "အရောင်",
+        "backgroundOpacity": "ဖျော့မှန်",
         "generateSubtitlesFirst": "Cue များထည့်သွင်းရန် အရင် subtitles ထုတ်ပေးပါ။"
       }
     },
