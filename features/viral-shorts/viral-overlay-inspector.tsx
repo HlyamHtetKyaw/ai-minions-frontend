@@ -1,7 +1,6 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { MousePointer2, Sparkles, Type } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import type { BlurLayer, TextLayer } from '@/store/editorStore';
 import type { ViralActiveTool } from '@/features/viral-shorts/viral-overlay-store';
@@ -33,30 +32,13 @@ export function ViralOverlayInspector({
 }: Props) {
   const t = useTranslations('viralShorts.overlays');
 
-  const toolBtn = (tool: ViralActiveTool, label: string, icon: ReactNode) => (
-    <button
-      type="button"
-      onClick={() => onActiveTool(tool)}
-      className={
-        activeTool === tool
-          ? 'viral-overlay-tool-active flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-semibold'
-          : 'viral-overlay-tool-idle flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-[11px] font-medium hover:bg-violet-50/60 dark:hover:bg-white/5'
-      }
-    >
-      {icon}
-      {label}
-    </button>
-  );
 
   return (
-    <div className="viral-overlay-inspector space-y-2 border-b border-zinc-200/90 bg-white px-3 py-2 dark:border-white/10 dark:bg-zinc-900/50">
+    <div className="viral-overlay-inspector space-y-2 border-b border-violet-200/50 bg-violet-50/30 px-3 py-2 dark:border-violet-500/15 dark:bg-zinc-900/50">
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
           {t('sectionTitle')}
         </span>
-        {toolBtn('pointer', t('pointer'), <MousePointer2 className="h-3.5 w-3.5" />)}
-        {toolBtn('text', t('textTool'), <Type className="h-3.5 w-3.5" />)}
-        {toolBtn('blur', t('blurTool'), <Sparkles className="h-3.5 w-3.5" />)}
         <button
           type="button"
           disabled={!durationReady}
@@ -85,7 +67,7 @@ export function ViralOverlayInspector({
       </div>
 
       {selectedText != null && (
-        <div className="rounded-lg border border-card-border bg-subtle/20 p-2">
+        <div className="rounded-lg border border-violet-500/20 bg-subtle/20 p-2 dark:border-violet-400/15">
           <p className="mb-2 text-[10px] font-semibold text-muted-foreground">{t('inspectorText')}</p>
           <label className="block text-[10px] text-muted-foreground">
             {t('content')}
@@ -93,7 +75,7 @@ export function ViralOverlayInspector({
               value={selectedText.content}
               onChange={(e) => onUpdateText(selectedText.id, { content: e.target.value })}
               rows={2}
-              className="mt-0.5 w-full resize-y rounded border border-card-border bg-card px-2 py-1 text-[12px] text-foreground"
+              className="mt-0.5 w-full resize-y rounded border border-violet-500/25 bg-card px-2 py-1 text-[12px] text-foreground dark:border-violet-400/20"
             />
           </label>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -108,7 +90,7 @@ export function ViralOverlayInspector({
                   const n = Number(e.target.value);
                   if (Number.isFinite(n)) onUpdateText(selectedText.id, { fontSize: n });
                 }}
-                className="ml-1 w-16 rounded border border-card-border bg-card px-1 py-0.5 text-[11px]"
+                className="ml-1 w-16 rounded border border-violet-500/25 bg-card px-1 py-0.5 text-[11px] dark:border-violet-400/20"
               />
             </label>
             <label className="text-[10px] text-muted-foreground">
@@ -117,7 +99,7 @@ export function ViralOverlayInspector({
                 type="color"
                 value={selectedText.color.startsWith('#') ? selectedText.color : '#ffffff'}
                 onChange={(e) => onUpdateText(selectedText.id, { color: e.target.value })}
-                className="ml-1 h-7 w-10 cursor-pointer rounded border border-card-border bg-card"
+                className="ml-1 h-7 w-10 cursor-pointer rounded border border-violet-500/25 bg-card dark:border-violet-400/20"
               />
             </label>
             <label className="text-[10px] text-muted-foreground">
@@ -139,7 +121,7 @@ export function ViralOverlayInspector({
       )}
 
       {selectedBlur != null && (
-        <div className="rounded-lg border border-card-border bg-subtle/20 p-2">
+        <div className="rounded-lg border border-violet-500/20 bg-subtle/20 p-2 dark:border-violet-400/15">
           <p className="mb-2 text-[10px] font-semibold text-muted-foreground">{t('inspectorBlur')}</p>
           <label className="flex items-center gap-2 text-[10px] text-muted-foreground">
             {t('intensity')}
