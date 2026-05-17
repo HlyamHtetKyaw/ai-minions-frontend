@@ -1,5 +1,16 @@
 import type { CSSProperties } from 'react';
-import type { HandleStyles } from 're-resizable';
+
+/** Same shape as `re-resizable` HandleStyles (`react-rnd` resizeHandleStyles). */
+type HandleStyles = {
+  top?: CSSProperties;
+  right?: CSSProperties;
+  bottom?: CSSProperties;
+  left?: CSSProperties;
+  topRight?: CSSProperties;
+  bottomRight?: CSSProperties;
+  bottomLeft?: CSSProperties;
+  topLeft?: CSSProperties;
+};
 
 type ResizeHandleStyle = CSSProperties;
 
