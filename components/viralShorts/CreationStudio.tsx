@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslations } from 'next-intl';
 import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
+import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import ProgressBar from '@/components/shared/components/progress-bar';
 import {
   fetchAiGeneration,
@@ -470,6 +471,7 @@ export default function CreationStudio({
   onViralOverlayLayersChange,
 }: Props) {
   const tVo = useTranslations('voice-over');
+  const tPage = useTranslations('viralShorts.page');
   const tViral = useTranslations('viralShorts.voiceStudio');
   const tEditor = useTranslations('viralShorts.editor');
   const tOverlays = useTranslations('viralShorts.overlays');
@@ -2965,6 +2967,7 @@ export default function CreationStudio({
           AI Video Editor
         </div>
         <div className="flex items-center gap-2">
+          <FeatureHelpButton ariaLabel={tPage('helpAria')} message={tPage('helpMessage')} />
           {typeof onDiscardWorkspace === 'function' ? (
             <button
               type="button"
