@@ -8,10 +8,10 @@ const handleVisual = {
 } as const;
 
 /**
- * Blur overlay resize grips — wide enough for touch.
- * (8×8 overrides break re-resizable’s default full-edge hit targets.)
+ * Canvas overlay resize grips (8 directions) — wide enough for touch.
+ * Small square-only overrides break re-resizable’s default full-edge hit targets.
  */
-export const blurResizeHandleStyles: HandleStyles = {
+export const overlayResizeHandleStyles: HandleStyles = {
   top: {
     ...handleVisual,
     width: '100%',
@@ -80,7 +80,66 @@ export const blurResizeHandleStyles: HandleStyles = {
   },
 };
 
-export const blurResizeEnabled = {
+/** Invisible edge hit targets (resize works; no thick white bars). */
+const textEdgeHandle = (cursor: string): HandleStyles[string] => ({
+  background: 'transparent',
+  border: 'none',
+  boxShadow: 'none',
+  zIndex: 2,
+  cursor,
+});
+
+const textCornerHandle = (cursor: string, position: Record<string, number | string>): HandleStyles[string] => ({
+  background: '#ffffff',
+  border: '1px solid rgba(59, 130, 246, 0.85)',
+  borderRadius: 1,
+  width: 5,
+  height: 5,
+  zIndex: 3,
+  boxShadow: 'none',
+  cursor,
+  ...position,
+});
+
+/** CapCut-thin: dashed frame + tiny corner dots; edges resize with invisible strips. */
+export const textOverlayResizeHandleStyles: HandleStyles = {
+  top: {
+    ...textEdgeHandle('ns-resize'),
+    width: '100%',
+    height: 10,
+    top: -5,
+    left: 0,
+  },
+  right: {
+    ...textEdgeHandle('ew-resize'),
+    width: 10,
+    height: '100%',
+    right: -5,
+    top: 0,
+    left: undefined,
+  },
+  bottom: {
+    ...textEdgeHandle('ns-resize'),
+    width: '100%',
+    height: 10,
+    bottom: -5,
+    top: undefined,
+    left: 0,
+  },
+  left: {
+    ...textEdgeHandle('ew-resize'),
+    width: 10,
+    height: '100%',
+    left: -5,
+    top: 0,
+  },
+  topRight: textCornerHandle('nesw-resize', { top: -2, right: -2 }),
+  topLeft: textCornerHandle('nwse-resize', { top: -2, left: -2 }),
+  bottomRight: textCornerHandle('nesw-resize', { bottom: -2, right: -2 }),
+  bottomLeft: textCornerHandle('nwse-resize', { bottom: -2, left: -2 }),
+};
+
+export const overlayResizeEnabled = {
   top: true,
   right: true,
   bottom: true,
@@ -90,3 +149,6 @@ export const blurResizeEnabled = {
   bottomRight: true,
   bottomLeft: true,
 } as const;
+
+export const blurResizeHandleStyles = overlayResizeHandleStyles;
+export const blurResizeEnabled = overlayResizeEnabled;

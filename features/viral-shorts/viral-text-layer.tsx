@@ -6,14 +6,11 @@ import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
 import { useTextLayerBoxResize } from '@/hooks/useTextLayerBoxResize';
 import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
 import type { TextLayer as TextLayerType } from '@/store/editorStore';
-
-const cornerHandle = {
-  width: 8,
-  height: 8,
-  background: '#ffffff',
-  border: '1px solid rgba(0,0,0,0.25)',
-  borderRadius: 1,
-};
+import { textLayerSelectionStyle } from '@/lib/canvas-text-selection-style';
+import {
+  overlayResizeEnabled,
+  textOverlayResizeHandleStyles,
+} from '@/lib/rnd-blur-resize-handles';
 
 type ViralTextLayerProps = {
   layer: TextLayerType;
@@ -85,22 +82,10 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
       onResize={onResize}
       onResizeStop={onResizeStop}
       enableUserSelectHack={false}
-      enableResizing={
-        interactiveOnCanvas
-          ? {
-              top: false,
-              right: false,
-              bottom: false,
-              left: false,
-              topRight: true,
-              topLeft: true,
-              bottomRight: true,
-              bottomLeft: true,
-            }
-          : false
-      }
+      enableResizing={interactiveOnCanvas ? overlayResizeEnabled : false}
       disableDragging={!interactiveOnCanvas}
       className={interactiveOnCanvas ? 'touch-none' : undefined}
+      resizeHandleWrapperStyle={interactiveOnCanvas ? { touchAction: 'none' } : undefined}
       style={{
         zIndex,
         willChange: isLive ? 'transform' : undefined,
@@ -119,23 +104,12 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();
       }}
-      resizeHandleStyles={
-        interactiveOnCanvas
-          ? {
-              topLeft: cornerHandle,
-              topRight: cornerHandle,
-              bottomLeft: cornerHandle,
-              bottomRight: cornerHandle,
-            }
-          : undefined
-      }
+      resizeHandleStyles={interactiveOnCanvas ? textOverlayResizeHandleStyles : undefined}
     >
       <div
         className="flex h-full w-full items-center justify-center overflow-hidden"
         style={{
-          border: selected
-            ? '1px dashed rgba(127, 119, 221, 0.8)'
-            : '1px solid transparent',
+          ...textLayerSelectionStyle(selected),
           boxSizing: 'border-box',
         }}
       >

@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import { clampTimeToVideoSegments } from '@/lib/videoSegmentTime';
+import {
+  DEFAULT_CAPTION_BACKGROUND_COLOR,
+  DEFAULT_SRT_BACKGROUND_OPACITY,
+} from '@/lib/text-layer-caption-style';
 
 export type TextLayer = {
   id: string;
@@ -14,6 +18,10 @@ export type TextLayer = {
   fontFamily: string;
   color: string;
   opacity: number;
+  /** Caption box behind text (burned on export for imported .srt). */
+  backgroundColor?: string;
+  /** 0–100; 0 = no box in preview/export. */
+  backgroundOpacity?: number;
   startTime: number;
   endTime: number;
   /** Shared by all cues from one SRT import; used to sync layout/style across captions. */
@@ -776,6 +784,8 @@ export const useEditorStore = create<EditorState>((set) => ({
         fontFamily: 'Pyidaungsu',
         color: '#ffffff',
         opacity: 100,
+        backgroundColor: DEFAULT_CAPTION_BACKGROUND_COLOR,
+        backgroundOpacity: 0,
         startTime,
         endTime,
       };
@@ -818,6 +828,8 @@ export const useEditorStore = create<EditorState>((set) => ({
           fontFamily: 'Pyidaungsu',
           color: '#ffffff',
           opacity: 100,
+          backgroundColor: DEFAULT_CAPTION_BACKGROUND_COLOR,
+          backgroundOpacity: DEFAULT_SRT_BACKGROUND_OPACITY,
           startTime,
           endTime,
           srtImportBatchId,
@@ -842,6 +854,8 @@ export const useEditorStore = create<EditorState>((set) => ({
         'fontFamily',
         'color',
         'opacity',
+        'backgroundColor',
+        'backgroundOpacity',
       ];
       const patchBulk: Partial<TextLayer> = {};
       for (const k of bulkKeys) {

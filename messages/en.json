@@ -649,7 +649,12 @@
       "timeOut": "out",
       "deleteLayer": "Delete layer",
       "textPanel": {
-        "srtStyleSyncHint": "Imported .srt captions: font, color, opacity, size, and position apply to every cue from the same import. Edit wording and timing per line below."
+        "srtStyleSyncHint": "Imported .srt captions: font, color, text opacity, caption background, size, and position apply to every cue from the same import. Edit wording and timing per line below.",
+        "textOpacity": "Text opacity",
+        "captionBackground": "Caption background",
+        "captionBackgroundHint": "Box behind subtitle text in preview and export. Set opacity to 0 for no box.",
+        "backgroundColor": "Color",
+        "backgroundOpacity": "Opacity"
       },
       "subs": {
         "uploadTitle": "Upload .srt file",

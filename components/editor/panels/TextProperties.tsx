@@ -2,6 +2,11 @@
 
 import { useCallback, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
+import {
+  DEFAULT_CAPTION_BACKGROUND_COLOR,
+  resolveCaptionBackgroundColor,
+  resolveCaptionBackgroundOpacity,
+} from '@/lib/text-layer-caption-style';
 import { useEditorStore } from '@/store/editorStore';
 
 const SWATCHES = ['#ffffff', '#000000', '#7F77DD', '#5DCAA5', '#EF9F27'] as const;
@@ -142,7 +147,7 @@ export function TextProperties() {
 
           <section>
             <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
-              Opacity
+              {tPanel('textOpacity')}
             </h3>
             <div className="flex items-center gap-3">
               <input
@@ -160,6 +165,51 @@ export function TextProperties() {
               <span className="w-8 shrink-0 text-right text-xs tabular-nums text-foreground">
                 {layer.opacity}
               </span>
+            </div>
+          </section>
+
+          <section>
+            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-muted">
+              {tPanel('captionBackground')}
+            </h3>
+            <p className="mb-2 text-[10px] leading-relaxed text-muted">
+              {tPanel('captionBackgroundHint')}
+            </p>
+            <div className="flex flex-col gap-3">
+              <label className="flex items-center gap-2 text-xs text-muted">
+                <span className="w-16 shrink-0">{tPanel('backgroundColor')}</span>
+                <input
+                  type="color"
+                  value={
+                    /^#[0-9A-Fa-f]{6}$/.test(resolveCaptionBackgroundColor(layer))
+                      ? resolveCaptionBackgroundColor(layer)
+                      : DEFAULT_CAPTION_BACKGROUND_COLOR
+                  }
+                  onChange={(e) =>
+                    updateTextLayer(layer.id, { backgroundColor: e.target.value })
+                  }
+                  className="h-8 w-12 cursor-pointer rounded border border-zinc-300 bg-transparent p-0 dark:border-zinc-600"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs text-muted">
+                <span className="w-16 shrink-0">{tPanel('backgroundOpacity')}</span>
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  value={resolveCaptionBackgroundOpacity(layer)}
+                  onChange={(e) =>
+                    updateTextLayer(layer.id, {
+                      backgroundOpacity: clamp(Number(e.target.value), 0, 100),
+                    })
+                  }
+                  className="min-w-0 flex-1 accent-[#5DCAA5]"
+                  aria-label={tPanel('backgroundOpacity')}
+                />
+                <span className="w-8 shrink-0 text-right tabular-nums text-foreground">
+                  {resolveCaptionBackgroundOpacity(layer)}
+                </span>
+              </label>
             </div>
           </section>
 
