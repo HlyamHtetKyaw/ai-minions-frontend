@@ -37,8 +37,7 @@ import {
   type PointsEstimate as SubtitlesPointsEstimate,
 } from '@/lib/subtitles-api';
 import { STUDIO_PREVIEW_MAX_VIDEO_HEIGHT_PX } from '@/lib/studio-preview-dimensions';
-import { parseSrt, type SrtCue } from '@/features/video-edit/lib/parse-srt';
-import { previewSubtitleFontPxToFfmpegFontPx } from '@/lib/subtitle-export-font-map';
+import { parseSrt } from '@/features/video-edit/lib/parse-srt';
 import {
   extractTranscriptTextFromOutputData,
   mergeMonotonicJobProgress,
@@ -66,13 +65,26 @@ import { ViralBlurLayer } from '@/features/viral-shorts/viral-blur-layer';
 import { ViralTextLayer } from '@/features/viral-shorts/viral-text-layer';
 import { ViralTimelineDock, type SrtCueForTimeline } from '@/features/viral-shorts/viral-timeline-dock';
 import { ViralOverlayInspector } from '@/features/viral-shorts/viral-overlay-inspector';
+import { ViralSrtEditorPanel } from '@/features/viral-shorts/viral-srt-editor-panel';
+import {
+  getSrtStyleLayer,
+  layersToEditableCues,
+} from '@/features/viral-shorts/viral-srt-editor-utils';
+import {
+  resolveCaptionBackgroundColor,
+  resolveCaptionBackgroundOpacity,
+} from '@/lib/text-layer-caption-style';
 import type { BlurLayer as ViralBlurLayerType, TextLayer as ViralTextLayerType } from '@/store/editorStore';
 import {
   mapBlurLayersForWorkspaceExport,
   mapTextLayersForWorkspaceExport,
   viralDisplayToNaturalScale,
 } from '@/lib/map-viral-layers-for-export';
-import { usePointerNormalizedDrag } from '@/hooks/usePointerNormalizedDrag';
+import {
+  buildShiftedSrtFromImportedTextLayers,
+  subtitlesPositionFromTextLayer,
+  workspaceExportTrimWindow,
+} from '@/lib/buildWorkspaceSrtBurnFromLayers';
 
 type TranslateTone =
   | 'casual_social_media'
@@ -121,86 +133,6 @@ const VIRAL_SHORTS_EXPORT_SSE_UI: GenerationSseProgressLabelOverrides = {
 };
 
 const PROGRESS_COMPLETION_FLASH_MS = 560;
-
-type EditableSrtCue = SrtCue & { id: string };
-
-function pad2(n: number): string {
-  return String(Math.floor(Math.max(0, n))).padStart(2, '0');
-}
-
-function pad3(n: number): string {
-  return String(Math.floor(Math.max(0, n))).padStart(3, '0');
-}
-
-function formatSrtTimestamp(seconds: number): string {
-  const s = Number.isFinite(seconds) ? Math.max(0, seconds) : 0;
-  const totalMs = Math.round(s * 1000);
-  const hh = Math.floor(totalMs / 3600_000);
-  const mm = Math.floor((totalMs % 3600_000) / 60_000);
-  const ss = Math.floor((totalMs % 60_000) / 1000);
-  const ms = totalMs % 1000;
-  return `${pad2(hh)}:${pad2(mm)}:${pad2(ss)},${pad3(ms)}`;
-}
-
-function parseTimeInput(raw: string): number | null {
-  const t = (raw ?? '').trim();
-  if (!t) return null;
-  // seconds float
-  if (/^\d+(\.\d+)?$/.test(t)) {
-    const n = Number(t);
-    return Number.isFinite(n) ? n : null;
-  }
-  // mm:ss(.ms) or hh:mm:ss(.ms)
-  const parts = t.split(':').map((p) => p.trim());
-  if (parts.length === 2 || parts.length === 3) {
-    const nums = parts.map((p) => Number(p.replace(',', '.')));
-    if (!nums.every(Number.isFinite)) return null;
-    const [a, b, c] = nums;
-    if (parts.length === 2) {
-      const mm = a ?? 0;
-      const ss = b ?? 0;
-      return mm * 60 + ss;
-    }
-    const hh = a ?? 0;
-    const mm = b ?? 0;
-    const ss = c ?? 0;
-    return hh * 3600 + mm * 60 + ss;
-  }
-  // SRT timestamp "HH:MM:SS,mmm"
-  const m = t.match(/^(\d{2}):(\d{2}):(\d{2})[,.](\d{1,3})$/);
-  if (m) {
-    const hh = Number(m[1]);
-    const mm = Number(m[2]);
-    const ss = Number(m[3]);
-    const ms = Number(String(m[4]).padEnd(3, '0').slice(0, 3));
-    if (![hh, mm, ss, ms].every(Number.isFinite)) return null;
-    return hh * 3600 + mm * 60 + ss + ms / 1000;
-  }
-  return null;
-}
-
-function cuesToSrt(cues: EditableSrtCue[]): string {
-  const sorted = [...cues]
-    .filter((c) => c && Number.isFinite(c.startTime) && Number.isFinite(c.endTime))
-    .map((c) => ({
-      ...c,
-      startTime: Math.max(0, c.startTime),
-      endTime: Math.max(c.endTime, c.startTime + 0.05),
-      content: String(c.content ?? '').trim(),
-    }))
-    .filter((c) => c.content.length > 0)
-    .sort((a, b) => a.startTime - b.startTime || a.endTime - b.endTime);
-
-  return sorted
-    .map((c, idx) => {
-      const start = formatSrtTimestamp(c.startTime);
-      const end = formatSrtTimestamp(c.endTime);
-      return `${idx + 1}\n${start} --> ${end}\n${c.content}\n`;
-    })
-    .join('\n')
-    .trim()
-    .concat('\n');
-}
 
 /** Largest rectangle with the same aspect ratio as the video that fits inside maxW×maxH. */
 function fitVideoDisplayRect(
@@ -337,11 +269,8 @@ type Props = {
   initialSubtitlesGenerationId?: number | null;
   initialSubtitlesSrtKey?: string;
   initialSubtitlesDownloadUrl?: string;
+  /** Legacy persisted raw SRT; migrated once into text layers when no `srtImportBatchId` exists. */
   initialSubtitlesSrtText?: string;
-  initialSubtitlesPosition?: { x: number; y: number };
-  initialSubtitlesFontSize?: number;
-  initialSubtitlesBackgroundBlur?: number;
-  initialSubtitlesBackgroundOpacity?: number;
   initialTranscriptText?: string;
   initialTranslateGenerationId?: number | null;
   initialTranslatedText?: string;
@@ -383,11 +312,6 @@ type Props = {
   onSubtitlesGenerationIdChange?: (id: number | null) => void;
   onSubtitlesSrtKeyChange?: (key: string) => void;
   onSubtitlesDownloadUrlChange?: (url: string) => void;
-  onSubtitlesSrtTextChange?: (text: string) => void;
-  onSubtitlesPositionChange?: (pos: { x: number; y: number }) => void;
-  onSubtitlesFontSizeChange?: (size: number) => void;
-  onSubtitlesBackgroundBlurChange?: (blur: number) => void;
-  onSubtitlesBackgroundOpacityChange?: (opacity: number) => void;
   onExportGenerationIdChange?: (id: number | null) => void;
   onExportedVideoUrlChange?: (url: string | null) => void;
   onExportedVideoKeyChange?: (key: string) => void;
@@ -412,10 +336,6 @@ export default function CreationStudio({
   initialSubtitlesSrtKey,
   initialSubtitlesDownloadUrl,
   initialSubtitlesSrtText,
-  initialSubtitlesPosition,
-  initialSubtitlesFontSize,
-  initialSubtitlesBackgroundBlur,
-  initialSubtitlesBackgroundOpacity,
   initialTranscriptText,
   initialTranslateGenerationId,
   initialTranslatedText,
@@ -456,11 +376,6 @@ export default function CreationStudio({
   onSubtitlesGenerationIdChange,
   onSubtitlesSrtKeyChange,
   onSubtitlesDownloadUrlChange,
-  onSubtitlesSrtTextChange,
-  onSubtitlesPositionChange,
-  onSubtitlesFontSizeChange,
-  onSubtitlesBackgroundBlurChange,
-  onSubtitlesBackgroundOpacityChange,
   onExportGenerationIdChange,
   onExportedVideoUrlChange,
   onExportedVideoKeyChange,
@@ -568,64 +483,8 @@ export default function CreationStudio({
   const [subtitlesDownloadUrl, setSubtitlesDownloadUrl] = useState(() =>
     typeof initialSubtitlesDownloadUrl === 'string' ? initialSubtitlesDownloadUrl : '',
   );
-  const [subtitlesSrtText, setSubtitlesSrtText] = useState(() =>
-    typeof initialSubtitlesSrtText === 'string' ? initialSubtitlesSrtText : '',
-  );
-  const [subtitlesEditPosition, setSubtitlesEditPosition] = useState(true);
-  const [subtitlesPosition, setSubtitlesPosition] = useState<{ x: number; y: number }>(() => {
-    const p = initialSubtitlesPosition;
-    const x = p && typeof p.x === 'number' && Number.isFinite(p.x) ? Math.max(0, Math.min(1, p.x)) : 0.5;
-    const y = p && typeof p.y === 'number' && Number.isFinite(p.y) ? Math.max(0, Math.min(1, p.y)) : 0.88;
-    return { x, y };
-  });
-  const [subtitlesFontSize, setSubtitlesFontSize] = useState(() => {
-    const n = typeof initialSubtitlesFontSize === 'number' && Number.isFinite(initialSubtitlesFontSize) ? initialSubtitlesFontSize : 22;
-    return Math.max(14, Math.min(60, Math.round(n)));
-  });
-  const [subtitlesBackgroundBlur, setSubtitlesBackgroundBlur] = useState(() => {
-    const n =
-      typeof initialSubtitlesBackgroundBlur === 'number' && Number.isFinite(initialSubtitlesBackgroundBlur)
-        ? initialSubtitlesBackgroundBlur
-        : 0;
-    return Math.max(0, Math.min(24, Math.round(n)));
-  });
-  const [subtitlesBackgroundOpacity, setSubtitlesBackgroundOpacity] = useState(() => {
-    const n =
-      typeof initialSubtitlesBackgroundOpacity === 'number' && Number.isFinite(initialSubtitlesBackgroundOpacity)
-        ? initialSubtitlesBackgroundOpacity
-        : 65;
-    return Math.max(0, Math.min(100, Math.round(n)));
-  });
-  const [leftTab, setLeftTab] = useState<'script' | 'srt'>(() => (subtitlesSrtText.trim() ? 'srt' : 'script'));
-  const [showSubtitlesOverlay, setShowSubtitlesOverlay] = useState(true);
-  const [activeSubtitleText, setActiveSubtitleText] = useState('');
 
   const lastNonEmptyWorkspaceS3KeyRef = useRef<string | null>(null);
-  const srtSyncFromTableRef = useRef(false);
-  const [editableCues, setEditableCues] = useState<EditableSrtCue[]>(() => {
-    try {
-      const base = subtitlesSrtText ? parseSrt(subtitlesSrtText) : [];
-      return base.map((c, i) => ({ ...c, id: `c_${i}_${Math.random().toString(16).slice(2)}` }));
-    } catch {
-      return [];
-    }
-  });
-  const [selectedSrtCueId, setSelectedSrtCueId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (srtSyncFromTableRef.current) {
-      srtSyncFromTableRef.current = false;
-      return;
-    }
-    try {
-      const base = subtitlesSrtText ? parseSrt(subtitlesSrtText) : [];
-      setEditableCues(base.map((c, i) => ({ ...c, id: `c_${i}_${Math.random().toString(16).slice(2)}` })));
-      setSelectedSrtCueId(null);
-    } catch {
-      setEditableCues([]);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [subtitlesSrtText]);
 
   const [tone, setTone] = useState<TranslateTone>(() => initialTone ?? 'casual_social_media');
   const [selectedVoiceId, setSelectedVoiceId] = useState(() => normalizePersistedVoiceId(initialVoiceOverVoice));
@@ -891,14 +750,6 @@ export default function CreationStudio({
     return Math.max(0.1, scale);
   }, [previewFramePx, previewSlotPx]);
 
-  /** ASS burn-in uses FontSize in video pixel space (PlayResY = frame height). Match preview CSS px to that. */
-  const previewBurnedSubtitleFontPx = useMemo(() => {
-    const vh = previewIntrinsicPx?.h;
-    if (!vh || vh <= 0 || !Number.isFinite(subtitlesFontSize)) return subtitlesFontSize;
-    const scale = previewFramePx.h / vh;
-    return Math.max(4, subtitlesFontSize * scale);
-  }, [previewIntrinsicPx, previewFramePx.h, subtitlesFontSize]);
-
   const overlayTextLayers = useViralOverlayStore((s) => s.textLayers);
   const overlayBlurLayers = useViralOverlayStore((s) => s.blurLayers);
   const overlayLayerOrder = useViralOverlayStore((s) => s.layerOrder);
@@ -917,17 +768,72 @@ export default function CreationStudio({
   const moveOverlayLayerDown = useViralOverlayStore((s) => s.moveLayerDown);
   const hydrateOverlays = useViralOverlayStore((s) => s.hydrate);
   const resetOverlays = useViralOverlayStore((s) => s.reset);
+  const replaceSrtImportFromCues = useViralOverlayStore((s) => s.replaceSrtImportFromCues);
+  const addSrtCueLayerAfter = useViralOverlayStore((s) => s.addSrtCueLayerAfter);
+  const deleteOverlayTextLayer = useViralOverlayStore((s) => s.deleteTextLayer);
+
+  const hasImportedSrtLayers = useMemo(
+    () => overlayTextLayers.some((l) => l.srtImportBatchId),
+    [overlayTextLayers],
+  );
+
+  /** SRT cues use the amber subtitle track only — not green per-cue text rows. */
+  const timelineOverlayTextLayers = useMemo(
+    () => overlayTextLayers.filter((l) => !l.srtImportBatchId),
+    [overlayTextLayers],
+  );
+  const timelineOverlayLayerOrder = useMemo(
+    () =>
+      overlayLayerOrder.filter((entry) => {
+        if (entry.type === 'blur') return true;
+        const layer = overlayTextLayers.find((l) => l.id === entry.id);
+        return layer != null && !layer.srtImportBatchId;
+      }),
+    [overlayLayerOrder, overlayTextLayers],
+  );
+
+  const [leftTab, setLeftTab] = useState<'script' | 'srt'>(() => {
+    const layers = initialViralTextLayers ?? [];
+    if (layers.some((l) => l.srtImportBatchId)) return 'srt';
+    const legacy = typeof initialSubtitlesSrtText === 'string' ? initialSubtitlesSrtText.trim() : '';
+    return legacy ? 'srt' : 'script';
+  });
+  const [showSubtitlesOverlay, setShowSubtitlesOverlay] = useState(true);
+  const [subtitlesEditPosition, setSubtitlesEditPosition] = useState(true);
+  const [selectedSrtCueId, setSelectedSrtCueId] = useState<string | null>(null);
+
+  const editableCues = useMemo(() => layersToEditableCues(overlayTextLayers), [overlayTextLayers]);
+  const srtStyleLayer = useMemo(() => getSrtStyleLayer(overlayTextLayers), [overlayTextLayers]);
+
+  const subtitlesFontSize = srtStyleLayer?.fontSize ?? 22;
+  const subtitlesPrimaryColor = srtStyleLayer?.color ?? '#ffffff';
+  const subtitlesTextOpacity = srtStyleLayer?.opacity ?? 100;
+  const subtitlesBackgroundColor = srtStyleLayer
+    ? resolveCaptionBackgroundColor(srtStyleLayer)
+    : '#000000';
+  const subtitlesBackgroundOpacity = srtStyleLayer
+    ? resolveCaptionBackgroundOpacity(srtStyleLayer)
+    : 65;
+
+  const previewBurnedSubtitleFontPx = useMemo(() => {
+    const vh = previewIntrinsicPx?.h;
+    if (!vh || vh <= 0 || !Number.isFinite(subtitlesFontSize)) return subtitlesFontSize;
+    const scale = previewFramePx.h / vh;
+    return Math.max(4, subtitlesFontSize * scale);
+  }, [previewIntrinsicPx, previewFramePx.h, subtitlesFontSize]);
+
+  const applySrtStylePatch = useCallback(
+    (patch: Parameters<typeof updateOverlayText>[1]) => {
+      const layer = getSrtStyleLayer(useViralOverlayStore.getState().textLayers);
+      if (!layer) return;
+      updateOverlayText(layer.id, patch);
+    },
+    [updateOverlayText],
+  );
 
   const previewOverlayMoveActive =
-    subtitlesEditPosition ||
+    (subtitlesEditPosition && showSubtitlesOverlay && hasImportedSrtLayers) ||
     (overlaySelectedId != null && (overlayActiveTool === 'blur' || overlayActiveTool === 'text'));
-
-  const subtitlePositionDrag = usePointerNormalizedDrag({
-    enabled: subtitlesEditPosition && showSubtitlesOverlay && Boolean(activeSubtitleText.trim()),
-    boundsRef: previewFrameRef,
-    position: subtitlesPosition,
-    onPositionChange: setSubtitlesPosition,
-  });
 
   const [previewPlaybackTime, setPreviewPlaybackTime] = useState(0);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
@@ -943,6 +849,22 @@ export default function CreationStudio({
     () => overlayBlurLayers.find((l) => l.id === overlaySelectedId) ?? null,
     [overlayBlurLayers, overlaySelectedId],
   );
+
+  useEffect(() => {
+    if (!selectedSrtCueId) return;
+    const timer = window.setTimeout(() => {
+      document
+        .querySelector(`[data-cue-id="${selectedSrtCueId}"]`)
+        ?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [selectedSrtCueId, leftTab]);
+
+  useEffect(() => {
+    if (!subtitlesEditPosition || !showSubtitlesOverlay || !srtStyleLayer) return;
+    setOverlayActiveTool('text');
+    setOverlaySelectedId(srtStyleLayer.id);
+  }, [subtitlesEditPosition, showSubtitlesOverlay, srtStyleLayer, setOverlayActiveTool, setOverlaySelectedId]);
 
   useEffect(() => {
     const fp = activePreviewSrc;
@@ -969,6 +891,37 @@ export default function CreationStudio({
     hydrateOverlays({ textLayers: t, blurLayers: b });
     overlayHydratedRef.current = true;
   }, [overlayPreviewDuration, initialViralTextLayers, initialViralBlurLayers, hydrateOverlays]);
+
+  const legacySrtMigratedRef = useRef(false);
+  useEffect(() => {
+    if (legacySrtMigratedRef.current) return;
+    if (!overlayHydratedRef.current) return;
+    const legacy = typeof initialSubtitlesSrtText === 'string' ? initialSubtitlesSrtText.trim() : '';
+    if (!legacy) {
+      legacySrtMigratedRef.current = true;
+      return;
+    }
+    if (overlayTextLayers.some((l) => l.srtImportBatchId)) {
+      legacySrtMigratedRef.current = true;
+      return;
+    }
+    const fw = Math.max(1, Math.round(previewFramePx.w));
+    const fh = Math.max(1, Math.round(previewFramePx.h));
+    try {
+      const cues = parseSrt(legacy);
+      replaceSrtImportFromCues(cues, fw, fh);
+      setLeftTab('srt');
+      legacySrtMigratedRef.current = true;
+    } catch {
+      // ignore invalid legacy SRT
+    }
+  }, [
+    initialSubtitlesSrtText,
+    overlayTextLayers,
+    previewFramePx.w,
+    previewFramePx.h,
+    replaceSrtImportFromCues,
+  ]);
 
   useEffect(() => {
     if (!onViralOverlayLayersChange) return;
@@ -1183,7 +1136,18 @@ export default function CreationStudio({
 
       void fetchSubtitleSrtText(jobId)
         .then((d) => {
-          setSubtitlesSrtText(d.srtText);
+          try {
+            const cues = parseSrt(d.srtText);
+            replaceSrtImportFromCues(
+              cues,
+              Math.max(1, Math.round(previewFramePx.w)),
+              Math.max(1, Math.round(previewFramePx.h)),
+            );
+            setLeftTab('srt');
+          } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setSubtitlesError(msg);
+          }
         })
         .catch((e) => {
           const msg = e instanceof Error ? e.message : String(e);
@@ -1191,7 +1155,7 @@ export default function CreationStudio({
         });
       void onPersistWorkspaceSnapshot?.();
     },
-    [onPersistWorkspaceSnapshot],
+    [onPersistWorkspaceSnapshot, previewFramePx.w, previewFramePx.h, replaceSrtImportFromCues],
   );
 
   const applySubtitlesJobTerminal = useCallback(
@@ -1347,7 +1311,7 @@ export default function CreationStudio({
       },
       onTerminal: (payload) => applySubtitlesJobTerminal(subtitlesGenerationId, payload),
     });
-    // subtitlesSrtText and subtitlesDownloadUrl excluded — applySubtitlesJobTerminal clears jobId on completion.
+    // hasImportedSrtLayers and subtitlesDownloadUrl excluded — applySubtitlesJobTerminal clears jobId on completion.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [applySubtitlesJobTerminal, subtitlesGenerationId]);
 
@@ -1557,60 +1521,6 @@ export default function CreationStudio({
   useEffect(() => {
     onSubtitlesDownloadUrlChange?.(subtitlesDownloadUrl);
   }, [onSubtitlesDownloadUrlChange, subtitlesDownloadUrl]);
-
-  useEffect(() => {
-    onSubtitlesSrtTextChange?.(subtitlesSrtText);
-  }, [onSubtitlesSrtTextChange, subtitlesSrtText]);
-
-  useEffect(() => {
-    onSubtitlesPositionChange?.(subtitlesPosition);
-  }, [onSubtitlesPositionChange, subtitlesPosition]);
-
-  useEffect(() => {
-    onSubtitlesFontSizeChange?.(subtitlesFontSize);
-  }, [onSubtitlesFontSizeChange, subtitlesFontSize]);
-
-  // When a subtitle cue is selected from the timeline, auto-scroll it into view in the SRT table.
-  useEffect(() => {
-    if (!selectedSrtCueId) return;
-    // Small delay to let the leftTab state update + re-render finish
-    const timer = window.setTimeout(() => {
-      const el = document.querySelector(`[data-cue-id="${selectedSrtCueId}"]`);
-      el?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }, 80);
-    return () => window.clearTimeout(timer);
-  }, [selectedSrtCueId]);
-
-  useEffect(() => {
-    onSubtitlesBackgroundBlurChange?.(subtitlesBackgroundBlur);
-  }, [onSubtitlesBackgroundBlurChange, subtitlesBackgroundBlur]);
-
-  useEffect(() => {
-    onSubtitlesBackgroundOpacityChange?.(subtitlesBackgroundOpacity);
-  }, [onSubtitlesBackgroundOpacityChange, subtitlesBackgroundOpacity]);
-
-  useEffect(() => {
-    const v = videoRef.current;
-    if (!v) return;
-    if (!showSubtitlesOverlay) {
-      setActiveSubtitleText('');
-      return;
-    }
-    const onTime = () => {
-      const t = v.currentTime;
-      const cue = editableCues.find((c) => t >= c.startTime && t <= c.endTime);
-      setActiveSubtitleText(cue?.content ?? '');
-    };
-    v.addEventListener('timeupdate', onTime);
-    v.addEventListener('seeked', onTime);
-    v.addEventListener('loadedmetadata', onTime);
-    onTime();
-    return () => {
-      v.removeEventListener('timeupdate', onTime);
-      v.removeEventListener('seeked', onTime);
-      v.removeEventListener('loadedmetadata', onTime);
-    };
-  }, [editableCues, showSubtitlesOverlay]);
 
   useEffect(() => {
     const key = workspaceS3Key.trim();
@@ -2531,12 +2441,6 @@ export default function CreationStudio({
       }
       const displayToNaturalScale = viralDisplayToNaturalScale(canvasW, canvasH, intrinsicW, intrinsicH);
 
-      const canMapPreviewFont =
-        intrinsicW > 0 &&
-        intrinsicH > 0 &&
-        Number.isFinite(previewBurnedSubtitleFontPx) &&
-        previewBurnedSubtitleFontPx > 0;
-
       /** Worker resolves object via `#wk=` fragment; prefer voice read URL host for bucket hint, fallback to video. */
       let voiceMixForExport:
         | { audioTracks: Array<Record<string, unknown>>; originalAudio: { muted: boolean; volume: number } }
@@ -2581,6 +2485,25 @@ export default function CreationStudio({
         .map((e) => overlayTextLayers.find((l) => l.id === e.id))
         .filter((l): l is NonNullable<typeof l> => l != null);
 
+      const trimParams = { trimStart: 0, trimEnd: duration, duration, speed: 1 };
+      const burnSrtText = buildShiftedSrtFromImportedTextLayers(orderedTextForExport, trimParams);
+      const burnImportedSrt = burnSrtText != null && burnSrtText.trim().length > 0;
+      const { t0, t1 } = workspaceExportTrimWindow(trimParams);
+      const importedSorted = [...orderedTextForExport]
+        .filter((l) => l.srtImportBatchId)
+        .sort((a, b) => a.startTime - b.startTime || a.id.localeCompare(b.id));
+      const srtStyleLayer = burnImportedSrt
+        ? (importedSorted.find((l) => l.endTime > t0 && l.startTime < t1) ?? importedSorted[0])
+        : undefined;
+      const frameW = canvasW;
+      const frameH = canvasH;
+      const canMapPreviewFont =
+        frameW > 0 &&
+        frameH > 0 &&
+        srtStyleLayer != null &&
+        Number.isFinite(srtStyleLayer.fontSize) &&
+        srtStyleLayer.fontSize > 0;
+
       // Same POST /api/v1/video-editor/workspace/export → processing WorkspaceExportService (FFmpeg) as full editor.
       const payload = {
         videoUrl: noFrag,
@@ -2591,7 +2514,11 @@ export default function CreationStudio({
         trimEnd: 0,
         speed: 1,
         displayToNaturalScale,
-        textLayers: mapTextLayersForWorkspaceExport(orderedTextForExport),
+        textLayers: mapTextLayersForWorkspaceExport(
+          burnImportedSrt
+            ? orderedTextForExport.filter((l) => !l.srtImportBatchId)
+            : orderedTextForExport,
+        ),
         blurLayers: mapBlurLayersForWorkspaceExport(orderedBlurForExport),
         canvasFrame: { width: canvasW, height: canvasH },
         naturalVideo: { width: intrinsicW, height: intrinsicH },
@@ -2600,19 +2527,36 @@ export default function CreationStudio({
         ...(voiceMixForExport?.audioTracks ? { audioTracks: voiceMixForExport.audioTracks } : {}),
         protectFlip,
         protectHueDeg,
-        burnSubtitles: Boolean(showSubtitlesOverlay && subtitlesSrtText.trim()),
-        subtitlesSrtText: subtitlesSrtText,
-        subtitlesPosition: subtitlesPosition,
-        subtitlesFontSize: subtitlesFontSize,
-        ...(canMapPreviewFont
+        ...(burnImportedSrt && burnSrtText != null
           ? {
-            subtitlesPreviewFontPx: previewBurnedSubtitleFontPx,
-            subtitlesPreviewCanvasW: canvasW,
-            subtitlesPreviewCanvasH: canvasH,
-          }
+              burnSubtitles: true as const,
+              subtitlesSrtText: burnSrtText,
+              subtitlesPosition:
+                srtStyleLayer != null
+                  ? subtitlesPositionFromTextLayer(srtStyleLayer, frameW, frameH)
+                  : { x: 0.5, y: 0.88 },
+              subtitlesFontSize: Math.max(
+                14,
+                Math.min(60, Math.round(srtStyleLayer?.fontSize ?? 22)),
+              ),
+              ...(canMapPreviewFont && srtStyleLayer != null
+                ? {
+                    subtitlesPreviewFontPx: srtStyleLayer.fontSize,
+                    subtitlesPreviewCanvasW: frameW,
+                    subtitlesPreviewCanvasH: frameH,
+                  }
+                : {}),
+              subtitlesBackgroundBlur: 0,
+              subtitlesBackgroundOpacity:
+                srtStyleLayer != null ? resolveCaptionBackgroundOpacity(srtStyleLayer) : 0,
+              subtitlesBackgroundColor:
+                srtStyleLayer != null ? resolveCaptionBackgroundColor(srtStyleLayer) : '#000000',
+              subtitlesPrimaryColor:
+                typeof srtStyleLayer?.color === 'string' && srtStyleLayer.color.trim() !== ''
+                  ? srtStyleLayer.color.trim()
+                  : '#ffffff',
+            }
           : {}),
-        subtitlesBackgroundBlur: subtitlesBackgroundBlur,
-        subtitlesBackgroundOpacity: subtitlesBackgroundOpacity,
       };
       const res = await exportVideoEditorWorkspace(payload);
       if (res.generationId != null) {
@@ -2864,8 +2808,9 @@ export default function CreationStudio({
         barClass: 'bg-cyan-500',
       };
     }
+    const subtitlesArtifactsReady = hasImportedSrtLayers || Boolean(subtitlesDownloadUrl.trim());
     const subtitlesWorkPending =
-      subtitlesGenerationId != null && (!subtitlesSrtText.trim() || !subtitlesDownloadUrl.trim());
+      subtitlesGenerationId != null && !subtitlesArtifactsReady;
     const subtitlesBarActive =
       (subtitlesProgress != null && subtitlesProgress.percent < 100) || subtitlesWorkPending;
     if (subtitlesBarActive) {
@@ -2936,7 +2881,7 @@ export default function CreationStudio({
     balancedSyncProgress,
     subtitlesProgress,
     subtitlesGenerationId,
-    subtitlesSrtText,
+    hasImportedSrtLayers,
     subtitlesDownloadUrl,
     exporting,
     exportGenerationId,
@@ -2950,10 +2895,10 @@ export default function CreationStudio({
   ]);
   const isSyncingVoice = syncUi.kind === 'working';
   const isBalancedSyncRunning = Boolean(balancedSyncProgress && balancedSyncProgress.percent < 100);
+  const subtitlesArtifactsReady = hasImportedSrtLayers || Boolean(subtitlesDownloadUrl.trim());
   const isSubtitlesRunning = Boolean(
     (subtitlesProgress && subtitlesProgress.percent < 100) ||
-    (subtitlesGenerationId != null &&
-      (!subtitlesSrtText.trim() || !subtitlesDownloadUrl.trim())),
+    (subtitlesGenerationId != null && !subtitlesArtifactsReady),
   );
   const isExportPipelineBusy = exporting || (exportGenerationId != null && !exportedVideoUrl);
   const isAnyTaskRunning =
@@ -3063,8 +3008,7 @@ export default function CreationStudio({
                 type="button"
                 onClick={() => setLeftTab('script')}
                 disabled={isAnyTaskRunning}
-                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'script' ? 'bg-white text-violet-800 ring-2 ring-violet-400/50 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-violet-200/80 hover:ring-violet-300/50 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'
-                  }`}
+                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'script' ? 'bg-white text-violet-800 ring-2 ring-violet-400/50 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-violet-200/80 hover:ring-violet-300/50 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'}`}
               >
                 {tEditor('buttons.scriptTab')}
               </button>
@@ -3072,8 +3016,7 @@ export default function CreationStudio({
                 type="button"
                 onClick={() => setLeftTab('srt')}
                 disabled={isAnyTaskRunning}
-                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'srt' ? 'bg-white text-violet-800 ring-2 ring-violet-400/50 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-violet-200/80 hover:ring-violet-300/50 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'
-                  }`}
+                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'srt' ? 'bg-white text-violet-800 ring-2 ring-violet-400/50 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-violet-200/80 hover:ring-violet-300/50 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'}`}
               >
                 {tEditor('buttons.srtEditorTab')}
               </button>
@@ -3085,294 +3028,64 @@ export default function CreationStudio({
                 </div>
               ) : null}
               {leftTab === 'script' ? (
-                <textarea
-                  value={scriptText}
-                  disabled={isAnyTaskRunning}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setScriptText(v);
-                    if (isTranslated) {
-                      setTranslatedText(v);
-                    } else {
-                      setTranscriptText(v);
-                    }
-                  }}
-                  placeholder={tEditor('labels.scriptPlaceholder')}
-                  className="min-h-[220px] w-full resize-y rounded border border-violet-200/50 bg-white px-2 py-2 text-[11px] leading-snug text-foreground outline-none dark:border-violet-500/15 dark:bg-zinc-900/40"
-                />
+              <textarea
+                value={scriptText}
+                disabled={isAnyTaskRunning}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setScriptText(v);
+                  if (isTranslated) {
+                    setTranslatedText(v);
+                  } else {
+                    setTranscriptText(v);
+                  }
+                }}
+                placeholder={tEditor('labels.scriptPlaceholder')}
+                className="min-h-[220px] w-full resize-y rounded border border-violet-200/50 bg-white px-2 py-2 text-[11px] leading-snug text-foreground outline-none dark:border-violet-500/15 dark:bg-zinc-900/40"
+              />
               ) : (
-                <>
-                  <div className="viral-studio-srt-settings space-y-2 rounded border border-violet-200/50 bg-[#ffffff] p-2 text-[10px] text-foreground dark:border-violet-500/15 dark:bg-zinc-900/40">
-                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="font-semibold tabular-nums text-foreground">{editableCues.length} cues</span>
-                      <label className="inline-flex cursor-pointer items-center gap-1.5">
-                        <input
-                          type="checkbox"
-                          checked={showSubtitlesOverlay}
-                          disabled={isAnyTaskRunning}
-                          onChange={(e) => setShowSubtitlesOverlay(e.target.checked)}
-                          className="shrink-0"
-                        />
-                        <span>{tEditor('labels.showOnVideo')}</span>
-                      </label>
-                      <label className="inline-flex cursor-pointer items-center gap-1.5">
-                        <input
-                          type="checkbox"
-                          checked={subtitlesEditPosition}
-                          disabled={!showSubtitlesOverlay || isAnyTaskRunning}
-                          onChange={(e) => setSubtitlesEditPosition(e.target.checked)}
-                          className="shrink-0"
-                        />
-                        <span>{tEditor('labels.moveOnVideo')}</span>
-                      </label>
-                    </div>
-                    <div className="grid gap-2 border-t border-card-border/60 pt-2 sm:grid-cols-2">
-                      <div className="space-y-1.5">
-                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {tEditor('labels.fontSizeExport')}
-                        </p>
-                        <p className="text-[9px] leading-snug text-muted-foreground/90">
-                          Preview scales this to your clip so on-screen size matches burned export.
-                        </p>
-                        <div className="flex flex-wrap items-center gap-2">
-                          <div className="inline-flex items-center overflow-hidden rounded border border-violet-200/50 bg-white dark:border-violet-500/15 dark:bg-zinc-900/40">
-                            <button
-                              type="button"
-                              className="h-7 w-7 border-r border-card-border text-[13px] font-semibold text-foreground hover:bg-white dark:hover:bg-white/5 disabled:opacity-50"
-                              onClick={() => setSubtitlesFontSize((v) => Math.max(14, v - 1))}
-                              disabled={subtitlesFontSize <= 14 || isAnyTaskRunning}
-                              aria-label="Decrease subtitle size"
-                            >
-                              –
-                            </button>
-                            <input
-                              inputMode="numeric"
-                              pattern="[0-9]*"
-                              value={String(subtitlesFontSize)}
-                              onChange={(e) => {
-                                const raw = e.target.value.replace(/[^\d]/g, '');
-                                if (!raw) return;
-                                const n = Math.max(14, Math.min(60, Number(raw)));
-                                if (Number.isFinite(n)) setSubtitlesFontSize(n);
-                              }}
-                              onBlur={(e) => {
-                                const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
-                                setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
-                              }}
-                              className="h-7 w-9 bg-transparent text-center text-[11px] font-semibold text-foreground outline-none"
-                              aria-label="Subtitle size"
-                            />
-                            <button
-                              type="button"
-                              className="h-7 w-7 border-l border-card-border text-[13px] font-semibold text-foreground hover:bg-white dark:hover:bg-white/5 disabled:opacity-50"
-                              onClick={() => setSubtitlesFontSize((v) => Math.min(60, v + 1))}
-                              disabled={subtitlesFontSize >= 60 || isAnyTaskRunning}
-                              aria-label="Increase subtitle size"
-                            >
-                              +
-                            </button>
-                          </div>
-                          <select
-                            value={String(subtitlesFontSize)}
-                            disabled={isAnyTaskRunning}
-                            onChange={(e) => {
-                              const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
-                              setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
-                            }}
-                            className="h-7 rounded border border-violet-200/50 bg-white px-1.5 text-[10px] font-semibold text-foreground outline-none hover:border-violet-400/60 hover:bg-white dark:border-violet-500/15 dark:bg-zinc-900/40 dark:hover:bg-white/5"
-                            aria-label="Preset subtitle sizes"
-                          >
-                            {[14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 60].map((n) => (
-                              <option key={n} value={String(n)}>
-                                {n}px
-                              </option>
-                            ))}
-                          </select>
-                          <span
-                            className="inline-flex min-h-[1.5rem] min-w-[2rem] items-center justify-center rounded border border-card-border bg-black/60 px-1 font-semibold text-white"
-                            style={{
-                              fontSize: `${Math.min(20, Math.max(8, previewBurnedSubtitleFontPx))}px`,
-                              lineHeight: 1.1,
-                            }}
-                            title="Sample at preview scale (matches video overlay)"
-                          >
-                            Aa
-                          </span>
-                        </div>
-                      </div>
-                      <div className="space-y-1.5">
-                        <p className="text-[9px] font-semibold uppercase tracking-wider text-muted-foreground">
-                          {tEditor('labels.backgroundOpacity')}
-                        </p>
-                        <p className="text-[9px] leading-snug text-muted-foreground/90">
-                          Same value is applied to the burned export (black box alpha).
-                        </p>
-                        <label className="flex items-center gap-2 pt-0.5">
-                          <span className="w-10 shrink-0 text-foreground/80">Opacity</span>
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            step={1}
-                            value={subtitlesBackgroundOpacity}
-                            disabled={isAnyTaskRunning}
-                            onChange={(e) => {
-                              const n = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                              setSubtitlesBackgroundOpacity(Number.isFinite(n) ? n : 0);
-                            }}
-                            className="h-2 min-w-0 flex-1 accent-[#7c5cff]"
-                            aria-label="Subtitle background opacity"
-                          />
-                          <span className="w-10 shrink-0 text-right tabular-nums text-foreground/80">{subtitlesBackgroundOpacity}%</span>
-                        </label>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="viral-studio-srt-editor flex min-h-0 max-h-[min(420px,48vh)] flex-col gap-2 bg-white dark:bg-transparent">
-                    <div className="viral-studio-srt-scroll viral-studio-muted-surface scrollbar-themed min-h-0 flex-1 overflow-auto rounded border border-violet-200/50 bg-white p-1.5 dark:border-violet-400/10 dark:bg-zinc-900/40">
-                      {editableCues.length === 0 ? (
-                        <p className="px-1 py-2 text-xs text-muted">{tEditor('labels.generateSubtitlesFirst')}</p>
-                      ) : (
-                        <div className="space-y-1.5">
-                          {editableCues.slice(0, 80).map((c) => (
-                            <div
-                              key={c.id}
-                              data-cue-id={c.id}
-                              onClick={() => setSelectedSrtCueId((prev) => (prev === c.id ? null : c.id))}
-                              className={`viral-srt-cue-card rounded-md border bg-white px-2 py-1.5 cursor-pointer transition-colors ${selectedSrtCueId === c.id
-                                ? 'viral-srt-cue-card--selected border-violet-400 !bg-white ring-2 ring-violet-500/30 dark:border-violet-500/50 dark:bg-violet-500/15 dark:ring-violet-500/25'
-                                : 'border-violet-200/70 hover:border-violet-400/50 hover:ring-1 hover:ring-violet-400/20 dark:border-violet-400/10 dark:bg-zinc-900/40 dark:hover:border-violet-400/25 dark:hover:bg-zinc-900/60'
-                                }`}
-                            >
-                              <div className="flex flex-wrap items-start gap-2 bg-white dark:bg-transparent">
-                                <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
-                                  Start
-                                  <input
-                                    value={formatSrtTimestamp(c.startTime)}
-                                    disabled={isAnyTaskRunning}
-                                    onChange={(e) => {
-                                      const next = parseTimeInput(e.target.value);
-                                      if (next == null) return;
-                                      setEditableCues((prev) =>
-                                        prev.map((x) =>
-                                          x.id === c.id ? { ...x, startTime: Math.max(0, next) } : x,
-                                        ),
-                                      );
-                                    }}
-                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-violet-500/70 focus:bg-white focus:ring-0 dark:border-violet-400/20 dark:bg-zinc-900/40 dark:focus:bg-zinc-900/40"
-                                  />
-                                </label>
-                                <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
-                                  End
-                                  <input
-                                    value={formatSrtTimestamp(c.endTime)}
-                                    disabled={isAnyTaskRunning}
-                                    onChange={(e) => {
-                                      const next = parseTimeInput(e.target.value);
-                                      if (next == null) return;
-                                      setEditableCues((prev) =>
-                                        prev.map((x) =>
-                                          x.id === c.id ? { ...x, endTime: Math.max(next, x.startTime + 0.05) } : x,
-                                        ),
-                                      );
-                                    }}
-                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-violet-500/70 focus:bg-white focus:ring-0 dark:border-violet-400/20 dark:bg-zinc-900/40 dark:focus:bg-zinc-900/40"
-                                  />
-                                </label>
-                                <div className="ml-auto flex shrink-0 gap-1">
-                                  <button
-                                    type="button"
-                                    className="viral-srt-add-after-btn h-7 appearance-none rounded border border-violet-500/25 bg-[#ffffff] px-2 text-[10px] font-semibold text-foreground hover:border-violet-400/60 hover:bg-[#ffffff] dark:border-violet-400/20 dark:bg-zinc-900/40 dark:hover:bg-white/5"
-                                    disabled={isAnyTaskRunning}
-                                    onClick={() => {
-                                      const nextStart = Math.max(0, c.endTime);
-                                      const nextEnd = nextStart + 1.6;
-                                      const id = `c_${Date.now()}_${Math.random().toString(16).slice(2)}`;
-                                      setEditableCues((prev) => {
-                                        const idx = prev.findIndex((x) => x.id === c.id);
-                                        const nextCue: EditableSrtCue = {
-                                          id,
-                                          startTime: nextStart,
-                                          endTime: nextEnd,
-                                          content: '',
-                                        };
-                                        if (idx < 0) return [...prev, nextCue];
-                                        return [...prev.slice(0, idx + 1), nextCue, ...prev.slice(idx + 1)];
-                                      });
-                                    }}
-                                  >
-                                    {tEditor('buttons.addAfter')}
-                                  </button>
-                                  <button
-                                    type="button"
-                                    className="h-7 rounded border border-red-500/35 bg-transparent px-2 text-[10px] font-semibold text-red-300 hover:bg-red-500/10"
-                                    disabled={isAnyTaskRunning}
-                                    onClick={() => setEditableCues((prev) => prev.filter((x) => x.id !== c.id))}
-                                  >
-                                    {tEditor('buttons.remove')}
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="mt-2 rounded-lg border-2 border-dashed border-[#7c5cff]/40 bg-white p-2 dark:bg-white/5 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]">
-                                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-1">
-                                  <span className="text-[9px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                    Cue text
-                                  </span>
-                                  <span className="text-[9px] text-muted-foreground">Drag corner to resize box</span>
-                                </div>
-                                <textarea
-                                  value={c.content}
-                                  disabled={isAnyTaskRunning}
-                                  onChange={(e) => {
-                                    const v = e.target.value;
-                                    setEditableCues((prev) =>
-                                      prev.map((x) => (x.id === c.id ? { ...x, content: v } : x)),
-                                    );
-                                  }}
-                                  rows={3}
-                                  className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-violet-500/25 bg-white px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none ring-0 transition-shadow focus:border-violet-500/70 focus:bg-white focus:shadow-[0_0_0_2px_rgba(124,92,255,0.25)] dark:border-violet-400/20 dark:bg-zinc-900/40 dark:focus:bg-zinc-900/40 dark:focus:shadow-[0_0_0_1px_rgba(124,92,255,0.35)]"
-                                />
-                              </div>
-                            </div>
-                          ))}
-                          {editableCues.length > 80 ? (
-                            <p className="px-1 py-0.5 text-[10px] text-muted">Showing first 80 cues.</p>
-                          ) : null}
-                        </div>
-                      )}
-                    </div>
-                    {editableCues.length > 0 ? (
-                      <div className="viral-srt-save-footer shrink-0 rounded border border-violet-200/50 bg-white px-2 py-1.5 dark:border-violet-400/15 dark:bg-zinc-900/40">
-                        <button
-                          type="button"
-                          className="h-8 w-full rounded-md bg-[#7c5cff] text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
-                          disabled={isAnyTaskRunning}
-                          onClick={() => {
-                            srtSyncFromTableRef.current = true;
-                            setSubtitlesSrtText(cuesToSrt(editableCues));
-                          }}
-                        >
-                          {tEditor('buttons.saveAllCuesToSrt')}
-                        </button>
-                        <p className="mt-1 text-center text-[9px] leading-tight text-muted-foreground">
-                          Applies every cue above to the workspace subtitle file.
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                  <details className="viral-studio-advanced-srt rounded border border-violet-200/50 bg-white p-2 dark:border-violet-500/15 dark:bg-zinc-900/40">
-                    <summary className="viral-studio-advanced-srt-summary cursor-pointer list-none bg-white text-[10px] font-semibold text-muted marker:content-none dark:bg-zinc-900/40 [&::-webkit-details-marker]:hidden">
-                      Advanced: edit raw .srt
-                    </summary>
-                    <textarea
-                      value={subtitlesSrtText}
-                      disabled={isAnyTaskRunning}
-                      onChange={(e) => setSubtitlesSrtText(e.target.value)}
-                      placeholder="Raw .srt text…"
-                      className="mt-2 min-h-[160px] w-full resize-y rounded border border-violet-200/50 bg-white dark:border-violet-500/15 dark:bg-zinc-900/40 p-2 text-[11px] leading-snug text-foreground outline-none focus:border-violet-400"
-                    />
-                  </details>
-                </>
+                <ViralSrtEditorPanel
+                  cues={editableCues}
+                  selectedCueId={selectedSrtCueId}
+                  showOnVideo={showSubtitlesOverlay}
+                  moveOnVideo={subtitlesEditPosition}
+                  fontSize={subtitlesFontSize}
+                  previewSampleFontPx={previewBurnedSubtitleFontPx}
+                  primaryColor={subtitlesPrimaryColor}
+                  textOpacity={subtitlesTextOpacity}
+                  backgroundColor={subtitlesBackgroundColor}
+                  backgroundOpacity={subtitlesBackgroundOpacity}
+                  disabled={isAnyTaskRunning}
+                  labels={{
+                    showOnVideo: tEditor('labels.showOnVideo'),
+                    moveOnVideo: tEditor('labels.moveOnVideo'),
+                    fontSizeExport: tEditor('labels.fontSizeExport'),
+                    fontSizeExportHint:
+                      'Preview scales this to your clip so on-screen size matches burned export.',
+                    textColor: tEditor('labels.textColor'),
+                    textOpacity: tEditor('labels.textOpacity'),
+                    captionBackground: tEditor('labels.captionBackground'),
+                    captionBackgroundHint: tEditor('labels.captionBackgroundHint'),
+                    backgroundColor: tEditor('labels.backgroundColor'),
+                    backgroundOpacity: tEditor('labels.backgroundOpacity'),
+                    generateSubtitlesFirst: tEditor('labels.generateSubtitlesFirst'),
+                    addAfter: tEditor('buttons.addAfter'),
+                    remove: tEditor('buttons.remove'),
+                  }}
+                  onSelectCue={setSelectedSrtCueId}
+                  onShowOnVideoChange={setShowSubtitlesOverlay}
+                  onMoveOnVideoChange={setSubtitlesEditPosition}
+                  onFontSizeChange={(n) => applySrtStylePatch({ fontSize: n })}
+                  onPrimaryColorChange={(c) => applySrtStylePatch({ color: c })}
+                  onTextOpacityChange={(o) => applySrtStylePatch({ opacity: o })}
+                  onBackgroundColorChange={(c) => applySrtStylePatch({ backgroundColor: c })}
+                  onBackgroundOpacityChange={(o) => applySrtStylePatch({ backgroundOpacity: o })}
+                  onCueStartChange={(id, startTime) => updateOverlayText(id, { startTime })}
+                  onCueEndChange={(id, endTime) => updateOverlayText(id, { endTime })}
+                  onCueContentChange={(id, content) => updateOverlayText(id, { content })}
+                  onAddCueAfter={(id) => addSrtCueLayerAfter(id)}
+                  onRemoveCue={(id) => deleteOverlayTextLayer(id)}
+                />
               )}
             </div>
           </div>
@@ -3452,6 +3165,7 @@ export default function CreationStudio({
                   if (entry.type === 'text') {
                     const layer = overlayTextLayers.find((l) => l.id === entry.id);
                     if (!layer) return null;
+                    if (layer.srtImportBatchId && !showSubtitlesOverlay) return null;
                     return (
                       <ViralTextLayer
                         key={layer.id}
@@ -3464,46 +3178,6 @@ export default function CreationStudio({
                   }
                   return null;
                 })}
-                {/* SRT subtitle overlay — always on top of blur/text overlays (highest z) */}
-                {showSubtitlesOverlay && activeSubtitleText.trim() ? (
-                  <div
-                    className={`absolute ${subtitlesEditPosition ? 'touch-none cursor-grab active:cursor-grabbing' : ''}`}
-                    style={{
-                      left: `${Math.round(subtitlesPosition.x * 1000) / 10}%`,
-                      top: `${Math.round(subtitlesPosition.y * 1000) / 10}%`,
-                      transform: 'translate(-50%, -50%)',
-                      pointerEvents: subtitlesEditPosition ? 'auto' : 'none',
-                      touchAction: subtitlesEditPosition ? 'none' : undefined,
-                      zIndex: 95,
-                    }}
-                    onPointerDown={subtitlePositionDrag.onPointerDown}
-                  >
-                    <div
-                      className="max-w-[92%] rounded-lg px-3 py-2 text-center font-semibold text-white"
-                      style={{
-                        fontSize: `${previewBurnedSubtitleFontPx}px`,
-                        lineHeight: 1.25,
-                        backgroundColor: `rgba(0, 0, 0, ${subtitlesBackgroundOpacity / 100})`,
-                      }}
-                      title={
-                        previewIntrinsicPx
-                          ? `Preview ${Math.round(previewBurnedSubtitleFontPx)}px → burn ~${previewSubtitleFontPxToFfmpegFontPx(
-                            previewBurnedSubtitleFontPx,
-                            Math.max(1, Math.round(previewFramePx.w)),
-                            Math.max(1, Math.round(previewFramePx.h)),
-                            previewIntrinsicPx.w,
-                            previewIntrinsicPx.h,
-                          )}px at ${previewIntrinsicPx.w}×${previewIntrinsicPx.h}`
-                          : `Burn-in (slider): ${subtitlesFontSize}px — load preview to map to output`
-                      }
-                    >
-                      {activeSubtitleText}
-                    </div>
-                    {/* {subtitlesEditPosition ? (
-                    <div className="mt-1 text-center text-[10px] font-semibold text-white/80">Drag to move</div>
-                  ) : null} */}
-                  </div>
-                ) : null}
                 {isBalancedPreviewMode ? (
                   <div className="absolute inset-x-2 bottom-2 flex items-center justify-between gap-2 rounded-md bg-black/55 px-2 py-1 text-[10px] text-white">
                     <span className="font-semibold">All set — synced preview on deck</span>
@@ -3526,6 +3200,7 @@ export default function CreationStudio({
             onActiveTool={setOverlayActiveTool}
             selectedText={selectedOverlayText}
             selectedBlur={selectedOverlayBlur}
+            previewDurationSec={overlayPreviewDuration}
             durationReady={overlayPreviewDuration > 0}
             onAddText={() => addOverlayTextAtPlayhead(previewPlaybackTime)}
             onAddBlur={() => addOverlayBlurAtPlayhead(previewPlaybackTime)}
@@ -3543,12 +3218,14 @@ export default function CreationStudio({
               durationSec={overlayPreviewDuration}
               currentTimeSec={previewPlaybackTime}
               isPlaying={previewIsPlaying}
-              textLayers={overlayTextLayers}
+              textLayers={timelineOverlayTextLayers}
               blurLayers={overlayBlurLayers}
               selectedLayerId={overlaySelectedId}
-              srtCues={editableCues.length > 0 ? (editableCues as SrtCueForTimeline[]) : undefined}
+              srtCues={
+                editableCues.length > 0 ? (editableCues as SrtCueForTimeline[]) : undefined
+              }
               selectedSrtCueId={selectedSrtCueId}
-              layerOrder={overlayLayerOrder}
+              layerOrder={timelineOverlayLayerOrder}
               onMoveLayerUp={moveOverlayLayerUp}
               onMoveLayerDown={moveOverlayLayerDown}
               videoLabel={videoName.trim() || tOverlays('videoClip')}
@@ -3564,7 +3241,7 @@ export default function CreationStudio({
               onSelectClip={(id) => {
                 setOverlaySelectedId(id);
                 // Auto-switch tool to match the selected layer type (CapCut-style)
-                const isText = overlayTextLayers.some((l) => l.id === id);
+                const isText = timelineOverlayTextLayers.some((l) => l.id === id);
                 const isBlur = overlayBlurLayers.some((l) => l.id === id);
                 if (isText) setOverlayActiveTool('text');
                 else if (isBlur) setOverlayActiveTool('blur');
@@ -3572,27 +3249,12 @@ export default function CreationStudio({
               onDeselect={() => setOverlaySelectedId(null)}
               onUpdateTextTiming={(id, patch) => updateOverlayText(id, patch)}
               onUpdateBlurTiming={(id, patch) => updateOverlayBlur(id, patch)}
+              onUpdateSrtCueTiming={(id, patch) => updateOverlayText(id, patch)}
               onSelectSrtCue={(id) => {
                 setSelectedSrtCueId(id);
-                // Switch to SRT tab so the user sees the cue highlighted
                 setLeftTab('srt');
-              }}
-              onUpdateSrtCueTiming={(id, patch) => {
-                setEditableCues((prev) => {
-                  const next = prev.map((c) =>
-                    c.id === id
-                      ? {
-                        ...c,
-                        startTime: patch.startTime ?? c.startTime,
-                        endTime: patch.endTime ?? c.endTime,
-                      }
-                      : c,
-                  );
-                  // Sync back to the SRT text so export/burn uses updated times
-                  srtSyncFromTableRef.current = true;
-                  setSubtitlesSrtText(cuesToSrt(next));
-                  return next;
-                });
+                setOverlaySelectedId(id);
+                setOverlayActiveTool('text');
               }}
             />
           </div>
@@ -3927,14 +3589,7 @@ export default function CreationStudio({
                     >
                       {tEditor('buttons.downloadSrt')}
                     </button>
-                    <button
-                      type="button"
-                      className="viral-studio-secondary-btn flex min-h-10 w-full items-center justify-center rounded-lg border px-3 py-2 text-[11px] font-semibold transition-colors dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground dark:hover:bg-white/5"
-                      disabled={isAnyTaskRunning}
-                      onClick={() => setLeftTab('srt')}
-                    >
-                      {tEditor('buttons.openSrtEditor')}
-                    </button>
+
                   </div>
                 ) : null}
               </div>

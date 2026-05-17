@@ -1019,7 +1019,12 @@
         "showOnVideo": "ဗီဒီယိုပေါ်တွင် ပြရန်",
         "moveOnVideo": "ဗီဒီယိုပေါ်တွင် ရွှေ့ရန်",
         "fontSizeExport": "ဖောင့်အရွယ် (export px)",
-        "backgroundOpacity": "နောက်ခံဖျော့မှန်မှု",
+        "textColor": "စာသားအရောင်",
+        "textOpacity": "စာသားဖျော့မှန်",
+        "captionBackground": "စာတန်းနောက်ခံ",
+        "captionBackgroundHint": "စာတန်းနောက်တွင် ပြမည့် အကွက် — ဖျော့မှန် 0 သည် အကွက်မပါ။",
+        "backgroundColor": "အရောင်",
+        "backgroundOpacity": "ဖျော့မှန်",
         "generateSubtitlesFirst": "Cue များထည့်သွင်းရန် အရင် subtitles ထုတ်ပေးပါ။"
       }
     },

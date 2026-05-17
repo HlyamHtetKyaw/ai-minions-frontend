@@ -1,4 +1,7 @@
+import type { CSSProperties } from 'react';
 import type { HandleStyles } from 're-resizable';
+
+type ResizeHandleStyle = CSSProperties;
 
 const handleVisual = {
   background: '#ffffff',
@@ -81,7 +84,7 @@ export const overlayResizeHandleStyles: HandleStyles = {
 };
 
 /** Invisible edge hit targets (resize works; no thick white bars). */
-const textEdgeHandle = (cursor: string): HandleStyles[string] => ({
+const textEdgeHandle = (cursor: string): ResizeHandleStyle => ({
   background: 'transparent',
   border: 'none',
   boxShadow: 'none',
@@ -89,7 +92,7 @@ const textEdgeHandle = (cursor: string): HandleStyles[string] => ({
   cursor,
 });
 
-const textCornerHandle = (cursor: string, position: Record<string, number | string>): HandleStyles[string] => ({
+const textCornerHandle = (cursor: string, position: Record<string, number | string>): ResizeHandleStyle => ({
   background: '#ffffff',
   border: '1px solid rgba(59, 130, 246, 0.85)',
   borderRadius: 1,

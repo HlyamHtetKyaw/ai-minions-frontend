@@ -1,12 +1,17 @@
 'use client';
 
-import { useCallback, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import { Rnd } from 'react-rnd';
 import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
 import { useTextLayerBoxResize } from '@/hooks/useTextLayerBoxResize';
 import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
 import type { TextLayer as TextLayerType } from '@/store/editorStore';
 import { textLayerSelectionStyle } from '@/lib/canvas-text-selection-style';
+import {
+  captionBoxBackgroundCss,
+  resolveCaptionBackgroundColor,
+  resolveCaptionBackgroundOpacity,
+} from '@/lib/text-layer-caption-style';
 import {
   overlayResizeEnabled,
   textOverlayResizeHandleStyles,
@@ -69,6 +74,11 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
 
   const zIndex = 40 + stackIndex + (selected ? 50 : 0);
 
+  const captionBackground = captionBoxBackgroundCss(
+    resolveCaptionBackgroundColor(layer),
+    resolveCaptionBackgroundOpacity(layer),
+  );
+
   return (
     <Rnd
       bounds="parent"
@@ -97,7 +107,7 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
         setSelectedLayerId(layer.id);
         setActiveTool('text');
       }}
-      onTouchStart={(e) => {
+      onTouchStart={(e: ReactTouchEvent) => {
         if (!interactiveOnCanvas) return;
         e.stopPropagation();
       }}
@@ -114,20 +124,25 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
         }}
       >
         <div
-          className="w-full px-1 text-center"
-          style={{
-            fontSize: `${displayFontSize}px`,
-            fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
-            color: layer.color,
-            opacity: layer.opacity / 100,
-            userSelect: 'none',
-            pointerEvents: 'none',
-            lineHeight: 1.2,
-            wordBreak: 'break-word',
-            whiteSpace: 'pre-wrap',
-          }}
+          className="max-w-full rounded px-1 py-0.5 text-center"
+          style={{ backgroundColor: captionBackground }}
         >
-          {layer.content}
+          <div
+            className="w-full"
+            style={{
+              fontSize: `${displayFontSize}px`,
+              fontFamily: `"Pyidaungsu", "Noto Sans Myanmar", "Myanmar Text", sans-serif`,
+              color: layer.color,
+              opacity: layer.opacity / 100,
+              userSelect: 'none',
+              pointerEvents: 'none',
+              lineHeight: 1.25,
+              wordBreak: 'break-word',
+              whiteSpace: 'pre-wrap',
+            }}
+          >
+            {layer.content}
+          </div>
         </div>
       </div>
     </Rnd>

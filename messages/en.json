@@ -1019,7 +1019,12 @@
         "showOnVideo": "Show on video",
         "moveOnVideo": "Move on video",
         "fontSizeExport": "Font size (export px)",
-        "backgroundOpacity": "Background opacity",
+        "textColor": "Text color",
+        "textOpacity": "Text opacity",
+        "captionBackground": "Caption background",
+        "captionBackgroundHint": "Box behind subtitle text in preview and export. Set opacity to 0 for no box.",
+        "backgroundColor": "Color",
+        "backgroundOpacity": "Opacity",
         "generateSubtitlesFirst": "Generate subtitles first to populate cues."
       }
     },
