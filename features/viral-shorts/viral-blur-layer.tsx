@@ -92,14 +92,20 @@ export function ViralBlurLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
           : false
       }
       disableDragging={!interactiveOnCanvas}
+      className={interactiveOnCanvas ? 'touch-none' : undefined}
       style={{
         zIndex,
         pointerEvents: 'auto',
+        touchAction: interactiveOnCanvas ? 'none' : undefined,
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
         setActiveTool('blur');
+      }}
+      onTouchStart={(e) => {
+        if (!interactiveOnCanvas) return;
+        e.stopPropagation();
       }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();

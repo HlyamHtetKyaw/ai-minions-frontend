@@ -100,15 +100,21 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
           : false
       }
       disableDragging={!interactiveOnCanvas}
+      className={interactiveOnCanvas ? 'touch-none' : undefined}
       style={{
         zIndex,
         willChange: isLive ? 'transform' : undefined,
         pointerEvents: 'auto',
+        touchAction: interactiveOnCanvas ? 'none' : undefined,
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
         setActiveTool('text');
+      }}
+      onTouchStart={(e) => {
+        if (!interactiveOnCanvas) return;
+        e.stopPropagation();
       }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();

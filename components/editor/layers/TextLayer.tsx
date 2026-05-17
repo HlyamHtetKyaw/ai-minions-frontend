@@ -105,15 +105,21 @@ export function TextLayer({ layer, stackIndex = 0 }: TextLayerProps) {
           : false
       }
       disableDragging={!interactiveOnCanvas}
+      className={interactiveOnCanvas ? 'touch-none' : undefined}
       style={{
         zIndex,
         willChange: isLive ? 'transform' : undefined,
         // Let clicks reach the <video> unless the text tool is active (same pattern as blur).
         pointerEvents: interactiveOnCanvas ? 'auto' : 'none',
+        touchAction: interactiveOnCanvas ? 'none' : undefined,
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
+      }}
+      onTouchStart={(e) => {
+        if (!interactiveOnCanvas) return;
+        e.stopPropagation();
       }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();

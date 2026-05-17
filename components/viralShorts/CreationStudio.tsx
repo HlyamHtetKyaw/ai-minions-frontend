@@ -72,6 +72,7 @@ import {
   mapTextLayersForWorkspaceExport,
   viralDisplayToNaturalScale,
 } from '@/lib/map-viral-layers-for-export';
+import { usePointerNormalizedDrag } from '@/hooks/usePointerNormalizedDrag';
 
 type TranslateTone =
   | 'casual_social_media'
@@ -595,9 +596,6 @@ export default function CreationStudio({
         : 65;
     return Math.max(0, Math.min(100, Math.round(n)));
   });
-  const subtitleDragRef = useRef<{ active: boolean; startX: number; startY: number; baseX: number; baseY: number } | null>(
-    null,
-  );
   const [leftTab, setLeftTab] = useState<'script' | 'srt'>(() => (subtitlesSrtText.trim() ? 'srt' : 'script'));
   const [showSubtitlesOverlay, setShowSubtitlesOverlay] = useState(true);
   const [activeSubtitleText, setActiveSubtitleText] = useState('');
@@ -758,6 +756,7 @@ export default function CreationStudio({
   const [voiceMetadataReady, setVoiceMetadataReady] = useState(false);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const previewSlotRef = useRef<HTMLDivElement | null>(null);
+  const previewFrameRef = useRef<HTMLDivElement | null>(null);
   const [previewSlotPx, setPreviewSlotPx] = useState({ w: 800, h: STUDIO_PREVIEW_MAX_VIDEO_HEIGHT_PX });
   const [previewIntrinsicPx, setPreviewIntrinsicPx] = useState<{ w: number; h: number } | null>(null);
   const voiceRef = useRef<HTMLAudioElement | null>(null);
@@ -918,6 +917,17 @@ export default function CreationStudio({
   const moveOverlayLayerDown = useViralOverlayStore((s) => s.moveLayerDown);
   const hydrateOverlays = useViralOverlayStore((s) => s.hydrate);
   const resetOverlays = useViralOverlayStore((s) => s.reset);
+
+  const previewOverlayMoveActive =
+    subtitlesEditPosition ||
+    (overlaySelectedId != null && (overlayActiveTool === 'blur' || overlayActiveTool === 'text'));
+
+  const subtitlePositionDrag = usePointerNormalizedDrag({
+    enabled: subtitlesEditPosition && showSubtitlesOverlay && Boolean(activeSubtitleText.trim()),
+    boundsRef: previewFrameRef,
+    position: subtitlesPosition,
+    onPositionChange: setSubtitlesPosition,
+  });
 
   const [previewPlaybackTime, setPreviewPlaybackTime] = useState(0);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
@@ -3376,7 +3386,7 @@ export default function CreationStudio({
           </div>
           <div
             ref={previewSlotRef}
-            className="viral-studio-preview-slot flex min-h-[min(320px,42vh)] w-full flex-1 items-center justify-center overflow-hidden border-b border-violet-200/50 bg-white p-2 dark:border-violet-500/15 dark:bg-black/30"
+            className={`viral-studio-preview-slot flex min-h-[min(320px,42vh)] w-full flex-1 items-center justify-center overflow-hidden border-b border-violet-200/50 bg-white p-2 dark:border-violet-500/15 dark:bg-black/30 ${previewOverlayMoveActive ? 'touch-none overscroll-none' : ''}`}
           >
             {/* Wrapper absorbs the scaled size so the slot doesn't collapse */}
             <div
@@ -3387,13 +3397,15 @@ export default function CreationStudio({
               className="flex shrink-0 items-center justify-center"
             >
               <div
-                className="relative shrink-0 overflow-hidden rounded-lg border border-violet-500/20 bg-black dark:border-violet-400/15"
+                ref={previewFrameRef}
+                className={`relative shrink-0 overflow-hidden rounded-lg border border-violet-500/20 bg-black dark:border-violet-400/15 ${previewOverlayMoveActive ? 'touch-none' : ''}`}
                 style={{
                   width: Math.round(previewFramePx.w),
                   height: Math.round(previewFramePx.h),
                   isolation: 'isolate',
                   transform: `scale(${previewScale})`,
                   transformOrigin: 'center center',
+                  touchAction: previewOverlayMoveActive ? 'none' : undefined,
                 }}
               >
                 <video
@@ -3406,6 +3418,7 @@ export default function CreationStudio({
                   style={{
                     transform: protectFlip ? 'scaleX(-1)' : undefined,
                     filter: protectHueDeg ? `hue-rotate(${protectHueDeg}deg)` : undefined,
+                    pointerEvents: previewOverlayMoveActive ? 'none' : undefined,
                   }}
                   onLoadedMetadata={(e) => {
                     const el = e.currentTarget;
@@ -3454,47 +3467,16 @@ export default function CreationStudio({
                 {/* SRT subtitle overlay — always on top of blur/text overlays (highest z) */}
                 {showSubtitlesOverlay && activeSubtitleText.trim() ? (
                   <div
-                    className="absolute"
+                    className={`absolute ${subtitlesEditPosition ? 'touch-none cursor-grab active:cursor-grabbing' : ''}`}
                     style={{
                       left: `${Math.round(subtitlesPosition.x * 1000) / 10}%`,
                       top: `${Math.round(subtitlesPosition.y * 1000) / 10}%`,
                       transform: 'translate(-50%, -50%)',
                       pointerEvents: subtitlesEditPosition ? 'auto' : 'none',
+                      touchAction: subtitlesEditPosition ? 'none' : undefined,
                       zIndex: 95,
                     }}
-                    onPointerDown={(e) => {
-                      if (!subtitlesEditPosition) return;
-                      const el = e.currentTarget.parentElement;
-                      if (!el) return;
-                      subtitleDragRef.current = {
-                        active: true,
-                        startX: e.clientX,
-                        startY: e.clientY,
-                        baseX: subtitlesPosition.x,
-                        baseY: subtitlesPosition.y,
-                      };
-                      (e.currentTarget as HTMLDivElement).setPointerCapture?.(e.pointerId);
-                      e.preventDefault();
-                      e.stopPropagation();
-                    }}
-                    onPointerMove={(e) => {
-                      const d = subtitleDragRef.current;
-                      if (!subtitlesEditPosition || !d?.active) return;
-                      const el = e.currentTarget.parentElement;
-                      if (!el) return;
-                      const rect = el.getBoundingClientRect();
-                      const dx = (e.clientX - d.startX) / Math.max(1, rect.width);
-                      const dy = (e.clientY - d.startY) / Math.max(1, rect.height);
-                      setSubtitlesPosition({
-                        x: Math.max(0, Math.min(1, d.baseX + dx)),
-                        y: Math.max(0, Math.min(1, d.baseY + dy)),
-                      });
-                      e.preventDefault();
-                    }}
-                    onPointerUp={() => {
-                      if (!subtitleDragRef.current) return;
-                      subtitleDragRef.current.active = false;
-                    }}
+                    onPointerDown={subtitlePositionDrag.onPointerDown}
                   >
                     <div
                       className="max-w-[92%] rounded-lg px-3 py-2 text-center font-semibold text-white"

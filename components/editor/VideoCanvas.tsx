@@ -84,6 +84,9 @@ export function VideoCanvas({
   const setCanvasSize = useEditorStore((s) => s.setCanvasSize);
   const setVideoNaturalSize = useEditorStore((s) => s.setVideoNaturalSize);
   const selectedLayerId = useEditorStore((s) => s.selectedLayerId);
+  const activeTool = useEditorStore((s) => s.activeTool);
+  const overlayCanvasMoveActive =
+    selectedLayerId != null && (activeTool === 'blur' || activeTool === 'text');
   const setSelectedLayerId = useEditorStore((s) => s.setSelectedLayerId);
   const setVideoSrc = useEditorStore((s) => s.setVideoSrc);
   const setCropSettings = useEditorStore((s) => s.setCropSettings);
@@ -447,7 +450,8 @@ export function VideoCanvas({
       <div
         ref={frameContainerRef}
         role="presentation"
-        className="relative h-full w-full min-h-0 overflow-hidden"
+        className={`relative h-full w-full min-h-0 overflow-hidden ${overlayCanvasMoveActive ? 'touch-none overscroll-none' : ''}`}
+        style={overlayCanvasMoveActive ? { touchAction: 'none' } : undefined}
         onDragOver={onFrameDragOver}
         onDrop={onFrameDrop}
         onMouseDown={(e) => {
@@ -465,8 +469,8 @@ export function VideoCanvas({
           className={`relative z-0 block h-full w-full max-h-full max-w-full ${
             objectFit === 'cover' ? 'object-cover' : 'object-contain'
           } will-change-transform transform-[translateZ(0)] ${
-            isCropActive ? 'pointer-events-none opacity-0' : ''
-          }`}
+            isCropActive || overlayCanvasMoveActive ? 'pointer-events-none' : ''
+          } ${isCropActive ? 'opacity-0' : ''}`}
           style={appliedCropClipStyle}
           playsInline
           preload="metadata"

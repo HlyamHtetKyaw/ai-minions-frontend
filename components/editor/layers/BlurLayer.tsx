@@ -92,13 +92,19 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
           : false
       }
       disableDragging={!interactiveOnCanvas}
+      className={interactiveOnCanvas ? 'touch-none' : undefined}
       style={{
         zIndex,
         pointerEvents: interactiveOnCanvas ? 'auto' : 'none',
+        touchAction: interactiveOnCanvas ? 'none' : undefined,
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
+      }}
+      onTouchStart={(e) => {
+        if (!interactiveOnCanvas) return;
+        e.stopPropagation();
       }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();
