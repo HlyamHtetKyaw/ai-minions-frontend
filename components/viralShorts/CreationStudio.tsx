@@ -2958,8 +2958,8 @@ export default function CreationStudio({
     isExportPipelineBusy;
 
   return (
-    <section className="viral-studio-shell overflow-hidden rounded-2xl border border-zinc-200/90 shadow-[0_8px_30px_rgba(15,23,42,0.06)] dark:border-violet-500/15 dark:shadow-[0_24px_56px_rgba(0,0,0,0.45)]">
-      <header className="viral-studio-header flex items-center justify-between border-b border-violet-200/50 bg-violet-50/30 px-3 py-2.5 dark:border-violet-500/15 dark:bg-zinc-900/70">
+    <section className="viral-studio-shell overflow-hidden rounded-2xl border border-zinc-200/90 bg-white shadow-[0_8px_30px_rgba(15,23,42,0.06)] dark:border-violet-500/15 dark:bg-[#12101e] dark:shadow-[0_24px_56px_rgba(0,0,0,0.45)]">
+      <header className="viral-studio-header flex items-center justify-between border-b border-violet-200/50 bg-white px-3 py-2.5 dark:border-violet-500/15 dark:bg-zinc-900/70">
         <div className="inline-flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-foreground">
           <Subtitles className="h-4 w-4 text-[#b9a4ff]" aria-hidden />
           AI Video Editor
@@ -2987,7 +2987,7 @@ export default function CreationStudio({
 
       {viralUnifiedJobBar ? (
         <div
-          className="viral-studio-job-bar border-b border-violet-200/50 bg-violet-50/30 px-3 py-2.5 lg:px-4 dark:border-violet-500/15 dark:bg-zinc-900/40"
+          className="viral-studio-job-bar border-b border-violet-200/50 bg-white px-3 py-2.5 lg:px-4 dark:border-violet-500/15 dark:bg-zinc-900/40"
           role="status"
           aria-live="polite"
           aria-label={`${viralUnifiedJobBar.title}: ${viralUnifiedJobBar.label}`}
@@ -3019,7 +3019,7 @@ export default function CreationStudio({
       ) : null}
 
       <div className="grid min-h-[640px] grid-cols-1 auto-rows-auto lg:grid-cols-[minmax(300px,420px)_1fr] lg:grid-rows-[auto_1fr]">
-        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-b border-violet-200/50 bg-violet-50/30 p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 dark:border-violet-500/15 dark:bg-zinc-950/50">
+        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-b border-violet-200/50 bg-white p-3 lg:col-start-1 lg:row-start-1 lg:border-b-0 lg:border-r lg:p-4 dark:border-violet-500/15 dark:bg-zinc-950/50">
           <div className="space-y-2">
             <button
               type="button"
@@ -3044,13 +3044,13 @@ export default function CreationStudio({
             ) : null}
           </div>
 
-          <div className="viral-studio-script-card mt-6 rounded-md border p-2">
+          <div className="viral-studio-script-card mt-6 rounded-md border border-violet-200/50 bg-white p-2 dark:border-violet-500/15 dark:bg-transparent">
             <div className="grid grid-cols-2 gap-1 text-[10px] font-semibold uppercase text-muted">
               <button
                 type="button"
                 onClick={() => setLeftTab('script')}
                 disabled={isAnyTaskRunning}
-                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'script' ? 'bg-violet-100 text-violet-950 ring-1 ring-violet-300/60 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-violet-50/80 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'
+                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'script' ? 'bg-white text-violet-800 ring-2 ring-violet-400/50 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-violet-200/80 hover:ring-violet-300/50 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'
                   }`}
               >
                 {tEditor('buttons.scriptTab')}
@@ -3059,15 +3059,15 @@ export default function CreationStudio({
                 type="button"
                 onClick={() => setLeftTab('srt')}
                 disabled={isAnyTaskRunning}
-                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'srt' ? 'bg-violet-100 text-violet-950 ring-1 ring-violet-300/60 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-zinc-200 hover:bg-violet-50/80 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'
+                className={`rounded px-2 py-1 text-center transition-colors ${leftTab === 'srt' ? 'bg-white text-violet-800 ring-2 ring-violet-400/50 dark:bg-violet-500/20 dark:text-foreground dark:ring-violet-400/40' : 'bg-white text-zinc-600 ring-1 ring-violet-200/80 hover:ring-violet-300/50 dark:bg-white/5 dark:text-muted dark:ring-transparent dark:hover:bg-white/10'
                   }`}
               >
                 {tEditor('buttons.srtEditorTab')}
               </button>
             </div>
-            <div className="mt-2 space-y-1.5">
+            <div className="mt-2 space-y-1.5 bg-white dark:bg-transparent">
               {leftTab === 'script' && transcriptRows.length > 0 ? (
-                <div className="viral-studio-muted-surface rounded border px-2 py-1.5 text-[10px] text-muted">
+                <div className="viral-studio-muted-surface rounded border border-violet-200/50 bg-white px-2 py-1.5 text-[10px] text-muted dark:border-violet-500/15 dark:bg-zinc-900/40">
                   {transcriptRows[0].start} - {transcriptRows[transcriptRows.length - 1].end}
                 </div>
               ) : null}
@@ -3085,11 +3085,11 @@ export default function CreationStudio({
                     }
                   }}
                   placeholder={tEditor('labels.scriptPlaceholder')}
-                  className="min-h-[220px] w-full resize-y rounded border border-violet-200/50 bg-violet-50/20 px-2 py-2 text-[11px] leading-snug text-foreground outline-none dark:border-violet-500/15 dark:bg-zinc-900/40"
+                  className="min-h-[220px] w-full resize-y rounded border border-violet-200/50 bg-white px-2 py-2 text-[11px] leading-snug text-foreground outline-none dark:border-violet-500/15 dark:bg-zinc-900/40"
                 />
               ) : (
                 <>
-                  <div className="viral-studio-muted-surface space-y-2 rounded border p-2 text-[10px] text-muted">
+                  <div className="viral-studio-srt-settings space-y-2 rounded border border-violet-200/50 bg-[#ffffff] p-2 text-[10px] text-foreground dark:border-violet-500/15 dark:bg-zinc-900/40">
                     <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
                       <span className="font-semibold tabular-nums text-foreground">{editableCues.length} cues</span>
                       <label className="inline-flex cursor-pointer items-center gap-1.5">
@@ -3122,10 +3122,10 @@ export default function CreationStudio({
                           Preview scales this to your clip so on-screen size matches burned export.
                         </p>
                         <div className="flex flex-wrap items-center gap-2">
-                          <div className="inline-flex items-center overflow-hidden rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40">
+                          <div className="inline-flex items-center overflow-hidden rounded border border-violet-200/50 bg-white dark:border-violet-500/15 dark:bg-zinc-900/40">
                             <button
                               type="button"
-                              className="h-7 w-7 border-r border-card-border text-[13px] font-semibold text-foreground hover:bg-violet-50/50 dark:hover:bg-white/5 disabled:opacity-50"
+                              className="h-7 w-7 border-r border-card-border text-[13px] font-semibold text-foreground hover:bg-white dark:hover:bg-white/5 disabled:opacity-50"
                               onClick={() => setSubtitlesFontSize((v) => Math.max(14, v - 1))}
                               disabled={subtitlesFontSize <= 14 || isAnyTaskRunning}
                               aria-label="Decrease subtitle size"
@@ -3151,7 +3151,7 @@ export default function CreationStudio({
                             />
                             <button
                               type="button"
-                              className="h-7 w-7 border-l border-card-border text-[13px] font-semibold text-foreground hover:bg-violet-50/50 dark:hover:bg-white/5 disabled:opacity-50"
+                              className="h-7 w-7 border-l border-card-border text-[13px] font-semibold text-foreground hover:bg-white dark:hover:bg-white/5 disabled:opacity-50"
                               onClick={() => setSubtitlesFontSize((v) => Math.min(60, v + 1))}
                               disabled={subtitlesFontSize >= 60 || isAnyTaskRunning}
                               aria-label="Increase subtitle size"
@@ -3166,7 +3166,7 @@ export default function CreationStudio({
                               const n = Math.max(14, Math.min(60, Number(e.target.value) || 22));
                               setSubtitlesFontSize(Number.isFinite(n) ? n : 22);
                             }}
-                            className="h-7 rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 px-1.5 text-[10px] font-semibold text-foreground outline-none hover:bg-violet-100/60 dark:hover:bg-white/5"
+                            className="h-7 rounded border border-violet-200/50 bg-white px-1.5 text-[10px] font-semibold text-foreground outline-none hover:border-violet-400/60 hover:bg-white dark:border-violet-500/15 dark:bg-zinc-900/40 dark:hover:bg-white/5"
                             aria-label="Preset subtitle sizes"
                           >
                             {[14, 16, 18, 20, 22, 24, 28, 32, 36, 40, 48, 56, 60].map((n) => (
@@ -3215,8 +3215,8 @@ export default function CreationStudio({
                       </div>
                     </div>
                   </div>
-                  <div className="flex min-h-0 max-h-[min(420px,48vh)] flex-col gap-2">
-                    <div className="viral-studio-muted-surface scrollbar-themed min-h-0 flex-1 overflow-auto rounded border border-violet-500/15 p-1.5 dark:border-violet-400/10">
+                  <div className="viral-studio-srt-editor flex min-h-0 max-h-[min(420px,48vh)] flex-col gap-2 bg-white dark:bg-transparent">
+                    <div className="viral-studio-srt-scroll viral-studio-muted-surface scrollbar-themed min-h-0 flex-1 overflow-auto rounded border border-violet-200/50 bg-white p-1.5 dark:border-violet-400/10 dark:bg-zinc-900/40">
                       {editableCues.length === 0 ? (
                         <p className="px-1 py-2 text-xs text-muted">{tEditor('labels.generateSubtitlesFirst')}</p>
                       ) : (
@@ -3226,12 +3226,12 @@ export default function CreationStudio({
                               key={c.id}
                               data-cue-id={c.id}
                               onClick={() => setSelectedSrtCueId((prev) => (prev === c.id ? null : c.id))}
-                              className={`rounded-md border px-2 py-1.5 cursor-pointer transition-colors ${selectedSrtCueId === c.id
-                                ? 'border-violet-500/50 bg-violet-500/10 ring-1 ring-violet-500/25 dark:bg-violet-500/15'
-                                : 'border-violet-500/15 bg-white/80 hover:border-violet-500/30 hover:bg-violet-50/40 dark:border-violet-400/10 dark:bg-zinc-900/40 dark:hover:border-violet-400/25 dark:hover:bg-zinc-900/60'
+                              className={`viral-srt-cue-card rounded-md border bg-white px-2 py-1.5 cursor-pointer transition-colors ${selectedSrtCueId === c.id
+                                ? 'viral-srt-cue-card--selected border-violet-400 !bg-white ring-2 ring-violet-500/30 dark:border-violet-500/50 dark:bg-violet-500/15 dark:ring-violet-500/25'
+                                : 'border-violet-200/70 hover:border-violet-400/50 hover:ring-1 hover:ring-violet-400/20 dark:border-violet-400/10 dark:bg-zinc-900/40 dark:hover:border-violet-400/25 dark:hover:bg-zinc-900/60'
                                 }`}
                             >
-                              <div className="flex flex-wrap items-start gap-2">
+                              <div className="flex flex-wrap items-start gap-2 bg-white dark:bg-transparent">
                                 <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
                                   Start
                                   <input
@@ -3246,7 +3246,7 @@ export default function CreationStudio({
                                         ),
                                       );
                                     }}
-                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-[#7c5cff]/70"
+                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-violet-500/70 focus:bg-white focus:ring-0 dark:border-violet-400/20 dark:bg-zinc-900/40 dark:focus:bg-zinc-900/40"
                                   />
                                 </label>
                                 <label className="min-w-[7.5rem] flex-1 text-[9px] uppercase tracking-wide text-muted-foreground">
@@ -3263,13 +3263,13 @@ export default function CreationStudio({
                                         ),
                                       );
                                     }}
-                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-[#7c5cff]/70"
+                                    className="mt-0.5 h-7 w-full rounded border border-violet-500/25 bg-white px-1.5 font-mono text-[10px] text-foreground outline-none focus:border-violet-500/70 focus:bg-white focus:ring-0 dark:border-violet-400/20 dark:bg-zinc-900/40 dark:focus:bg-zinc-900/40"
                                   />
                                 </label>
                                 <div className="ml-auto flex shrink-0 gap-1">
                                   <button
                                     type="button"
-                                    className="h-7 rounded border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-2 text-[10px] font-semibold text-foreground hover:bg-violet-50/50 dark:hover:bg-white/5"
+                                    className="viral-srt-add-after-btn h-7 appearance-none rounded border border-violet-500/25 bg-[#ffffff] px-2 text-[10px] font-semibold text-foreground hover:border-violet-400/60 hover:bg-[#ffffff] dark:border-violet-400/20 dark:bg-zinc-900/40 dark:hover:bg-white/5"
                                     disabled={isAnyTaskRunning}
                                     onClick={() => {
                                       const nextStart = Math.max(0, c.endTime);
@@ -3317,7 +3317,7 @@ export default function CreationStudio({
                                     );
                                   }}
                                   rows={3}
-                                  className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-violet-500/25 bg-white dark:border-violet-400/20 dark:bg-zinc-900/40 px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none ring-0 transition-shadow focus:border-[#7c5cff]/70 focus:shadow-[0_0_0_1px_rgba(124,92,255,0.35)]"
+                                  className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-violet-500/25 bg-white px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none ring-0 transition-shadow focus:border-violet-500/70 focus:bg-white focus:shadow-[0_0_0_2px_rgba(124,92,255,0.25)] dark:border-violet-400/20 dark:bg-zinc-900/40 dark:focus:bg-zinc-900/40 dark:focus:shadow-[0_0_0_1px_rgba(124,92,255,0.35)]"
                                 />
                               </div>
                             </div>
@@ -3329,7 +3329,7 @@ export default function CreationStudio({
                       )}
                     </div>
                     {editableCues.length > 0 ? (
-                      <div className="shrink-0 rounded border border-violet-500/20 bg-white dark:border-violet-400/15 dark:bg-zinc-900/40 px-2 py-1.5">
+                      <div className="viral-srt-save-footer shrink-0 rounded border border-violet-200/50 bg-white px-2 py-1.5 dark:border-violet-400/15 dark:bg-zinc-900/40">
                         <button
                           type="button"
                           className="h-8 w-full rounded-md bg-[#7c5cff] text-[11px] font-semibold text-white transition-colors hover:bg-[#6b4bff]"
@@ -3347,14 +3347,16 @@ export default function CreationStudio({
                       </div>
                     ) : null}
                   </div>
-                  <details className="rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 p-2">
-                    <summary className="cursor-pointer text-[10px] font-semibold text-muted">Advanced: edit raw .srt</summary>
+                  <details className="viral-studio-advanced-srt rounded border border-violet-200/50 bg-white p-2 dark:border-violet-500/15 dark:bg-zinc-900/40">
+                    <summary className="viral-studio-advanced-srt-summary cursor-pointer list-none bg-white text-[10px] font-semibold text-muted marker:content-none dark:bg-zinc-900/40 [&::-webkit-details-marker]:hidden">
+                      Advanced: edit raw .srt
+                    </summary>
                     <textarea
                       value={subtitlesSrtText}
                       disabled={isAnyTaskRunning}
                       onChange={(e) => setSubtitlesSrtText(e.target.value)}
                       placeholder="Raw .srt text…"
-                      className="mt-2 min-h-[160px] w-full resize-y rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 p-2 text-[11px] leading-snug text-foreground outline-none focus:border-violet-400"
+                      className="mt-2 min-h-[160px] w-full resize-y rounded border border-violet-200/50 bg-white dark:border-violet-500/15 dark:bg-zinc-900/40 p-2 text-[11px] leading-snug text-foreground outline-none focus:border-violet-400"
                     />
                   </details>
                 </>
@@ -3363,7 +3365,7 @@ export default function CreationStudio({
           </div>
         </aside>
 
-        <div className="viral-studio-stage flex min-h-0 flex-col border-b border-violet-200/50 bg-violet-50/30 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0 dark:border-violet-500/15 dark:bg-zinc-950/40">
+        <div className="viral-studio-stage flex min-h-0 flex-col border-b border-violet-200/50 bg-white lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:border-b-0 dark:border-violet-500/15 dark:bg-zinc-950/40">
 
           <div className="viral-studio-preview-bar flex shrink-0 items-center justify-between border-b border-violet-200/50 px-3 py-2 text-[11px] text-zinc-600 dark:border-violet-500/15 dark:text-zinc-400">
             <span>Editing Mode</span>
@@ -3371,7 +3373,7 @@ export default function CreationStudio({
           </div>
           <div
             ref={previewSlotRef}
-            className="viral-studio-preview-slot flex min-h-[min(320px,42vh)] w-full flex-1 items-center justify-center overflow-hidden border-b border-violet-200/50 bg-violet-50/30 p-2 dark:border-violet-500/15 dark:bg-black/30"
+            className="viral-studio-preview-slot flex min-h-[min(320px,42vh)] w-full flex-1 items-center justify-center overflow-hidden border-b border-violet-200/50 bg-white p-2 dark:border-violet-500/15 dark:bg-black/30"
           >
             {/* Wrapper absorbs the scaled size so the slot doesn't collapse */}
             <div
@@ -3547,7 +3549,7 @@ export default function CreationStudio({
             onDelete={() => deleteOverlaySelected()}
           />
 
-          <div className="viral-studio-timeline-section flex min-h-[220px] min-w-0 shrink-0 flex-col border-b border-violet-200/50 bg-violet-50/30 lg:min-h-[200px] lg:flex-1 dark:border-violet-500/15 dark:bg-zinc-950/30">
+          <div className="viral-studio-timeline-section flex min-h-[220px] min-w-0 shrink-0 flex-col border-b border-violet-200/50 bg-white lg:min-h-[200px] lg:flex-1 dark:border-violet-500/15 dark:bg-zinc-950/30">
             <p className="viral-studio-timeline-heading border-b border-violet-200/50 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 dark:border-violet-500/15 dark:text-zinc-400">
               {tOverlays('timelineTitle')}
             </p>
@@ -3706,7 +3708,7 @@ export default function CreationStudio({
               </div>
             ) : null}
             {exportedVideoUrl && showExportDownloadNotice ? (
-              <div className="mb-2 rounded border border-violet-200/50 bg-violet-50/20 dark:border-violet-500/15 dark:bg-zinc-900/40 px-2 py-1.5 text-[10px] text-muted">
+              <div className="mb-2 rounded border border-violet-200/50 bg-white dark:border-violet-500/15 dark:bg-zinc-900/40 px-2 py-1.5 text-[10px] text-muted">
                 Export saved — your browser should have downloaded the file.{' '}
                 <button
                   type="button"
@@ -3721,9 +3723,9 @@ export default function CreationStudio({
           </div>
         </div>
 
-        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-t border-violet-200/50 bg-violet-50/30 p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 dark:border-violet-500/15 dark:bg-zinc-950/50">
+        <aside className="viral-studio-sidebar scrollbar-themed flex min-h-0 flex-col border-t border-violet-200/50 bg-white p-3 lg:col-start-1 lg:row-start-2 lg:border-t lg:border-r lg:p-4 dark:border-violet-500/15 dark:bg-zinc-950/50">
           <div className="space-y-4 pt-1">
-            <div className="viral-studio-panel rounded-xl border p-4 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="viral-studio-panel rounded-xl border border-violet-200/50 p-4 dark:border-violet-500/15 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">
                 {tViral('translateSectionTitle')}
               </p>
@@ -3732,7 +3734,7 @@ export default function CreationStudio({
                   <select
                     value={tone}
                     onChange={(e) => setTone(e.target.value as TranslateTone)}
-                    className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-violet-200/50 bg-violet-50/20 px-3 pr-9 text-sm text-zinc-900 outline-none dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground"
+                    className="viral-translate-tone-select box-border block h-10 w-full min-w-0 rounded-lg border border-violet-200/50 bg-white px-3 pr-9 text-sm text-zinc-900 outline-none dark:border-violet-500/15 dark:bg-zinc-900/40 dark:text-foreground"
                   >
                     <option value="casual_social_media">Casual / Social Media (spoken)</option>
                     <option value="polite_educational">Polite & Educational (spoken)</option>
@@ -3751,10 +3753,10 @@ export default function CreationStudio({
               </div>
             </div>
 
-            <div className="viral-studio-panel space-y-4 rounded-xl border p-4 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
+            <div className="viral-studio-panel space-y-4 rounded-xl border border-violet-200/50 p-4 dark:border-violet-500/15 dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.04)]">
               <p className="text-xs font-semibold uppercase tracking-[0.22em] text-muted-foreground">{tViral('sectionTitle')}</p>
 
-              <div className="viral-studio-voice-row flex items-stretch gap-3 rounded-lg border border-violet-200/50 bg-violet-50/20 px-3 py-2.5 dark:border-violet-500/15 dark:bg-zinc-900/40">
+              <div className="viral-studio-voice-row flex items-stretch gap-3 rounded-lg border border-violet-200/50 bg-white px-3 py-2.5 dark:border-violet-500/15 dark:bg-zinc-900/40">
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                     {tViral('voiceStyleKicker')}
@@ -3876,7 +3878,7 @@ export default function CreationStudio({
                       ? 'border-red-500/30 bg-red-500/10 text-red-200'
                       : syncUi.kind === 'warn'
                         ? 'border-amber-500/30 bg-amber-500/10 text-amber-200'
-                        : 'border-violet-200/50 bg-violet-50/20 text-muted dark:border-violet-500/15 dark:bg-zinc-900/40'
+                        : 'border-violet-200/50 bg-white text-muted dark:border-violet-500/15 dark:bg-zinc-900/40'
                       }`}
                   >
                     {syncUi.message}
@@ -4159,7 +4161,7 @@ export default function CreationStudio({
               </p>
               <p className="mt-1 text-xs text-muted-foreground">{tViral('voiceStyleModalSubtitle')}</p>
             </div>
-            <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto bg-subtle px-4 py-4">
+            <div className="scrollbar-themed min-h-0 flex-1 overflow-y-auto bg-white px-4 py-4 dark:bg-zinc-950">
               <VoiceToneVoicePicker
                 catalog={voiceModelCatalog}
                 loading={voiceModelsLoading}

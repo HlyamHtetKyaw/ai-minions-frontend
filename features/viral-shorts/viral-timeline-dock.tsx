@@ -25,11 +25,11 @@ const toneClass: Record<Clip['tone'], string> = {
 };
 
 const TRACK_ROW_VIDEO_CLASS =
-  'viral-timeline-track relative h-12 min-h-12 shrink-0 border-b border-violet-200/40 bg-violet-50/20 dark:border-white/5 dark:bg-black/20';
+  'viral-timeline-track relative h-12 min-h-12 shrink-0 border-b border-violet-200/40 bg-white dark:border-white/5 dark:bg-black/20';
 const TRACK_ROW_LANE_CLASS =
-  'viral-timeline-track relative h-8 shrink-0 border-b border-violet-200/40 bg-violet-50/20 dark:border-white/5 dark:bg-black/20';
+  'viral-timeline-track relative h-8 shrink-0 border-b border-violet-200/40 bg-white dark:border-white/5 dark:bg-black/20';
 const TRACK_ROW_EMPTY_CLASS =
-  'viral-timeline-track-empty relative h-8 shrink-0 border-b border-violet-100/40 bg-violet-50/10 dark:border-white/[0.04] dark:bg-white/[0.02]';
+  'viral-timeline-track-empty relative h-8 shrink-0 border-b border-violet-100/40 bg-white dark:border-white/[0.04] dark:bg-white/[0.02]';
 
 type TimelineLaneItem = { id: string; startTime: number; endTime: number };
 
@@ -788,8 +788,8 @@ export function ViralTimelineDock({
 
   const transportDisabled = phase !== 'ready';
   return (
-    <div className="viral-timeline-dock flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-violet-50/20 dark:bg-zinc-950">
-      <div className="viral-timeline-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-violet-200/50 bg-violet-50/30 px-2 py-2 sm:gap-3 sm:px-3 dark:border-violet-500/15 dark:bg-zinc-900/80">
+    <div className="viral-timeline-dock flex h-full min-h-0 min-w-0 shrink-0 flex-col overflow-hidden bg-white dark:bg-zinc-950">
+      <div className="viral-timeline-toolbar flex shrink-0 flex-wrap items-center gap-2 border-b border-violet-200/50 bg-white px-2 py-2 sm:gap-3 sm:px-3 dark:border-violet-500/15 dark:bg-zinc-900/80">
         <div className={`flex items-center gap-1 ${transportDisabled ? 'pointer-events-none opacity-40' : ''}`}>
           <WorkspaceIconButton
             className="viral-timeline-transport-btn"
@@ -831,12 +831,12 @@ export function ViralTimelineDock({
       )}
 
       {phase === 'ready' && durationSec > 0 && (
-        <div className="viral-timeline-canvas scrollbar-themed flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-violet-50/10 dark:bg-zinc-950">
-          <div className="relative flex min-w-[560px] flex-col bg-violet-50/10 dark:bg-black/25">
+        <div className="viral-timeline-canvas scrollbar-themed flex min-h-0 flex-1 flex-col overflow-x-auto overflow-y-auto bg-white dark:bg-zinc-950">
+          <div className="relative flex min-w-[560px] flex-col bg-white dark:bg-black/25">
             {/* Ruler */}
             <div
               ref={timelineSeekRef}
-              className="viral-timeline-ruler relative h-7 shrink-0 cursor-grab touch-none border-b border-violet-200/50 bg-violet-50/30 active:cursor-grabbing dark:border-violet-500/15 dark:bg-black/40"
+              className="viral-timeline-ruler relative h-7 shrink-0 cursor-grab touch-none border-b border-violet-200/50 bg-white active:cursor-grabbing dark:border-violet-500/15 dark:bg-black/40"
               onPointerDown={onScrubPointerDown}
               onPointerMove={onScrubPointerMove}
               onPointerUp={onScrubPointerUpOrCancel}
