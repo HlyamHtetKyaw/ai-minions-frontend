@@ -1,17 +1,11 @@
 'use client';
 
-import { useCallback, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
+import { useCallback, useEffect, useMemo, type MouseEvent as ReactMouseEvent } from 'react';
 import { Rnd } from 'react-rnd';
+import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
+import { blurResizeEnabled, blurResizeHandleStyles } from '@/lib/rnd-blur-resize-handles';
 import { useEditorStore } from '@/store/editorStore';
 import type { BlurLayer as BlurLayerType } from '@/store/editorStore';
-
-const handleStyle = {
-  width: 8,
-  height: 8,
-  background: '#ffffff',
-  border: '1px solid rgba(0,0,0,0.25)',
-  borderRadius: 1,
-};
 
 type BlurLayerProps = {
   layer: BlurLayerType;
@@ -27,6 +21,7 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
   const selectedLayerId = useEditorStore((s) => s.selectedLayerId);
   const updateBlurLayer = useEditorStore((s) => s.updateBlurLayer);
   const setSelectedLayerId = useEditorStore((s) => s.setSelectedLayerId);
+  const setCanvasTransformingLayerId = useEditorStore((s) => s.setCanvasTransformingLayerId);
 
   const selected = layer.id === selectedLayerId;
   const supportsBackdropBlur = useMemo(() => {
@@ -39,12 +34,46 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
   /** Only capture pointer events while the blur tool is active so native video controls stay usable. */
   const interactiveOnCanvas = selected && activeTool === 'blur';
 
+  const storedBounds = {
+    x: layer.x,
+    y: layer.y,
+    width: layer.width,
+    height: layer.height,
+  };
+  const { bounds, onDrag, onResize, clearLive, isLive } = useRndLiveBounds(storedBounds);
+
+  useEffect(() => {
+    return () => {
+      if (useEditorStore.getState().canvasTransformingLayerId === layer.id) {
+        setCanvasTransformingLayerId(null);
+      }
+    };
+  }, [layer.id, setCanvasTransformingLayerId]);
+
+  const beginTransform = useCallback(() => {
+    setCanvasTransformingLayerId(layer.id);
+  }, [layer.id, setCanvasTransformingLayerId]);
+
+  const endTransform = useCallback(() => {
+    setCanvasTransformingLayerId(null);
+    clearLive();
+  }, [clearLive, setCanvasTransformingLayerId]);
+
+  const onDragStart = useCallback(() => {
+    beginTransform();
+  }, [beginTransform]);
+
   const onDragStop = useCallback(
     (_e: unknown, d: { x: number; y: number }) => {
       updateBlurLayer(layer.id, { x: d.x, y: d.y });
+      endTransform();
     },
-    [layer.id, updateBlurLayer],
+    [endTransform, layer.id, updateBlurLayer],
   );
+
+  const onResizeStart = useCallback(() => {
+    beginTransform();
+  }, [beginTransform]);
 
   const onResizeStop = useCallback(
     (
@@ -60,8 +89,9 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
         width: ref.offsetWidth,
         height: ref.offsetHeight,
       });
+      endTransform();
     },
-    [layer.id, updateBlurLayer],
+    [endTransform, layer.id, updateBlurLayer],
   );
 
   if (currentTime < layer.startTime || currentTime > layer.endTime) {
@@ -73,56 +103,33 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
   return (
     <Rnd
       bounds="parent"
-      size={{ width: layer.width, height: layer.height }}
-      position={{ x: layer.x, y: layer.y }}
+      size={{ width: bounds.width, height: bounds.height }}
+      position={{ x: bounds.x, y: bounds.y }}
+      onDragStart={onDragStart}
+      onDrag={onDrag}
       onDragStop={onDragStop}
+      onResizeStart={onResizeStart}
+      onResize={onResize}
       onResizeStop={onResizeStop}
-      enableResizing={
-        interactiveOnCanvas
-          ? {
-              top: true,
-              right: true,
-              bottom: true,
-              left: true,
-              topRight: true,
-              topLeft: true,
-              bottomRight: true,
-              bottomLeft: true,
-            }
-          : false
-      }
+      enableUserSelectHack={false}
+      enableResizing={interactiveOnCanvas ? blurResizeEnabled : false}
       disableDragging={!interactiveOnCanvas}
       className={interactiveOnCanvas ? 'touch-none' : undefined}
+      resizeHandleWrapperStyle={interactiveOnCanvas ? { touchAction: 'none' } : undefined}
       style={{
         zIndex,
         pointerEvents: interactiveOnCanvas ? 'auto' : 'none',
         touchAction: interactiveOnCanvas ? 'none' : undefined,
+        willChange: isLive ? 'transform' : undefined,
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
         setSelectedLayerId(layer.id);
       }}
-      onTouchStart={(e) => {
-        if (!interactiveOnCanvas) return;
-        e.stopPropagation();
-      }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();
       }}
-      resizeHandleStyles={
-        interactiveOnCanvas
-          ? {
-              top: handleStyle,
-              right: handleStyle,
-              bottom: handleStyle,
-              left: handleStyle,
-              topLeft: handleStyle,
-              topRight: handleStyle,
-              bottomLeft: handleStyle,
-              bottomRight: handleStyle,
-            }
-          : undefined
-      }
+      resizeHandleStyles={interactiveOnCanvas ? blurResizeHandleStyles : undefined}
     >
       <div
         className="h-full w-full overflow-hidden"
@@ -134,14 +141,13 @@ export function BlurLayer({ layer, stackIndex = 0 }: BlurLayerProps) {
           opacity: layer.opacity / 100,
           backdropFilter: supportsBackdropBlur ? `blur(${intensity}px)` : undefined,
           WebkitBackdropFilter: supportsBackdropBlur ? `blur(${intensity}px)` : undefined,
-          // Fallback for browsers without backdrop-filter (notably some Firefox setups):
-          // keep a visible "obscured" region so preview remains usable.
           background: supportsBackdropBlur
             ? 'rgba(255,255,255,0.05)'
             : `linear-gradient(135deg, rgba(12,12,14,${Math.min(0.56, 0.24 + intensity * 0.012)}), rgba(28,28,34,${Math.min(0.46, 0.18 + intensity * 0.01)}))`,
           boxShadow: supportsBackdropBlur ? undefined : 'inset 0 0 0 9999px rgba(0,0,0,0.06)',
           isolation: 'isolate',
           willChange: supportsBackdropBlur ? 'backdrop-filter' : undefined,
+          pointerEvents: 'none',
         }}
       />
     </Rnd>
