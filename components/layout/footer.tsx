@@ -15,7 +15,7 @@ export default function Footer() {
   }
 
   return (
-    <footer className="mt-12 border-t border-glass-border/70 footer-surface">
+    <footer className="mt-auto shrink-0 border-t border-glass-border/70 footer-surface">
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-4 px-4 py-6 sm:px-5 md:flex-row md:items-center md:justify-between">
         <div className="flex items-center gap-3">
           <Image

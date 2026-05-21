@@ -143,7 +143,7 @@ export default function VerifyClient() {
 
   if (initializing) {
     return (
-      <div className="mx-auto w-full max-w-md py-16">
+      <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-16">
         <div className="animate-pulse space-y-6 rounded-2xl border border-card-border bg-card/50 p-8">
           <div className="mx-auto h-12 w-12 rounded-2xl bg-surface" />
           <div className="h-6 w-3/4 rounded bg-surface" />

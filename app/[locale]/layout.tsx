@@ -58,15 +58,15 @@ export default async function RootLayout({
       className={`dark ${geistSans.variable} ${geistMono.variable}`}
       suppressHydrationWarning
     >
-      <body className="min-h-screen min-w-0 overflow-x-clip text-foreground antialiased">
+      <body className="flex min-h-screen min-w-0 flex-col overflow-x-clip text-foreground antialiased">
         <NextIntlClientProvider locale={locale} messages={messages}>
           <ThemeProvider>
-            <div className="app-gradient min-w-0 w-full overflow-x-clip">
+            <div className="app-gradient flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-x-clip">
               <VerificationRedirect />
               <Header />
-              <main className="min-w-0 w-full overflow-x-clip">
+              <main className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-x-clip">
                 {/* Same horizontal track as `HeaderShell` glass row: no extra outer gutter */}
-                <div className="mx-auto min-w-0 w-full max-w-7xl px-4 sm:px-5">
+                <div className="mx-auto flex min-h-0 min-w-0 w-full max-w-7xl flex-1 flex-col px-4 sm:px-5">
                   {children}
                 </div>
               </main>

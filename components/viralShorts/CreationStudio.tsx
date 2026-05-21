@@ -6,6 +6,7 @@ import { Loader2, Play, Subtitles } from 'lucide-react';
 import ActionButton from '@/components/shared/components/action-button';
 import FeatureHelpButton from '@/components/shared/components/feature-help-button';
 import ProgressBar from '@/components/shared/components/progress-bar';
+import { ResizableTextarea } from '@/components/shared/components/resizable-textarea';
 import {
   fetchAiGeneration,
   GENERATION_STATUS_FAILED,
@@ -3068,9 +3069,13 @@ export default function CreationStudio({
                 </div>
               ) : null}
               {leftTab === 'script' ? (
-              <textarea
+              <ResizableTextarea
                 value={scriptText}
                 disabled={isAnyTaskRunning}
+                minHeightPx={220}
+                maxHeightPx={720}
+                resizeLabel={tEditor('labels.resizeScriptArea')}
+                wrapperClassName="overflow-hidden rounded border border-violet-200/50 dark:border-violet-500/15"
                 onChange={(e) => {
                   const v = e.target.value;
                   setScriptText(v);
@@ -3081,7 +3086,7 @@ export default function CreationStudio({
                   }
                 }}
                 placeholder={tEditor('labels.scriptPlaceholder')}
-                className="min-h-[220px] w-full resize-y rounded border border-violet-200/50 bg-white px-2 py-2 text-[11px] leading-snug text-foreground outline-none dark:border-violet-500/15 dark:bg-zinc-900/40"
+                className="bg-white px-2 py-2 text-[11px] leading-snug text-foreground dark:bg-zinc-900/40"
               />
               ) : (
                 <ViralSrtEditorPanel
@@ -3111,6 +3116,7 @@ export default function CreationStudio({
                     generateSubtitlesFirst: tEditor('labels.generateSubtitlesFirst'),
                     addAfter: tEditor('buttons.addAfter'),
                     remove: tEditor('buttons.remove'),
+                    resizeTextArea: tEditor('labels.resizeTextArea'),
                   }}
                   onSelectCue={setSelectedSrtCueId}
                   onShowOnVideoChange={setShowSubtitlesOverlay}

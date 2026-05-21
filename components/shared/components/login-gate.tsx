@@ -12,7 +12,7 @@ export default function LoginGate({ message }: Props) {
   const t = useTranslations('shared.loginGate');
 
   return (
-    <div className="flex min-h-[40vh] flex-col items-center justify-center gap-4 rounded-xl border border-card-border bg-card p-8 text-center">
+    <div className="flex flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-card-border bg-card p-8 text-center">
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-surface">
         <Lock className="h-6 w-6 text-muted" />
       </div>

@@ -107,3 +107,8 @@ export const LANGUAGES: Language[] = [
   { code: 'en', name: 'English' },
   { code: 'mm', name: 'မြန်မာ' },
 ];
+
+/** Returns the other entry in `LANGUAGES` (for source/target pairing). */
+export function otherLanguageCode(code: string): string {
+  return LANGUAGES.find((l) => l.code !== code)?.code ?? LANGUAGES[0].code;
+}

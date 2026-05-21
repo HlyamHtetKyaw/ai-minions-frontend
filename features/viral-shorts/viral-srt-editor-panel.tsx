@@ -1,5 +1,6 @@
 'use client';
 
+import { ResizableTextarea } from '@/components/shared/components/resizable-textarea';
 import { SubtitleStyleControls } from '@/features/viral-shorts/subtitle-style-controls';
 import {
   formatSrtTimestamp,
@@ -33,6 +34,7 @@ export type ViralSrtEditorPanelProps = {
     generateSubtitlesFirst: string;
     addAfter: string;
     remove: string;
+    resizeTextArea: string;
   };
   onSelectCue: (id: string | null) => void;
   onShowOnVideoChange: (show: boolean) => void;
@@ -266,12 +268,15 @@ export function ViralSrtEditorPanel({
                         : 'border-violet-500/35 bg-zinc-50 dark:border-violet-400/25 dark:bg-zinc-950/35'
                     }`}
                   >
-                    <textarea
+                    <ResizableTextarea
                       value={c.content}
                       disabled={disabled}
+                      minHeightPx={88}
+                      resizeLabel={labels.resizeTextArea}
+                      wrapperClassName="overflow-hidden rounded-md border border-violet-500/25 dark:border-violet-400/25"
                       onChange={(e) => onCueContentChange(c.id, e.target.value)}
                       rows={3}
-                      className="box-border min-h-[5.5rem] w-full resize-y rounded-md border border-violet-500/25 bg-white px-2.5 py-2 text-[12px] leading-relaxed text-foreground outline-none focus:border-violet-500/70 dark:border-violet-400/25 dark:bg-zinc-900/70 dark:text-zinc-100"
+                      className="bg-white px-2.5 py-2 text-[12px] leading-relaxed text-foreground focus:border-violet-500/70 dark:bg-zinc-900/70 dark:text-zinc-100"
                     />
                   </div>
                 </div>

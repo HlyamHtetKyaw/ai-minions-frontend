@@ -258,9 +258,9 @@ export default function TranscribePage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col py-6 sm:py-6">
-          <div className="w-full min-w-0 md:grid md:grid-cols-[minmax(0,1.15fr)_minmax(0,26rem)] md:items-start md:gap-8 lg:gap-10 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,28rem)] xl:gap-12">
-            <div className="hidden min-w-0 flex-col gap-4 md:flex md:sticky md:top-24">
+        <div className="flex flex-1 flex-col py-6 sm:py-8">
+          <div className="grid w-full min-w-0 grid-cols-1 gap-6 lg:grid-cols-2 lg:items-start lg:gap-8 xl:gap-10">
+            <div className="order-2 hidden min-w-0 flex-col gap-4 lg:order-1 lg:flex lg:sticky lg:top-24">
               {splitLayoutActive ? (
                 <>
                   {isVideoFile ? (
@@ -289,7 +289,7 @@ export default function TranscribePage() {
               )}
             </div>
 
-            <div className="transcribe-shell min-w-0 space-y-6">
+            <div className="transcribe-shell order-1 min-w-0 space-y-6 lg:order-2">
               <div className="flex items-center gap-2">
                 <h1 className="text-2xl font-bold text-foreground">{t('page.title')}</h1>
                 <FeatureHelpButton ariaLabel={t('page.helpAria')} message={t('page.helpMessage')} />
@@ -302,7 +302,7 @@ export default function TranscribePage() {
                 instructionSecondary={t('uploadZone.formats')}
                 dropzoneClassName="transcribe-dropzone"
                 className="space-y-2"
-                mediaPreviewClassName="md:hidden"
+                mediaPreviewClassName="lg:hidden"
                 onFileChange={(f) => {
                   setUploadedFile(f);
                   setTranscribedText('');

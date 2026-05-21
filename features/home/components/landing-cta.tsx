@@ -27,20 +27,20 @@ export default async function LandingCta() {
           {tHome('landing.cta.subtitle')}
         </p>
 
-        <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:mt-10 sm:flex-row sm:gap-6 lg:mt-12 lg:gap-7">
+        <div className="mx-auto mt-8 grid w-full max-w-sm grid-cols-2 gap-2 sm:mt-10 sm:max-w-md sm:gap-3 lg:mt-12 lg:max-w-lg lg:gap-4">
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 rounded-lg border-2 border-accent-gold bg-transparent px-6 py-3 text-sm font-semibold text-foreground outline-none transition hover:bg-accent-gold/10 focus-visible:ring-2 focus-visible:ring-accent-purple/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 w-full items-center justify-center gap-1 rounded-lg border-2 border-accent-gold bg-transparent px-2 py-2 text-center text-[11px] font-semibold leading-snug text-foreground outline-none transition hover:bg-accent-gold/10 focus-visible:ring-2 focus-visible:ring-accent-purple/40 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-11 sm:gap-2 sm:px-4 sm:py-3 sm:text-sm"
           >
             {tHome('landing.cta.primary')}
-            <ChevronRight className="h-4 w-4 shrink-0 opacity-90" strokeWidth={2} aria-hidden />
+            <ChevronRight className="h-3 w-3 shrink-0 opacity-90 sm:h-4 sm:w-4" strokeWidth={2} aria-hidden />
           </Link>
           <Link
             href="/pricing"
-            className="inline-flex items-center gap-1.5 rounded-md text-sm font-semibold text-muted outline-none transition hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-purple/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            className="inline-flex min-h-9 w-full items-center justify-center gap-0.5 rounded-lg border border-card-border bg-subtle px-2 py-2 text-center text-[11px] font-semibold leading-snug text-muted outline-none transition hover:border-accent-gold/40 hover:text-foreground focus-visible:ring-2 focus-visible:ring-accent-purple/35 focus-visible:ring-offset-2 focus-visible:ring-offset-background sm:min-h-11 sm:gap-1.5 sm:px-4 sm:py-3 sm:text-sm"
           >
             {tHome('landing.cta.secondary')}
-            <ChevronRight className="h-4 w-4 shrink-0" strokeWidth={2} aria-hidden />
+            <ChevronRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" strokeWidth={2} aria-hidden />
           </Link>
         </div>
       </div>
