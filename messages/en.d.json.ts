@@ -1019,6 +1019,8 @@ declare const messages: {
       },
       "labels": {
         "scriptPlaceholder": "Click Transcribe to generate script.",
+        "resizeScriptArea": "Drag to resize",
+        "resizeTextArea": "Drag to resize",
         "showOnVideo": "Show on video",
         "moveOnVideo": "Move on video",
         "fontSizeExport": "Font size (export px)",
@@ -1337,7 +1339,8 @@ declare const messages: {
     "errors": {
       "generic": "Something went wrong. Please try again.",
       "unauthorized": "Your session expired. Please sign in again.",
-      "verificationRequired": "Please verify your email to use translation."
+      "verificationRequired": "Please verify your email to use translation.",
+      "sameLanguage": "Source and target language must be different."
     }
   },
   "shared": {

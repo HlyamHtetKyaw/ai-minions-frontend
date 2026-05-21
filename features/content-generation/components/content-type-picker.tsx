@@ -49,13 +49,13 @@ export default function ContentTypePicker({ value, onChange }: Props) {
   }, [hintKey]);
 
   return (
-    <section className="space-y-4">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted">
+    <section className="space-y-2 sm:space-y-4">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted sm:text-[11px] sm:tracking-[0.18em]">
         {t('contentTypeLabel')}
       </p>
-      <div className="scrollbar-themed -mx-1 overflow-x-auto pb-1 sm:mx-0 sm:overflow-visible sm:pb-0">
+      <div className="sm:overflow-visible sm:pb-0">
         <div
-          className="content-type-row min-w-130 sm:min-w-0"
+          className="content-type-row min-w-0"
           role="radiogroup"
           aria-label={t('contentTypeLabel')}
         >
@@ -74,16 +74,16 @@ export default function ContentTypePicker({ value, onChange }: Props) {
                   role="radio"
                   aria-checked={active}
                   onClick={() => onChange(key)}
-                  className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-0.5 border-0 bg-transparent p-0 pt-1 text-center font-inherit text-inherit cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                  className="flex min-h-0 w-full flex-1 flex-col items-center justify-center gap-0 border-0 bg-transparent p-0 text-center font-inherit text-inherit cursor-pointer outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background"
                 >
                   <Icon
-                    className={`h-5 w-5 shrink-0 sm:h-6 sm:w-6 ${active ? 'text-fuchsia-400' : 'text-muted'}`}
+                    className={`h-4 w-4 shrink-0 sm:h-6 sm:w-6 ${active ? 'text-fuchsia-400' : 'text-muted'}`}
                     strokeWidth={active ? 2.25 : 2}
                     aria-hidden
                   />
-                  <span className="leading-tight">{t(`contentTypes.${key}`)}</span>
+                  <span className="leading-none sm:leading-tight">{t(`contentTypes.${key}`)}</span>
                 </button>
-                <div className="pointer-events-none absolute right-1 top-1 z-10 flex flex-col items-end sm:right-1.5 sm:top-1.5">
+                <div className="pointer-events-none absolute right-0.5 top-0.5 z-10 flex flex-col items-end sm:right-1.5 sm:top-1.5">
                   <button
                     type="button"
                     data-content-type-hint-trigger
@@ -94,7 +94,7 @@ export default function ContentTypePicker({ value, onChange }: Props) {
                       e.stopPropagation();
                       setHintKey((k) => (k === key ? null : key));
                     }}
-                    className="content-type-hint-trigger pointer-events-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full text-[10px] font-bold leading-none transition-colors sm:h-[1.375rem] sm:min-w-[1.375rem] sm:text-[11px]"
+                    className="content-type-hint-trigger pointer-events-auto inline-flex h-4 min-w-4 items-center justify-center rounded-full text-[9px] font-bold leading-none transition-colors sm:h-[1.375rem] sm:min-w-[1.375rem] sm:text-[11px]"
                   >
                     ?
                   </button>

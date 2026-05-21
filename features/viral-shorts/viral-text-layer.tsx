@@ -1,7 +1,8 @@
 'use client';
 
-import { useCallback, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react';
+import { useCallback, useMemo, type MouseEvent as ReactMouseEvent, type TouchEvent as ReactTouchEvent } from 'react';
 import { Rnd } from 'react-rnd';
+import { useCoarsePointer } from '@/hooks/useCoarsePointer';
 import { useRndLiveBounds } from '@/hooks/useRndLiveBounds';
 import { useTextLayerBoxResize } from '@/hooks/useTextLayerBoxResize';
 import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
@@ -15,6 +16,7 @@ import {
 import {
   overlayResizeEnabled,
   textOverlayResizeHandleStyles,
+  textOverlayTouchResizeHandleStyles,
 } from '@/lib/rnd-blur-resize-handles';
 
 type ViralTextLayerProps = {
@@ -31,8 +33,24 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
   const setSelectedLayerId = useViralOverlayStore((s) => s.setSelectedLayerId);
   const setActiveTool = useViralOverlayStore((s) => s.setActiveTool);
 
+  const coarsePointer = useCoarsePointer();
   const selected = layer.id === selectedLayerId;
   const interactiveOnCanvas = selected;
+
+  const resizeHandleStyles = useMemo(
+    () =>
+      interactiveOnCanvas
+        ? coarsePointer
+          ? textOverlayTouchResizeHandleStyles
+          : textOverlayResizeHandleStyles
+        : undefined,
+    [coarsePointer, interactiveOnCanvas],
+  );
+
+  const selectLayer = useCallback(() => {
+    setSelectedLayerId(layer.id);
+    setActiveTool('text');
+  }, [layer.id, setActiveTool, setSelectedLayerId]);
 
   const storedBounds = {
     x: layer.x,
@@ -104,17 +122,16 @@ export function ViralTextLayer({ layer, currentTimeSec, stackIndex = 0, scale = 
       }}
       onMouseDown={(e) => {
         e.stopPropagation();
-        setSelectedLayerId(layer.id);
-        setActiveTool('text');
+        selectLayer();
       }}
       onTouchStart={(e: ReactTouchEvent) => {
-        if (!interactiveOnCanvas) return;
         e.stopPropagation();
+        selectLayer();
       }}
       onClick={(e: ReactMouseEvent) => {
         e.stopPropagation();
       }}
-      resizeHandleStyles={interactiveOnCanvas ? textOverlayResizeHandleStyles : undefined}
+      resizeHandleStyles={resizeHandleStyles}
     >
       <div
         className="flex h-full w-full items-center justify-center overflow-hidden"

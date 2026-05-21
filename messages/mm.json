@@ -1016,6 +1016,8 @@
       },
       "labels": {
         "scriptPlaceholder": "Script ထုတ်ရန် Transcribe ကို နှိပ်ပါ။",
+        "resizeScriptArea": "ဆွဲ၍ အရွယ်ချဲ့ပါ",
+        "resizeTextArea": "ဆွဲ၍ အရွယ်ချဲ့ပါ",
         "showOnVideo": "ဗီဒီယိုပေါ်တွင် ပြရန်",
         "moveOnVideo": "ဗီဒီယိုပေါ်တွင် ရွှေ့ရန်",
         "fontSizeExport": "ဖောင့်အရွယ် (export px)",
@@ -1334,7 +1336,8 @@
     "errors": {
       "generic": "တစ်ခုခု မှားယွင်းသွားသည်။ ထပ်စမ်းကြည့်ပါ။",
       "unauthorized": "သင့်အကောင့် သက်တမ်းကုန်သွားပါပြီ။ ထပ်ဝင်ပါ။",
-      "verificationRequired": "ဘာသာပြန်ရန် အီးမေးလ်အတည်ပြုပါ။"
+      "verificationRequired": "ဘာသာပြန်ရန် အီးမေးလ်အတည်ပြုပါ။",
+      "sameLanguage": "ရင်းမြစ်ဘာသာနှင့် ပန်းတိုင်ဘာသာ မတူညီရပါ။"
     }
   },
   "shared": {

@@ -9,7 +9,7 @@ import EstimatedCost from '@/components/common/estimated-cost';
 import LanguageSelector from '@/features/translate/components/language-selector';
 import TextPanels from '@/features/translate/components/text-panels';
 import TranslateButton from '@/features/translate/components/translate-button';
-import { LANGUAGES } from '@/lib/constants';
+import { LANGUAGES, otherLanguageCode } from '@/lib/constants';
 import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
 import { normalizeClientErrorMessage } from '@/lib/api-error-message';
 import { openGenerationJobSseStream, parseGenerationSseProgressPayload } from '@/lib/generation-job-sse';
@@ -49,6 +49,12 @@ export default function TranslatePage() {
     return () => window.removeEventListener(AUTH_CHANGED_EVENT, resolve);
   }, []);
 
+  useEffect(() => {
+    if (sourceLang === targetLang) {
+      setTargetLang(otherLanguageCode(sourceLang));
+    }
+  }, [sourceLang, targetLang]);
+
   const toUserSafeError = useCallback(
     (raw: string): string => {
       const msg = (raw ?? '').trim();
@@ -65,7 +71,26 @@ export default function TranslatePage() {
     [t],
   );
 
+  const languagesMatch = sourceLang === targetLang;
+
+  const handleSourceChange = useCallback(
+    (code: string) => {
+      setSourceLang(code);
+      if (code === targetLang) setTargetLang(otherLanguageCode(code));
+    },
+    [targetLang],
+  );
+
+  const handleTargetChange = useCallback(
+    (code: string) => {
+      setTargetLang(code);
+      if (code === sourceLang) setSourceLang(otherLanguageCode(code));
+    },
+    [sourceLang],
+  );
+
   const handleSwap = () => {
+    if (sourceLang === targetLang) return;
     setSourceLang(targetLang);
     setTargetLang(sourceLang);
     setSourceText(translatedText);
@@ -99,6 +124,10 @@ export default function TranslatePage() {
   }, [sourceText, toUserSafeError]);
 
   const handleTranslate = async () => {
+    if (sourceLang === targetLang) {
+      setError(t('errors.sameLanguage'));
+      return;
+    }
     setError(null);
     setIsLoading(true);
     setProgress({ percent: 8, label: t('sse.subscribed') });
@@ -156,8 +185,8 @@ export default function TranslatePage() {
                 <LanguageSelector
                   label={t('sourceLanguage')}
                   value={sourceLang}
-                  options={LANGUAGES}
-                  onChange={setSourceLang}
+                  options={LANGUAGES.filter((l) => l.code !== targetLang)}
+                  onChange={handleSourceChange}
                 />
               </div>
               <button
@@ -172,8 +201,8 @@ export default function TranslatePage() {
                 <LanguageSelector
                   label={t('targetLanguage')}
                   value={targetLang}
-                  options={LANGUAGES}
-                  onChange={setTargetLang}
+                  options={LANGUAGES.filter((l) => l.code !== sourceLang)}
+                  onChange={handleTargetChange}
                 />
               </div>
             </div>
@@ -235,7 +264,7 @@ export default function TranslatePage() {
             <TranslateButton
               onClick={handleTranslate}
               isLoading={isLoading}
-              disabled={!sourceText.trim()}
+              disabled={!sourceText.trim() || languagesMatch}
             />
           </div>
         </div>

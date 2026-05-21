@@ -537,11 +537,11 @@ export default function ViralShortsPage() {
       {!isSignedIn ? (
         <LoginGate />
       ) : (
-        <div className="flex min-h-[calc(100vh-8rem)] flex-col py-6 sm:py-10 md:min-h-[calc(100vh-6.5rem)]">
-          <div className="w-full min-w-0 space-y-6 sm:space-y-8">
+        <div className="flex flex-1 flex-col py-6 sm:py-10">
+          <div className="flex w-full min-w-0 flex-1 flex-col space-y-6 sm:space-y-8">
             {!workspaceHydrated ? (
               <div
-                className="flex min-h-[min(420px,55vh)] flex-col items-center justify-center gap-4 rounded-2xl border border-card-border bg-card/40 px-6 py-16 text-center shadow-[0_18px_40px_rgba(0,0,0,0.12)]"
+                className="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-card-border bg-card/40 px-6 py-16 text-center shadow-[0_18px_40px_rgba(0,0,0,0.12)]"
                 role="status"
                 aria-live="polite"
                 aria-busy="true"
@@ -575,7 +575,7 @@ export default function ViralShortsPage() {
 
             {step === 'preparing_workspace' ? (
               <div
-                className="flex min-h-[min(420px,55vh)] flex-col items-center justify-center gap-4 rounded-2xl border border-card-border bg-card/40 px-6 py-16 text-center shadow-[0_18px_40px_rgba(0,0,0,0.12)]"
+                className="flex flex-1 flex-col items-center justify-center gap-4 rounded-2xl border border-card-border bg-card/40 px-6 py-16 text-center shadow-[0_18px_40px_rgba(0,0,0,0.12)]"
                 role="status"
                 aria-live="polite"
                 aria-busy="true"

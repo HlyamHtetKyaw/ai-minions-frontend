@@ -30,19 +30,19 @@ export default async function HomePage() {
               {tHome('heroDescription')}
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-3 sm:gap-4">
+            <div className="mt-8 grid w-full max-w-sm grid-cols-2 gap-2 sm:max-w-md sm:gap-3 lg:max-w-lg lg:gap-4">
               <Link
                 href="/signup"
-                className="landing-home-primary inline-flex min-h-11 min-w-40 items-center justify-center rounded-full px-7 py-3 text-sm font-bold shadow-md"
+                className="landing-home-primary inline-flex min-h-9 w-full items-center justify-center rounded-full px-2 py-2 text-center text-[11px] font-bold leading-snug shadow-md sm:min-h-11 sm:px-5 sm:py-3 sm:text-sm"
               >
                 {tHome('landing.cta.primary')}
               </Link>
               <Link
                 href="/pricing"
-                className="inline-flex min-h-11 min-w-40 items-center justify-center gap-1 rounded-full border border-card-border bg-subtle px-7 py-3 text-sm font-semibold text-foreground transition hover:border-accent-gold/40"
+                className="inline-flex min-h-9 w-full items-center justify-center gap-0.5 rounded-full border border-card-border bg-subtle px-2 py-2 text-center text-[11px] font-semibold leading-snug text-foreground transition hover:border-accent-gold/40 sm:min-h-11 sm:gap-1 sm:px-5 sm:py-3 sm:text-sm"
               >
                 {tHome('landing.cta.secondary')}
-                <ArrowUpRight className="h-4 w-4" />
+                <ArrowUpRight className="h-3 w-3 shrink-0 sm:h-4 sm:w-4" aria-hidden />
               </Link>
             </div>
           </div>

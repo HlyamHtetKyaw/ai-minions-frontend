@@ -153,6 +153,44 @@ export const textOverlayResizeHandleStyles: HandleStyles = {
   bottomLeft: textCornerHandle('nwse-resize', { bottom: -2, left: -2 }),
 };
 
+/** Wider hit targets for touch; keeps thin corner dots + invisible edge strips. */
+export const textOverlayTouchResizeHandleStyles: HandleStyles = {
+  top: {
+    ...textEdgeHandle('ns-resize'),
+    width: '100%',
+    height: 20,
+    top: -10,
+    left: 0,
+  },
+  right: {
+    ...textEdgeHandle('ew-resize'),
+    width: 20,
+    height: '100%',
+    right: -10,
+    top: 0,
+    left: undefined,
+  },
+  bottom: {
+    ...textEdgeHandle('ns-resize'),
+    width: '100%',
+    height: 20,
+    bottom: -10,
+    top: undefined,
+    left: 0,
+  },
+  left: {
+    ...textEdgeHandle('ew-resize'),
+    width: 20,
+    height: '100%',
+    left: -10,
+    top: 0,
+  },
+  topRight: textCornerHandle('nesw-resize', { top: -12, right: -12, width: 24, height: 24 }),
+  topLeft: textCornerHandle('nwse-resize', { top: -12, left: -12, width: 24, height: 24 }),
+  bottomRight: textCornerHandle('nesw-resize', { bottom: -12, right: -12, width: 24, height: 24 }),
+  bottomLeft: textCornerHandle('nwse-resize', { bottom: -12, left: -12, width: 24, height: 24 }),
+};
+
 export const overlayResizeEnabled = {
   top: true,
   right: true,
