@@ -1,8 +1,10 @@
 'use client';
 
 import { useTranslations } from 'next-intl';
-import type { BlurLayer, TextLayer } from '@/store/editorStore';
+import type { BlurLayer, GalleryImage, ImageLayer, TextLayer } from '@/store/editorStore';
 import type { ViralActiveTool } from '@/features/viral-shorts/viral-overlay-store';
+import { ViralImageGalleryPanel } from '@/features/viral-shorts/viral-image-gallery-panel';
+import { ViralImageProperties } from '@/features/viral-shorts/viral-image-properties';
 import { ViralTextProperties } from '@/features/viral-shorts/viral-text-properties';
 
 type Props = {
@@ -10,24 +12,36 @@ type Props = {
   onActiveTool: (tool: ViralActiveTool) => void;
   selectedText: TextLayer | null;
   selectedBlur: BlurLayer | null;
+  selectedImage: ImageLayer | null;
   previewDurationSec: number;
   durationReady: boolean;
+  canvasW: number;
+  canvasH: number;
   onAddText: () => void;
   onAddBlur: () => void;
+  onAddImageToCanvas: (img: GalleryImage) => void;
+  onAddLogo: (img: GalleryImage) => void;
   onUpdateText: (id: string, patch: Partial<TextLayer>) => void;
   onUpdateBlur: (id: string, patch: Partial<BlurLayer>) => void;
+  onUpdateImage: (id: string, patch: Partial<ImageLayer>) => void;
   onDelete: () => void;
 };
 
 export function ViralOverlayInspector({
   selectedText,
   selectedBlur,
+  selectedImage,
   previewDurationSec,
   durationReady,
+  canvasW,
+  canvasH,
   onAddText,
   onAddBlur,
+  onAddImageToCanvas,
+  onAddLogo,
   onUpdateText,
   onUpdateBlur,
+  onUpdateImage,
   onDelete,
 }: Props) {
   const t = useTranslations('viralShorts.overlays');
@@ -54,7 +68,7 @@ export function ViralOverlayInspector({
         >
           {t('addBlur')}
         </button>
-        {(selectedText != null || selectedBlur != null) && (
+        {(selectedText != null || selectedBlur != null || selectedImage != null) && (
           <button
             type="button"
             onClick={onDelete}
@@ -115,6 +129,27 @@ export function ViralOverlayInspector({
               className="w-40"
             />
           </label>
+        </div>
+      )}
+
+      {selectedImage != null ? (
+        <div className="rounded-lg border border-violet-500/20 bg-white p-2 dark:border-violet-400/15 dark:bg-zinc-900/40">
+          <p className="mb-2 text-[10px] font-semibold text-muted-foreground">{t('inspectorImage')}</p>
+          <ViralImageProperties
+            layer={selectedImage}
+            durationSec={previewDurationSec}
+            onUpdate={onUpdateImage}
+          />
+        </div>
+      ) : (
+        <div className="rounded-lg border border-violet-500/20 bg-white p-2 dark:border-violet-400/15 dark:bg-zinc-900/40">
+          <p className="mb-2 text-[10px] font-semibold text-muted-foreground">{t('inspectorImages')}</p>
+          <ViralImageGalleryPanel
+            canvasW={canvasW}
+            canvasH={canvasH}
+            onAddToCanvas={onAddImageToCanvas}
+            onAddAsLogo={onAddLogo}
+          />
         </div>
       )}
 

@@ -12,9 +12,13 @@ import CreationStudio from '@/components/viralShorts/CreationStudio';
 import { AUTH_CHANGED_EVENT, getStoredAccessToken } from '@/lib/auth-token';
 import { uploadFileToPresignedUrl, videoEditorPrepareUploadUrl } from '@/lib/video-editor-api';
 import { viralShortsClearWorkspace, viralShortsGetWorkspace, viralShortsSaveSnapshot } from '@/lib/viral-shorts-workspace-api';
-import { parseViralWorkspacePayloadForRestore } from '@/lib/viral-workspace-persistence';
+import {
+  parseViralWorkspacePayloadForRestore,
+  persistableViralOverlaySnapshot,
+} from '@/lib/viral-workspace-persistence';
 import { normalizePersistedVoiceId } from '@/lib/voice-over-api';
-import type { BlurLayer, TextLayer } from '@/store/editorStore';
+import type { LayerOrderEntry } from '@/features/viral-shorts/viral-overlay-store';
+import type { BlurLayer, GalleryImage, ImageLayer, TextLayer } from '@/store/editorStore';
 
 type PageStep = 'upload' | 'uploading' | 'preparing_workspace' | 'studio';
 
@@ -55,6 +59,9 @@ export default function ViralShortsPage() {
   const [subtitlesSrtText, setSubtitlesSrtText] = useState('');
   const [viralTextLayers, setViralTextLayers] = useState<TextLayer[]>([]);
   const [viralBlurLayers, setViralBlurLayers] = useState<BlurLayer[]>([]);
+  const [viralGalleryImages, setViralGalleryImages] = useState<GalleryImage[]>([]);
+  const [viralImageLayers, setViralImageLayers] = useState<ImageLayer[]>([]);
+  const [viralLayerOrder, setViralLayerOrder] = useState<LayerOrderEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   /** After first signed-in workspace fetch (empty or restored). Until then, avoid flashing the upload UI. */
   const [workspaceHydrated, setWorkspaceHydrated] = useState(false);
@@ -117,6 +124,9 @@ export default function ViralShortsPage() {
           subtitlesSrtText?: string | null;
           textLayers?: unknown;
           blurLayers?: unknown;
+          galleryImages?: unknown;
+          imageLayers?: unknown;
+          layerOrder?: unknown;
           transcript?: string | null; // legacy
           scriptText?: string | null; // legacy
         };
@@ -221,6 +231,40 @@ export default function ViralShortsPage() {
               ? rawBlurLayers.filter(
                   (x): x is BlurLayer =>
                     Boolean(x) && typeof x === 'object' && (x as BlurLayer).type === 'blur',
+                )
+              : [],
+          );
+          const rawGallery = parsed.galleryImages;
+          const rawImageLayers = parsed.imageLayers;
+          const rawLayerOrder = parsed.layerOrder;
+          setViralGalleryImages(
+            Array.isArray(rawGallery)
+              ? rawGallery.filter(
+                  (x): x is GalleryImage =>
+                    Boolean(x) &&
+                    typeof x === 'object' &&
+                    typeof (x as GalleryImage).src === 'string',
+                )
+              : [],
+          );
+          setViralImageLayers(
+            Array.isArray(rawImageLayers)
+              ? rawImageLayers.filter(
+                  (x): x is ImageLayer =>
+                    Boolean(x) && typeof x === 'object' && (x as ImageLayer).type === 'image',
+                )
+              : [],
+          );
+          setViralLayerOrder(
+            Array.isArray(rawLayerOrder)
+              ? rawLayerOrder.filter(
+                  (x): x is LayerOrderEntry =>
+                    Boolean(x) &&
+                    typeof x === 'object' &&
+                    typeof (x as LayerOrderEntry).id === 'string' &&
+                    ((x as LayerOrderEntry).type === 'text' ||
+                      (x as LayerOrderEntry).type === 'blur' ||
+                      (x as LayerOrderEntry).type === 'image'),
                 )
               : [],
           );
@@ -359,8 +403,13 @@ export default function ViralShortsPage() {
             subtitlesSrtKey,
             subtitlesDownloadUrl,
             subtitlesSrtText,
-            textLayers: viralTextLayers,
-            blurLayers: viralBlurLayers,
+            ...persistableViralOverlaySnapshot({
+              textLayers: viralTextLayers,
+              blurLayers: viralBlurLayers,
+              galleryImages: viralGalleryImages,
+              imageLayers: viralImageLayers,
+              layerOrder: viralLayerOrder,
+            }),
             step: 'studio',
           };
           await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
@@ -404,6 +453,9 @@ export default function ViralShortsPage() {
     subtitlesSrtText,
     viralTextLayers,
     viralBlurLayers,
+    viralGalleryImages,
+    viralImageLayers,
+    viralLayerOrder,
     videoName,
     videoUrl,
   ]);
@@ -434,6 +486,9 @@ export default function ViralShortsPage() {
     setSubtitlesSrtText('');
     setViralTextLayers([]);
     setViralBlurLayers([]);
+    setViralGalleryImages([]);
+    setViralImageLayers([]);
+    setViralLayerOrder([]);
     setStep('upload');
   }, []);
 
@@ -488,8 +543,13 @@ export default function ViralShortsPage() {
           subtitlesSrtKey,
           subtitlesDownloadUrl,
           subtitlesSrtText,
-          textLayers: viralTextLayers,
-          blurLayers: viralBlurLayers,
+          ...persistableViralOverlaySnapshot({
+            textLayers: viralTextLayers,
+            blurLayers: viralBlurLayers,
+            galleryImages: viralGalleryImages,
+            imageLayers: viralImageLayers,
+            layerOrder: viralLayerOrder,
+          }),
           step: 'studio',
         };
         await viralShortsSaveSnapshot(JSON.stringify(viralPayload));
@@ -529,6 +589,9 @@ export default function ViralShortsPage() {
       subtitlesSrtText,
       viralTextLayers,
       viralBlurLayers,
+      viralGalleryImages,
+      viralImageLayers,
+      viralLayerOrder,
     ],
   );
 
@@ -667,6 +730,9 @@ export default function ViralShortsPage() {
                 initialSubtitlesSrtText={subtitlesSrtText}
                 initialViralTextLayers={viralTextLayers}
                 initialViralBlurLayers={viralBlurLayers}
+                initialViralGalleryImages={viralGalleryImages}
+                initialViralImageLayers={viralImageLayers}
+                initialViralLayerOrder={viralLayerOrder}
                 onTranscriptTextChange={setTranscriptText}
                 onTranscribeGenerationIdChange={setTranscribeGenerationId}
                 onTranslateGenerationIdChange={setTranslateGenerationId}
@@ -709,6 +775,9 @@ export default function ViralShortsPage() {
                 onViralOverlayLayersChange={(p) => {
                   setViralTextLayers(p.textLayers);
                   setViralBlurLayers(p.blurLayers);
+                  setViralGalleryImages(p.galleryImages);
+                  setViralImageLayers(p.imageLayers);
+                  setViralLayerOrder(p.layerOrder);
                 }}
               />
             ) : null}

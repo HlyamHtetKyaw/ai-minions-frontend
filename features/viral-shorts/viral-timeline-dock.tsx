@@ -4,16 +4,16 @@ import { useCallback, useMemo, useRef } from 'react';
 import { Pause, Play, SkipBack, SkipForward } from 'lucide-react';
 import { useTimelineClipDrag } from '@/hooks/useTimelineClipDrag';
 import { WorkspaceIconButton } from '@/features/video-edit/components/workspace/ui';
-import type { BlurLayer, TextLayer } from '@/store/editorStore';
+import type { BlurLayer, ImageLayer, TextLayer } from '@/store/editorStore';
 import type { LayerOrderEntry } from './viral-overlay-store';
 
 type Clip = {
   id: string;
-  kind: 'video' | 'text' | 'blur' | 'subtitle';
+  kind: 'video' | 'text' | 'blur' | 'image' | 'subtitle';
   label: string;
   start: number;
   width: number;
-  tone: 'violet' | 'emerald' | 'rose' | 'amber';
+  tone: 'violet' | 'emerald' | 'rose' | 'amber' | 'indigo';
   verticalLane?: number;
 };
 
@@ -22,6 +22,7 @@ const toneClass: Record<Clip['tone'], string> = {
   emerald: 'bg-emerald-600/95 ring-emerald-400/35 dark:bg-emerald-500/90',
   rose: 'bg-rose-600/95 ring-rose-400/35 dark:bg-rose-500/90',
   amber: 'bg-amber-500/95 text-zinc-950 ring-amber-400/45 dark:bg-amber-400/90 dark:text-white dark:ring-amber-300/40',
+  indigo: 'bg-indigo-600/95 ring-indigo-400/35 dark:bg-indigo-500/90',
 };
 
 const TRACK_ROW_VIDEO_CLASS =
@@ -519,6 +520,7 @@ export type ViralTimelineDockProps = {
   isPlaying: boolean;
   textLayers: TextLayer[];
   blurLayers: BlurLayer[];
+  imageLayers?: ImageLayer[];
   selectedLayerId: string | null;
   /** SRT subtitle cues to display as a draggable timeline track (optional). */
   srtCues?: SrtCueForTimeline[];
@@ -548,6 +550,7 @@ export type ViralTimelineDockProps = {
   onDeselect: () => void;
   onUpdateTextTiming: (id: string, patch: { startTime?: number; endTime?: number }) => void;
   onUpdateBlurTiming: (id: string, patch: { startTime?: number; endTime?: number }) => void;
+  onUpdateImageTiming?: (id: string, patch: { startTime?: number; endTime?: number }) => void;
   /** Called when an SRT cue clip is dragged/resized. */
   onUpdateSrtCueTiming?: (id: string, patch: { startTime?: number; endTime?: number }) => void;
   /** Called when an SRT cue clip is clicked — use to select+scroll to that cue. */
@@ -561,6 +564,7 @@ export function ViralTimelineDock({
   isPlaying,
   textLayers,
   blurLayers,
+  imageLayers = [],
   selectedLayerId,
   srtCues,
   selectedSrtCueId,
@@ -581,6 +585,7 @@ export function ViralTimelineDock({
   onDeselect,
   onUpdateTextTiming,
   onUpdateBlurTiming,
+  onUpdateImageTiming,
   onUpdateSrtCueTiming,
   onSelectSrtCue,
 }: ViralTimelineDockProps) {
@@ -657,7 +662,7 @@ export function ViralTimelineDock({
 
     // Build ordered text+blur rows: highest z-order entry = first row displayed (CapCut: top row = on top).
     // layerOrder index 0 = bottom-most → we reverse so the last entry (top z) is the first row.
-    const orderedLayerRows: Array<{ id: string; rowId: string; type: 'text' | 'blur'; clips: Clip[] }> = [];
+    const orderedLayerRows: Array<{ id: string; rowId: string; type: 'text' | 'blur' | 'image'; clips: Clip[] }> = [];
     if (layerOrder && layerOrder.length > 0) {
       // Reverse so highest z is first (top of timeline)
       const reversed = [...layerOrder].reverse();
@@ -675,7 +680,7 @@ export function ViralTimelineDock({
             verticalLane: 0,
           };
           orderedLayerRows.push({ id: entry.id, rowId: `text-${entry.id}`, type: 'text', clips: [clip] });
-        } else {
+        } else if (entry.type === 'blur') {
           const l = blurLayers.find((x) => x.id === entry.id);
           if (!l) continue;
           const clip: Clip = {
@@ -688,6 +693,19 @@ export function ViralTimelineDock({
             verticalLane: 0,
           };
           orderedLayerRows.push({ id: entry.id, rowId: `blur-${entry.id}`, type: 'blur', clips: [clip] });
+        } else if (entry.type === 'image') {
+          const l = imageLayers.find((x) => x.id === entry.id);
+          if (!l) continue;
+          const clip: Clip = {
+            id: l.id,
+            kind: 'image',
+            label: 'Image',
+            start: l.startTime / d,
+            width: Math.max((l.endTime - l.startTime) / d, 0.004),
+            tone: 'indigo',
+            verticalLane: 0,
+          };
+          orderedLayerRows.push({ id: entry.id, rowId: `image-${entry.id}`, type: 'image', clips: [clip] });
         }
       }
     } else {
@@ -715,7 +733,7 @@ export function ViralTimelineDock({
       { id: 'subtitle', clips: subtitleClips, layerRows: null },
       { id: '__ordered__', clips: [], layerRows: orderedLayerRows },
     ];
-  }, [blurLayers, durationSec, textLayers, textLaneById, blurLaneById, videoLabel, srtCues, layerOrder]);
+  }, [blurLayers, imageLayers, durationSec, textLayers, textLaneById, blurLaneById, videoLabel, srtCues, layerOrder]);
 
   const rulerStepSec = 10;
   const ticks: number[] = [];
@@ -916,6 +934,7 @@ export function ViralTimelineDock({
                   const layerRowIds = row.layerRows.map((r) => r.rowId);
                   return row.layerRows.map((lr) => {
                     const isText = lr.type === 'text';
+                    const isImage = lr.type === 'image';
                     const clip = lr.clips[0];
                     if (!clip) return null;
 
@@ -938,6 +957,18 @@ export function ViralTimelineDock({
                               trackLaneRef={trackRef}
                               onSelect={onSelectClip}
                               onUpdate={onUpdateTextTiming}
+                              onMoveToRow={(targetRowId) => handleClipMoveToRow(clip.id, targetRowId, lr.rowId)}
+                              snapPointsSec={[currentTimeSec]}
+                            />
+                          ) : clip.kind === 'image' ? (
+                            <ViralTextTimelineClip
+                              clip={clip}
+                              durationSec={durationSec}
+                              selected={clip.id === selectedLayerId}
+                              rowId={lr.rowId}
+                              trackLaneRef={trackRef}
+                              onSelect={onSelectClip}
+                              onUpdate={(id, patch) => onUpdateImageTiming?.(id, patch)}
                               onMoveToRow={(targetRowId) => handleClipMoveToRow(clip.id, targetRowId, lr.rowId)}
                               snapPointsSec={[currentTimeSec]}
                             />
