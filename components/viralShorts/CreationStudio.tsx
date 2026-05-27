@@ -64,6 +64,7 @@ import {
 import { useViralOverlayStore } from '@/features/viral-shorts/viral-overlay-store';
 import { ViralBlurLayer } from '@/features/viral-shorts/viral-blur-layer';
 import { ViralTextLayer } from '@/features/viral-shorts/viral-text-layer';
+import { ViralImageLayer } from '@/features/viral-shorts/viral-image-layer';
 import { ViralTimelineDock, type SrtCueForTimeline } from '@/features/viral-shorts/viral-timeline-dock';
 import { ViralOverlayInspector } from '@/features/viral-shorts/viral-overlay-inspector';
 import { ViralSrtEditorPanel } from '@/features/viral-shorts/viral-srt-editor-panel';
@@ -75,9 +76,16 @@ import {
   resolveCaptionBackgroundColor,
   resolveCaptionBackgroundOpacity,
 } from '@/lib/text-layer-caption-style';
-import type { BlurLayer as ViralBlurLayerType, TextLayer as ViralTextLayerType } from '@/store/editorStore';
+import type {
+  BlurLayer as ViralBlurLayerType,
+  GalleryImage as ViralGalleryImageType,
+  ImageLayer as ViralImageLayerType,
+  TextLayer as ViralTextLayerType,
+} from '@/store/editorStore';
+import type { LayerOrderEntry } from '@/features/viral-shorts/viral-overlay-store';
 import {
   mapBlurLayersForWorkspaceExport,
+  mapImageLayersForWorkspaceExport,
   mapTextLayersForWorkspaceExport,
   viralDisplayToNaturalScale,
 } from '@/lib/map-viral-layers-for-export';
@@ -323,7 +331,16 @@ type Props = {
   onPersistWorkspaceSnapshot?: () => void | Promise<void>;
   initialViralTextLayers?: ViralTextLayerType[];
   initialViralBlurLayers?: ViralBlurLayerType[];
-  onViralOverlayLayersChange?: (payload: { textLayers: ViralTextLayerType[]; blurLayers: ViralBlurLayerType[] }) => void;
+  initialViralGalleryImages?: ViralGalleryImageType[];
+  initialViralImageLayers?: ViralImageLayerType[];
+  initialViralLayerOrder?: LayerOrderEntry[];
+  onViralOverlayLayersChange?: (payload: {
+    textLayers: ViralTextLayerType[];
+    blurLayers: ViralBlurLayerType[];
+    galleryImages: ViralGalleryImageType[];
+    imageLayers: ViralImageLayerType[];
+    layerOrder: LayerOrderEntry[];
+  }) => void;
 };
 
 export default function CreationStudio({
@@ -385,6 +402,9 @@ export default function CreationStudio({
   onPersistWorkspaceSnapshot,
   initialViralTextLayers,
   initialViralBlurLayers,
+  initialViralGalleryImages,
+  initialViralImageLayers,
+  initialViralLayerOrder,
   onViralOverlayLayersChange,
 }: Props) {
   const tVo = useTranslations('voice-over');
@@ -763,6 +783,8 @@ export default function CreationStudio({
 
   const overlayTextLayers = useViralOverlayStore((s) => s.textLayers);
   const overlayBlurLayers = useViralOverlayStore((s) => s.blurLayers);
+  const overlayImageLayers = useViralOverlayStore((s) => s.imageLayers);
+  const overlayGalleryImages = useViralOverlayStore((s) => s.galleryImages);
   const overlayLayerOrder = useViralOverlayStore((s) => s.layerOrder);
   const overlaySelectedId = useViralOverlayStore((s) => s.selectedLayerId);
   const overlayActiveTool = useViralOverlayStore((s) => s.activeTool);
@@ -774,6 +796,9 @@ export default function CreationStudio({
   const addOverlayBlurAtPlayhead = useViralOverlayStore((s) => s.addBlurLayerAtPlayhead);
   const updateOverlayText = useViralOverlayStore((s) => s.updateTextLayer);
   const updateOverlayBlur = useViralOverlayStore((s) => s.updateBlurLayer);
+  const updateOverlayImage = useViralOverlayStore((s) => s.updateImageLayer);
+  const addOverlayImageLayer = useViralOverlayStore((s) => s.addImageLayer);
+  const addOverlayLogoImageLayer = useViralOverlayStore((s) => s.addLogoImageLayer);
   const deleteOverlaySelected = useViralOverlayStore((s) => s.deleteSelectedLayer);
   const moveOverlayLayerUp = useViralOverlayStore((s) => s.moveLayerUp);
   const moveOverlayLayerDown = useViralOverlayStore((s) => s.moveLayerDown);
@@ -796,7 +821,7 @@ export default function CreationStudio({
   const timelineOverlayLayerOrder = useMemo(
     () =>
       overlayLayerOrder.filter((entry) => {
-        if (entry.type === 'blur') return true;
+        if (entry.type === 'blur' || entry.type === 'image') return true;
         const layer = overlayTextLayers.find((l) => l.id === entry.id);
         return layer != null && !layer.srtImportBatchId;
       }),
@@ -844,7 +869,8 @@ export default function CreationStudio({
 
   const previewOverlayMoveActive =
     (subtitlesEditPosition && showSubtitlesOverlay && hasImportedSrtLayers) ||
-    (overlaySelectedId != null && (overlayActiveTool === 'blur' || overlayActiveTool === 'text'));
+    (overlaySelectedId != null &&
+      (overlayActiveTool === 'blur' || overlayActiveTool === 'text' || overlayActiveTool === 'image'));
 
   const [previewPlaybackTime, setPreviewPlaybackTime] = useState(0);
   const [previewIsPlaying, setPreviewIsPlaying] = useState(false);
@@ -859,6 +885,10 @@ export default function CreationStudio({
   const selectedOverlayBlur = useMemo(
     () => overlayBlurLayers.find((l) => l.id === overlaySelectedId) ?? null,
     [overlayBlurLayers, overlaySelectedId],
+  );
+  const selectedOverlayImage = useMemo(
+    () => overlayImageLayers.find((l) => l.id === overlaySelectedId) ?? null,
+    [overlayImageLayers, overlaySelectedId],
   );
 
   useEffect(() => {
@@ -887,23 +917,50 @@ export default function CreationStudio({
     previewFingerprintRef.current = fp;
     overlayHydratedRef.current = false;
     resetOverlays();
-    onViralOverlayLayersChange?.({ textLayers: [], blurLayers: [] });
+    onViralOverlayLayersChange?.({
+      textLayers: [],
+      blurLayers: [],
+      galleryImages: [],
+      imageLayers: [],
+      layerOrder: [],
+    });
   }, [previewMediaFingerprint, onViralOverlayLayersChange, resetOverlays]);
 
   useEffect(() => {
     if (overlayPreviewDuration <= 0) return;
     const t = initialViralTextLayers ?? [];
     const b = initialViralBlurLayers ?? [];
-    if (t.length === 0 && b.length === 0) {
+    const g = initialViralGalleryImages ?? [];
+    const imgs = initialViralImageLayers ?? [];
+    const order = initialViralLayerOrder ?? [];
+    if (t.length === 0 && b.length === 0 && g.length === 0 && imgs.length === 0) {
       overlayHydratedRef.current = true;
       return;
     }
     const store = useViralOverlayStore.getState();
-    const storeEmpty = store.textLayers.length === 0 && store.blurLayers.length === 0;
+    const storeEmpty =
+      store.textLayers.length === 0 &&
+      store.blurLayers.length === 0 &&
+      store.galleryImages.length === 0 &&
+      store.imageLayers.length === 0;
     if (overlayHydratedRef.current && !storeEmpty) return;
-    hydrateOverlays({ textLayers: t, blurLayers: b });
+    hydrateOverlays({
+      textLayers: t,
+      blurLayers: b,
+      galleryImages: g,
+      imageLayers: imgs,
+      layerOrder: order,
+    });
     overlayHydratedRef.current = true;
-  }, [overlayPreviewDuration, initialViralTextLayers, initialViralBlurLayers, hydrateOverlays]);
+  }, [
+    overlayPreviewDuration,
+    initialViralTextLayers,
+    initialViralBlurLayers,
+    initialViralGalleryImages,
+    initialViralImageLayers,
+    initialViralLayerOrder,
+    hydrateOverlays,
+  ]);
 
   const legacySrtMigratedRef = useRef(false);
   useEffect(() => {
@@ -939,12 +996,24 @@ export default function CreationStudio({
   useEffect(() => {
     if (!onViralOverlayLayersChange) return;
     const unsubscribe = useViralOverlayStore.subscribe((state, prev) => {
-      if (state.textLayers === prev.textLayers && state.blurLayers === prev.blurLayers) return;
+      if (
+        state.textLayers === prev.textLayers &&
+        state.blurLayers === prev.blurLayers &&
+        state.galleryImages === prev.galleryImages &&
+        state.imageLayers === prev.imageLayers &&
+        state.layerOrder === prev.layerOrder
+      ) {
+        return;
+      }
       if (overlayNotifyTimerRef.current != null) window.clearTimeout(overlayNotifyTimerRef.current);
       overlayNotifyTimerRef.current = window.setTimeout(() => {
+        const s = useViralOverlayStore.getState();
         onViralOverlayLayersChange({
-          textLayers: useViralOverlayStore.getState().textLayers,
-          blurLayers: useViralOverlayStore.getState().blurLayers,
+          textLayers: s.textLayers,
+          blurLayers: s.blurLayers,
+          galleryImages: s.galleryImages,
+          imageLayers: s.imageLayers,
+          layerOrder: s.layerOrder,
         });
       }, 400);
     });
@@ -2517,6 +2586,10 @@ export default function CreationStudio({
         .filter((e) => e.type === 'text')
         .map((e) => overlayTextLayers.find((l) => l.id === e.id))
         .filter((l): l is NonNullable<typeof l> => l != null);
+      const orderedImageForExport = overlayLayerOrder
+        .filter((e) => e.type === 'image')
+        .map((e) => overlayImageLayers.find((l) => l.id === e.id))
+        .filter((l): l is NonNullable<typeof l> => l != null);
 
       const trimParams = { trimStart: 0, trimEnd: duration, duration, speed: 1 };
       const burnSrtText = buildShiftedSrtFromImportedTextLayers(orderedTextForExport, trimParams);
@@ -2555,7 +2628,10 @@ export default function CreationStudio({
         blurLayers: mapBlurLayersForWorkspaceExport(orderedBlurForExport),
         canvasFrame: { width: canvasW, height: canvasH },
         naturalVideo: { width: intrinsicW, height: intrinsicH },
-        imageLayers: [],
+        imageLayers: mapImageLayersForWorkspaceExport(
+          orderedImageForExport,
+          overlayGalleryImages,
+        ),
         originalAudio: voiceMixForExport?.originalAudio ?? { muted: false, volume: 100 },
         ...(voiceMixForExport?.audioTracks ? { audioTracks: voiceMixForExport.audioTracks } : {}),
         protectFlip,
@@ -3222,6 +3298,19 @@ export default function CreationStudio({
                       />
                     );
                   }
+                  if (entry.type === 'image') {
+                    const layer = overlayImageLayers.find((l) => l.id === entry.id);
+                    if (!layer) return null;
+                    return (
+                      <ViralImageLayer
+                        key={layer.id}
+                        layer={layer}
+                        currentTimeSec={previewPlaybackTime}
+                        stackIndex={i}
+                        scale={previewScale}
+                      />
+                    );
+                  }
                   return null;
                 })}
                 {isBalancedPreviewMode ? (
@@ -3246,12 +3335,22 @@ export default function CreationStudio({
             onActiveTool={setOverlayActiveTool}
             selectedText={selectedOverlayText}
             selectedBlur={selectedOverlayBlur}
+            selectedImage={selectedOverlayImage}
             previewDurationSec={overlayPreviewDuration}
             durationReady={overlayPreviewDuration > 0}
+            canvasW={Math.round(previewFramePx.w)}
+            canvasH={Math.round(previewFramePx.h)}
             onAddText={() => addOverlayTextAtPlayhead(previewPlaybackTime)}
             onAddBlur={() => addOverlayBlurAtPlayhead(previewPlaybackTime)}
+            onAddImageToCanvas={(img) =>
+              addOverlayImageLayer(img, Math.round(previewFramePx.w), Math.round(previewFramePx.h))
+            }
+            onAddLogo={(img) =>
+              addOverlayLogoImageLayer(img, Math.round(previewFramePx.w), Math.round(previewFramePx.h))
+            }
             onUpdateText={updateOverlayText}
             onUpdateBlur={updateOverlayBlur}
+            onUpdateImage={updateOverlayImage}
             onDelete={() => deleteOverlaySelected()}
           />
 
@@ -3266,6 +3365,7 @@ export default function CreationStudio({
               isPlaying={previewIsPlaying}
               textLayers={timelineOverlayTextLayers}
               blurLayers={overlayBlurLayers}
+              imageLayers={overlayImageLayers}
               selectedLayerId={overlaySelectedId}
               srtCues={
                 editableCues.length > 0 ? (editableCues as SrtCueForTimeline[]) : undefined
@@ -3289,12 +3389,15 @@ export default function CreationStudio({
                 // Auto-switch tool to match the selected layer type (CapCut-style)
                 const isText = timelineOverlayTextLayers.some((l) => l.id === id);
                 const isBlur = overlayBlurLayers.some((l) => l.id === id);
+                const isImage = overlayImageLayers.some((l) => l.id === id);
                 if (isText) setOverlayActiveTool('text');
                 else if (isBlur) setOverlayActiveTool('blur');
+                else if (isImage) setOverlayActiveTool('image');
               }}
               onDeselect={() => setOverlaySelectedId(null)}
               onUpdateTextTiming={(id, patch) => updateOverlayText(id, patch)}
               onUpdateBlurTiming={(id, patch) => updateOverlayBlur(id, patch)}
+              onUpdateImageTiming={(id, patch) => updateOverlayImage(id, patch)}
               onUpdateSrtCueTiming={(id, patch) => updateOverlayText(id, patch)}
               onSelectSrtCue={(id) => {
                 setSelectedSrtCueId(id);

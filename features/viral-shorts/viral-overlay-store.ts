@@ -2,15 +2,15 @@ import { create } from 'zustand';
 import { nanoid } from 'nanoid';
 import type { SrtCue } from '@/features/video-edit/lib/parse-srt';
 import { createTextLayersFromSrtCues } from '@/lib/import-srt-cues-as-text-layers';
-import type { BlurLayer, TextLayer } from '@/store/editorStore';
+import type { BlurLayer, GalleryImage, ImageLayer, TextLayer } from '@/store/editorStore';
 
 const MIN_CLIP_SEC = 1;
 const DEFAULT_TEXT_SPAN_SEC = 10;
 
-export type ViralActiveTool = 'pointer' | 'text' | 'blur';
+export type ViralActiveTool = 'pointer' | 'text' | 'blur' | 'image';
 
 /** A single entry in the unified layer ordering list. */
-export type LayerOrderEntry = { id: string; type: 'text' | 'blur' };
+export type LayerOrderEntry = { id: string; type: 'text' | 'blur' | 'image' };
 
 function clampSpanToDuration(
   startTime: number,
@@ -28,7 +28,12 @@ function clampSpanToDuration(
   return { startTime: s, endTime: e };
 }
 
-function clampAllLayers(textLayers: TextLayer[], blurLayers: BlurLayer[], duration: number) {
+function clampAllLayers(
+  textLayers: TextLayer[],
+  blurLayers: BlurLayer[],
+  imageLayers: ImageLayer[],
+  duration: number,
+) {
   const d = Math.max(0, duration);
   const text = textLayers.map((l) => {
     const { startTime, endTime } = clampSpanToDuration(l.startTime, l.endTime, d);
@@ -38,7 +43,11 @@ function clampAllLayers(textLayers: TextLayer[], blurLayers: BlurLayer[], durati
     const { startTime, endTime } = clampSpanToDuration(l.startTime, l.endTime, d);
     return { ...l, startTime, endTime };
   });
-  return { textLayers: text, blurLayers: blur };
+  const images = imageLayers.map((l) => {
+    const { startTime, endTime } = clampSpanToDuration(l.startTime, l.endTime, d);
+    return { ...l, startTime, endTime };
+  });
+  return { textLayers: text, blurLayers: blur, imageLayers: images };
 }
 
 /** Rebuild layerOrder from textLayers + blurLayers, preserving existing entries, adding new ones at top. */
@@ -46,12 +55,15 @@ function syncLayerOrder(
   existing: LayerOrderEntry[],
   textLayers: TextLayer[],
   blurLayers: BlurLayer[],
+  imageLayers: ImageLayer[],
 ): LayerOrderEntry[] {
   const existingIds = new Set(existing.map((e) => e.id));
-  const allIds = new Set([...textLayers.map((l) => l.id), ...blurLayers.map((l) => l.id)]);
-  // Remove deleted entries
+  const allIds = new Set([
+    ...textLayers.map((l) => l.id),
+    ...blurLayers.map((l) => l.id),
+    ...imageLayers.map((l) => l.id),
+  ]);
   const pruned = existing.filter((e) => allIds.has(e.id));
-  // Add new entries at the top (end of array = highest z)
   const newEntries: LayerOrderEntry[] = [];
   for (const l of textLayers) {
     if (!existingIds.has(l.id)) newEntries.push({ id: l.id, type: 'text' });
@@ -59,10 +71,15 @@ function syncLayerOrder(
   for (const l of blurLayers) {
     if (!existingIds.has(l.id)) newEntries.push({ id: l.id, type: 'blur' });
   }
+  for (const l of imageLayers) {
+    if (!existingIds.has(l.id)) newEntries.push({ id: l.id, type: 'image' });
+  }
   return [...pruned, ...newEntries];
 }
 
 export type ViralOverlayState = {
+  galleryImages: GalleryImage[];
+  imageLayers: ImageLayer[];
   textLayers: TextLayer[];
   blurLayers: BlurLayer[];
   /**
@@ -84,6 +101,13 @@ export type ViralOverlayState = {
   deleteTextLayer: (id: string) => void;
   deleteBlurLayer: (id: string) => void;
   deleteSelectedLayer: () => void;
+  addGalleryImage: (file: File) => Promise<GalleryImage>;
+  setGalleryImageRemoteSrc: (galleryImageId: string, storageUrl: string) => void;
+  deleteGalleryImage: (id: string) => void;
+  addImageLayer: (galleryImage: GalleryImage, canvasW?: number, canvasH?: number) => void;
+  addLogoImageLayer: (galleryImage: GalleryImage, canvasW: number, canvasH: number) => void;
+  updateImageLayer: (id: string, patch: Partial<ImageLayer>) => void;
+  deleteImageLayer: (id: string) => void;
   /** Append cues as text layers (same as video editor .srt upload). */
   importSrtCuesAsTextLayers: (cues: SrtCue[], canvasWidth: number, canvasHeight: number) => void;
   /** Replace prior imported-caption layers with a new batch (e.g. after AI subtitle generation). */
@@ -94,13 +118,28 @@ export type ViralOverlayState = {
   /** Move a layer one step toward the bottom (lower z-order). */
   moveLayerDown: (id: string) => void;
   reset: () => void;
-  hydrate: (payload: { textLayers?: TextLayer[] | null; blurLayers?: BlurLayer[] | null }) => void;
+  hydrate: (payload: {
+    textLayers?: TextLayer[] | null;
+    blurLayers?: BlurLayer[] | null;
+    imageLayers?: ImageLayer[] | null;
+    galleryImages?: GalleryImage[] | null;
+    layerOrder?: LayerOrderEntry[] | null;
+  }) => void;
 };
 
 const initial = (): Pick<
   ViralOverlayState,
-  'textLayers' | 'blurLayers' | 'layerOrder' | 'selectedLayerId' | 'activeTool' | 'previewDuration'
+  | 'galleryImages'
+  | 'imageLayers'
+  | 'textLayers'
+  | 'blurLayers'
+  | 'layerOrder'
+  | 'selectedLayerId'
+  | 'activeTool'
+  | 'previewDuration'
 > => ({
+  galleryImages: [],
+  imageLayers: [],
   textLayers: [],
   blurLayers: [],
   layerOrder: [],
@@ -115,11 +154,12 @@ export const useViralOverlayStore = create<ViralOverlayState>((set, get) => ({
   setPreviewDuration: (sec) => {
     const d = Number.isFinite(sec) && sec > 0 ? sec : 0;
     set((s) => {
-      const clamped = clampAllLayers(s.textLayers, s.blurLayers, d);
+      const clamped = clampAllLayers(s.textLayers, s.blurLayers, s.imageLayers, d);
       return {
         previewDuration: d,
         textLayers: clamped.textLayers,
         blurLayers: clamped.blurLayers,
+        imageLayers: clamped.imageLayers,
       };
     });
   },
@@ -339,6 +379,176 @@ export const useViralOverlayStore = create<ViralOverlayState>((set, get) => ({
       selectedLayerId: s.selectedLayerId === id ? null : s.selectedLayerId,
     })),
 
+  addGalleryImage: async (file) => {
+    const src = URL.createObjectURL(file);
+    try {
+      const dims = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+        const img = new Image();
+        img.onload = () =>
+          resolve({
+            width: img.naturalWidth || 1,
+            height: img.naturalHeight || 1,
+          });
+        img.onerror = () => reject(new Error('Image load failed'));
+        img.src = src;
+      });
+      const galleryImage: GalleryImage = {
+        id: nanoid(),
+        name: file.name,
+        src,
+        width: dims.width,
+        height: dims.height,
+        size: file.size,
+      };
+      set((s) => ({
+        galleryImages: [...s.galleryImages, galleryImage],
+      }));
+      return galleryImage;
+    } catch {
+      URL.revokeObjectURL(src);
+      throw new Error('Could not read image dimensions');
+    }
+  },
+
+  setGalleryImageRemoteSrc: (galleryImageId, storageUrl) =>
+    set((s) => {
+      const prev = s.galleryImages.find((g) => g.id === galleryImageId);
+      if (prev != null && prev.src.startsWith('blob:') && prev.src !== storageUrl) {
+        URL.revokeObjectURL(prev.src);
+      }
+      return {
+        galleryImages: s.galleryImages.map((g) =>
+          g.id === galleryImageId ? { ...g, src: storageUrl } : g,
+        ),
+        imageLayers: s.imageLayers.map((l) =>
+          l.galleryImageId === galleryImageId ? { ...l, src: storageUrl } : l,
+        ),
+      };
+    }),
+
+  deleteGalleryImage: (id) =>
+    set((s) => {
+      const image = s.galleryImages.find((g) => g.id === id);
+      if (image?.src.startsWith('blob:')) {
+        URL.revokeObjectURL(image.src);
+      }
+      const removedLayerIds = new Set(
+        s.imageLayers.filter((l) => l.galleryImageId === id).map((l) => l.id),
+      );
+      return {
+        galleryImages: s.galleryImages.filter((g) => g.id !== id),
+        imageLayers: s.imageLayers.filter((l) => l.galleryImageId !== id),
+        layerOrder: s.layerOrder.filter((e) => !removedLayerIds.has(e.id)),
+        selectedLayerId:
+          s.selectedLayerId != null && removedLayerIds.has(s.selectedLayerId)
+            ? null
+            : s.selectedLayerId,
+      };
+    }),
+
+  addImageLayer: (galleryImage, canvasW = 640, canvasH = 360) => {
+    const state = get();
+    const d = state.previewDuration;
+    const id = nanoid();
+    const cw = canvasW > 0 ? canvasW : 640;
+    const gw = Math.max(1, galleryImage.width);
+    const gh = Math.max(1, galleryImage.height);
+    const targetW = Math.min(gw, cw * 0.4);
+    const height = (targetW * gh) / gw;
+    const layer: ImageLayer = {
+      id,
+      type: 'image',
+      galleryImageId: galleryImage.id,
+      src: galleryImage.src,
+      x: 50,
+      y: 50,
+      width: targetW,
+      height,
+      opacity: 100,
+      rotation: 0,
+      flipX: false,
+      flipY: false,
+      fitMode: 'free',
+      startTime: 0,
+      endTime: d > 0 ? d : 0,
+      lockAspectRatio: true,
+    };
+    const newOrder: LayerOrderEntry = { id, type: 'image' };
+    set({
+      imageLayers: [...state.imageLayers, layer],
+      layerOrder: [...state.layerOrder, newOrder],
+      selectedLayerId: id,
+      activeTool: 'image',
+    });
+  },
+
+  addLogoImageLayer: (galleryImage, canvasW, canvasH) => {
+    const state = get();
+    const d = state.previewDuration;
+    const id = nanoid();
+    const cw = Math.max(1, canvasW);
+    const ch = Math.max(1, canvasH);
+    const gw = Math.max(1, galleryImage.width);
+    const gh = Math.max(1, galleryImage.height);
+    const targetW = Math.min(gw, cw * 0.22);
+    const height = (targetW * gh) / gw;
+    const margin = Math.max(8, cw * 0.03);
+    const layer: ImageLayer = {
+      id,
+      type: 'image',
+      galleryImageId: galleryImage.id,
+      src: galleryImage.src,
+      x: Math.max(margin, cw - targetW - margin),
+      y: Math.max(margin, ch - height - margin),
+      width: targetW,
+      height,
+      opacity: 100,
+      rotation: 0,
+      flipX: false,
+      flipY: false,
+      fitMode: 'free',
+      startTime: 0,
+      endTime: d > 0 ? d : 0,
+      lockAspectRatio: true,
+    };
+    const newOrder: LayerOrderEntry = { id, type: 'image' };
+    set({
+      imageLayers: [...state.imageLayers, layer],
+      layerOrder: [...state.layerOrder, newOrder],
+      selectedLayerId: id,
+      activeTool: 'image',
+    });
+  },
+
+  updateImageLayer: (id, patch) =>
+    set((s) => {
+      const d = s.previewDuration;
+      return {
+        imageLayers: s.imageLayers.map((l) => {
+          if (l.id !== id) return l;
+          const next = { ...l, ...patch };
+          if (d > 0) {
+            let start = Math.max(0, next.startTime);
+            let end = Math.min(d, next.endTime);
+            if (end - start < MIN_CLIP_SEC) {
+              end = Math.min(d, start + MIN_CLIP_SEC);
+              start = Math.max(0, end - MIN_CLIP_SEC);
+            }
+            next.startTime = start;
+            next.endTime = end;
+          }
+          return next;
+        }),
+      };
+    }),
+
+  deleteImageLayer: (id) =>
+    set((s) => ({
+      imageLayers: s.imageLayers.filter((l) => l.id !== id),
+      layerOrder: s.layerOrder.filter((e) => e.id !== id),
+      selectedLayerId: s.selectedLayerId === id ? null : s.selectedLayerId,
+    })),
+
   deleteSelectedLayer: () => {
     const s = get();
     const id = s.selectedLayerId;
@@ -352,6 +562,12 @@ export const useViralOverlayStore = create<ViralOverlayState>((set, get) => ({
     } else if (s.blurLayers.some((l) => l.id === id)) {
       set({
         blurLayers: s.blurLayers.filter((l) => l.id !== id),
+        layerOrder: s.layerOrder.filter((e) => e.id !== id),
+        selectedLayerId: null,
+      });
+    } else if (s.imageLayers.some((l) => l.id === id)) {
+      set({
+        imageLayers: s.imageLayers.filter((l) => l.id !== id),
         layerOrder: s.layerOrder.filter((e) => e.id !== id),
         selectedLayerId: null,
       });
@@ -376,23 +592,60 @@ export const useViralOverlayStore = create<ViralOverlayState>((set, get) => ({
       return { layerOrder: next };
     }),
 
-  reset: () => set(initial()),
+  reset: () => {
+    const s = get();
+    for (const g of s.galleryImages) {
+      if (g.src.startsWith('blob:')) {
+        URL.revokeObjectURL(g.src);
+      }
+    }
+    set(initial());
+  },
 
   hydrate: (payload) => {
     const textRaw = payload.textLayers;
     const blurRaw = payload.blurLayers;
+    const imageRaw = payload.imageLayers;
+    const galleryRaw = payload.galleryImages;
+    const orderRaw = payload.layerOrder;
     const textLayers = Array.isArray(textRaw)
       ? textRaw.filter((l): l is TextLayer => l && typeof l === 'object' && l.type === 'text')
       : [];
     const blurLayers = Array.isArray(blurRaw)
       ? blurRaw.filter((l): l is BlurLayer => l && typeof l === 'object' && l.type === 'blur')
       : [];
+    const imageLayers = Array.isArray(imageRaw)
+      ? imageRaw.filter((l): l is ImageLayer => l && typeof l === 'object' && l.type === 'image')
+      : [];
+    const galleryImages = Array.isArray(galleryRaw)
+      ? galleryRaw.filter(
+          (g): g is GalleryImage =>
+            Boolean(g) && typeof g === 'object' && typeof (g as GalleryImage).src === 'string',
+        )
+      : [];
     const d = get().previewDuration;
-    const clamped = clampAllLayers(textLayers, blurLayers, d);
-    const layerOrder = syncLayerOrder(get().layerOrder, clamped.textLayers, clamped.blurLayers);
+    const clamped = clampAllLayers(textLayers, blurLayers, imageLayers, d);
+    const resolvedImageLayers = clamped.imageLayers.map((l) => {
+      if (typeof l.src === 'string' && l.src.startsWith('blob:')) {
+        const g = galleryImages.find((x) => x.id === l.galleryImageId);
+        if (g != null && !g.src.startsWith('blob:')) {
+          return { ...l, src: g.src };
+        }
+      }
+      return l;
+    });
+    const baseOrder = Array.isArray(orderRaw) ? orderRaw : get().layerOrder;
+    const layerOrder = syncLayerOrder(
+      baseOrder,
+      clamped.textLayers,
+      clamped.blurLayers,
+      resolvedImageLayers,
+    );
     set({
+      galleryImages,
       textLayers: clamped.textLayers,
       blurLayers: clamped.blurLayers,
+      imageLayers: resolvedImageLayers,
       layerOrder,
       selectedLayerId: null,
     });

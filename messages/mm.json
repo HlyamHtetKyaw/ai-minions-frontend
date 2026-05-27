@@ -1031,7 +1031,7 @@
       }
     },
     "overlays": {
-      "sectionTitle": "စာသားနှင့် ဝိုင်းပုတ်",
+      "sectionTitle": "အလွှာများ",
       "pointer": "ရွေးချယ်",
       "textTool": "စာသား",
       "blurTool": "ဝိုင်းပုတ်",
@@ -1040,6 +1040,12 @@
       "remove": "ဖျက်ရန်",
       "inspectorText": "စာသား အလွှာတွင်",
       "inspectorBlur": "ဝိုင်း အလွှာတွင်",
+      "inspectorImages": "ပုံနှင့် လိုဂို",
+      "inspectorImage": "ပုံ အလွှာ",
+      "imageOpacity": "ဖျော့မှန်မှု",
+      "imageStart": "စတင် (စ)",
+      "imageEnd": "အဆုံး (စ)",
+      "imageLogoHint": "လိုဂို သို့မဟုတ် ပုံ တင်ပြီး ကြိုကြည့်ရှုမှုတွင် နေရာချပါ။ လိုဂိုသည် ညာအောက်ထောင့်။",
       "content": "စာသား",
       "fontSize": "ဖောင့်အရွယ်",
       "color": "အရောင်",

@@ -1034,7 +1034,7 @@ declare const messages: {
       }
     },
     "overlays": {
-      "sectionTitle": "Text & blur",
+      "sectionTitle": "Overlays",
       "pointer": "Select",
       "textTool": "Text",
       "blurTool": "Blur",
@@ -1043,6 +1043,12 @@ declare const messages: {
       "remove": "Remove",
       "inspectorText": "Text overlay",
       "inspectorBlur": "Blur overlay",
+      "inspectorImages": "Images & logo",
+      "inspectorImage": "Image overlay",
+      "imageOpacity": "Opacity",
+      "imageStart": "Start (s)",
+      "imageEnd": "End (s)",
+      "imageLogoHint": "Upload a logo or image, then drag on the preview to position. Logo places bottom-right.",
       "content": "Text",
       "fontSize": "Font size",
       "color": "Color",

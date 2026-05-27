@@ -1,4 +1,4 @@
-import type { BlurLayer, TextLayer } from '@/store/editorStore';
+import type { BlurLayer, GalleryImage, ImageLayer, TextLayer } from '@/store/editorStore';
 
 export function mapTextLayersForWorkspaceExport(layers: TextLayer[]) {
   return layers.map((l) => ({
@@ -28,6 +28,35 @@ export function mapBlurLayersForWorkspaceExport(layers: BlurLayer[]) {
     startTime: l.startTime,
     endTime: l.endTime,
   }));
+}
+
+export function mapImageLayersForWorkspaceExport(
+  layers: ImageLayer[],
+  galleryImages: GalleryImage[],
+) {
+  return layers.map((l) => {
+    let src = l.src;
+    if (typeof src === 'string' && src.startsWith('blob:')) {
+      const g = galleryImages.find((x) => x.id === l.galleryImageId);
+      if (g != null && typeof g.src === 'string' && !g.src.startsWith('blob:')) {
+        src = g.src;
+      }
+    }
+    return {
+      id: l.id,
+      src,
+      x: l.x,
+      y: l.y,
+      width: l.width,
+      height: l.height,
+      opacity: l.opacity / 100,
+      rotation: l.rotation,
+      flipX: l.flipX,
+      flipY: l.flipY,
+      startTime: l.startTime,
+      endTime: l.endTime,
+    };
+  });
 }
 
 export function viralDisplayToNaturalScale(
